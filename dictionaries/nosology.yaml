@@ -1,0 +1,48 @@
+# Нозологии для слоя L3 «язык спроса» — этап 1
+# ВЕРСИЯ: 0.1-seed · СТАТУС: НЕ УТВЕРЖДЁН ЗАКАЗЧИКОМ
+#
+# Сид — из МКБ-10 (источник SRC-MKB10-20260823, см. services.yaml).
+# Формулировки пациентов и частотность — ТОЛЬКО из Вордстата после фильтрации
+# Врачом-методологом (доступа нет: нет ключей). Поле patient_phrases пусто везде —
+# заполнять его без Вордстата запрещено ТЗ.
+
+meta:
+  version: "0.1-seed"
+  date: "2026-08-23"
+  status: "не утверждён; частотность и формулировки пациентов — после доступа к Вордстату"
+  icd10_verification: "трёхзначные рубрики сверены по SRC-MKB10-20260823 (classinform.ru, 2026-08-23); четырёхзначные подрубрики помечены «Уточнить» — сверка на этапе 9"
+
+nosologies:
+  - {icd10: "L40",     name: "Псориаз",                          patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L20",     name: "Атопический дерматит",             patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L23-L25", name: "Контактный дерматит",              patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L30.9", icd10_status: "Уточнить (сверена только рубрика)",   name: "Экзема",                           patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L70",     name: "Угри (акне)",                      patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L71",     name: "Розацеа",                          patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L80",     name: "Витилиго",                         patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L50",     name: "Крапивница",                       patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L63",     name: "Гнёздная алопеция",                patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L64",     name: "Андрогенная алопеция",             patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L65",     name: "Выпадение волос (нерубцовое)",     patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B35.1", icd10_status: "Уточнить (сверена только рубрика)",   name: "Онихомикоз (грибок ногтей)",       patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B35",     name: "Дерматофития (грибок кожи)",       patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B07",     name: "Вирусные бородавки",               patient_phrases: [], wordstat_freq: null}
+  - {icd10: "A63.0", icd10_status: "Уточнить (сверена только рубрика)",   name: "Аногенитальные бородавки (кондиломы)", patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B02",     name: "Опоясывающий лишай",               patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B86",     name: "Чесотка",                          patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B88.0", icd10_status: "Уточнить (сверена только рубрика)",   name: "Демодекоз",                        patient_phrases: [], wordstat_freq: null}
+  - {icd10: "D22",     name: "Меланоформный невус (родинка)",    patient_phrases: [], wordstat_freq: null}
+  - {icd10: "D23",     name: "Доброкачественное новообразование кожи", patient_phrases: [], wordstat_freq: null}
+  - {icd10: "C43",     name: "Меланома",                         patient_phrases: [], wordstat_freq: null}
+  - {icd10: "C44",     name: "Рак кожи (вкл. базалиому)",        patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L82",     name: "Себорейный кератоз",               patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L57.0", icd10_status: "Уточнить (сверена только рубрика)",   name: "Актинический кератоз",             patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L81",     name: "Нарушения пигментации",            patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L90.5", icd10_status: "Уточнить (сверена только рубрика)",   name: "Рубцы (рубцовые состояния)",       patient_phrases: [], wordstat_freq: null}
+  - {icd10: "R61",     name: "Гипергидроз",                      patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L98.0", icd10_status: "Уточнить (сверена только рубрика)",   name: "Пиогенная гранулёма",              patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L72",     name: "Атерома (фолликулярная киста)",    patient_phrases: [], wordstat_freq: null}
+  - {icd10: "D17",     name: "Липома",                           patient_phrases: [], wordstat_freq: null}
+  - {icd10: "B08.1", icd10_status: "Уточнить (сверена только рубрика)",   name: "Контагиозный моллюск",             patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L84",     name: "Мозоли и омозолелости",            patient_phrases: [], wordstat_freq: null}
+  - {icd10: "L60",     name: "Болезни ногтей (вкл. вросший ноготь)", patient_phrases: [], wordstat_freq: null}
