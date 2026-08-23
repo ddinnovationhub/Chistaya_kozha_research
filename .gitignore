@@ -23,3 +23,7 @@ raw/
 *.log
 .DS_Store
 .claude/settings.local.json
+
+# hyperresearch: волатильные файлы SQLite не коммитятся
+.hyperresearch/*.db-shm
+.hyperresearch/*.db-wal
