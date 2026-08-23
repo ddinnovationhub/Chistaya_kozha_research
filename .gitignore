@@ -1,0 +1,25 @@
+# Секреты — ключи только в GitHub Secrets, в репозиторий не попадают никогда
+.env
+.env.*
+*.key
+*_secret*
+secrets/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Node
+node_modules/
+
+# Сырые страницы (gzip) — хранятся локально в прогоне, в git не коммитятся
+# (открытый вопрос к заказчику: нужна ли архивация raw/ в git — см. PROGRESS.md)
+raw/
+
+# Локальные артефакты
+*.log
+.DS_Store
+.claude/settings.local.json
