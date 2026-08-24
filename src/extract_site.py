@@ -20,6 +20,7 @@ import re
 
 import yaml
 
+from src.html_text import html_to_text, page_title, site_name_from_html
 from src.mapper import normalize_service_name
 
 _CLASSIFIER = pathlib.Path("dictionaries/classifier.yaml")
@@ -38,7 +39,25 @@ SPECIALTY_WORDS = [
     "косметолог", "онколог", "терапевт", "педиатр", "гинеколог", "уролог",
     "кардиолог", "невролог", "офтальмолог", "эндокринолог", "хирург",
     "оториноларинголог", "отоларинголог", "стоматолог", "психотерапевт", "флеболог",
+    "аллерголог", "иммунолог", "гастроэнтеролог", "пульмонолог", "ревматолог",
 ]
+
+# G2 «релевантный профиль» (CLAUDE.md): дерматология · дерматовенерология ·
+# онкодерматология · трихология · удаление новообразований · косметология.
+# Ищутся в видимом тексте; решение ворот — в site_checker.
+PROFILE_MARKERS = [
+    "дерматолог", "дерматовенеролог", "онкодерматолог", "трихолог", "дерматохирург",
+    "косметолог", "дерматология", "дерматовенерология", "онкодерматология",
+    "трихология", "косметология", "удаление новообразований", "удаление родинок",
+    "удаление папиллом", "удаление бородавок", "дерматоскопия",
+]
+
+# п.2 промпта 2026-08-26: сырой HTML в названии — строка НЕ записывается
+_BAD_NAME_RE = re.compile(r"[<>]|class=|href=|style=|&#|\bspan\b|\bdiv\b", re.IGNORECASE)
+
+
+def is_clean_name(name: str) -> bool:
+    return not _BAD_NAME_RE.search(name or "")
 
 _NAV_JUNK = ("корзин", "записаться", "запись на", "режим работы", "поиск по",
              "меню", "наверх", "cookie", "политик", "конфиденциальн", "войти",
@@ -132,8 +151,10 @@ def extract_pages(pages: dict[str, str], form_index: dict,
         "services": [], "sections_found": set(),
         "license_evidence": {"found": False, "quote": None, "url": None},
         "doctor_specialties": set(), "nonadjacent_signs": [],
+        "profile_markers_found": set(),   # для ворот G2 в site_checker
         "esthetic_cosmetology_present": False, "esthetic_evidence": None,
-        "has_packages": False,
+        "has_packages": False, "dirty_names_rejected": 0,
+        "site_name": None, "site_name_source": None, "page_title": None,
         "requisites": {"inn_text": None, "ogrn_text": None, "legal_name": None,
                        "quote": None, "url": None},
         "specialists_count": None,  # только явное число; код его не выводит
@@ -141,7 +162,13 @@ def extract_pages(pages: dict[str, str], form_index: dict,
     seen_names = set()
     seen_nonadj = set()
 
-    for url, text in pages.items():
+    first = True
+    for url, raw in pages.items():
+        if first:   # имя организации — с главной (п.4: og:site_name → шапка)
+            result["site_name"], result["site_name_source"] = site_name_from_html(raw)
+            result["page_title"] = page_title(raw)
+            first = False
+        text = html_to_text(raw)   # п.2: только видимый текст из DOM, не разметка
         low_url = url.lower()
         for canon, keys in _SECTION_CANON:
             if any(k in low_url for k in keys):
@@ -160,13 +187,16 @@ def extract_pages(pages: dict[str, str], form_index: dict,
             cand = (_table_row_candidate(line, form_index) if "|" in line
                     else _service_candidates_from_line(line, form_index))
             if cand:
-                key = normalize_service_name(cand["name"])
-                if key and key not in seen_names:
-                    seen_names.add(key)
-                    result["services"].append({"name": cand["name"], "description": None,
-                                               "price": cand["price"], "page_url": url})
-                if PACKAGE_RE.search(cand["name"]):
-                    result["has_packages"] = True
+                if not is_clean_name(cand["name"]):
+                    result["dirty_names_rejected"] += 1   # п.2: HTML-мусор не пишется
+                else:
+                    key = normalize_service_name(cand["name"])
+                    if key and key not in seen_names:
+                        seen_names.add(key)
+                        result["services"].append({"name": cand["name"], "description": None,
+                                                   "price": cand["price"], "page_url": url})
+                    if PACKAGE_RE.search(cand["name"]):
+                        result["has_packages"] = True
 
             if not result["license_evidence"]["found"] and "лиценз" in low:
                 result["license_evidence"] = {"found": True, "quote": s[:200], "url": url}
@@ -174,6 +204,9 @@ def extract_pages(pages: dict[str, str], form_index: dict,
             for w in SPECIALTY_WORDS:
                 if w in low:
                     result["doctor_specialties"].add(w)
+            for w in PROFILE_MARKERS:
+                if w in low:
+                    result["profile_markers_found"].add(w)
 
             for d in nonadj_dirs:
                 if d["name"] in seen_nonadj:
@@ -206,4 +239,5 @@ def extract_pages(pages: dict[str, str], form_index: dict,
 
     result["sections_found"] = sorted(result["sections_found"])
     result["doctor_specialties"] = sorted(result["doctor_specialties"])
+    result["profile_markers_found"] = sorted(result["profile_markers_found"])
     return result

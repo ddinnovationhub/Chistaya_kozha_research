@@ -110,6 +110,22 @@ async def run_l1_async(city: str, city_slug: str, l1_queries: list[dict],
             for src_id, domain, url, selector in targets:
                 try:
                     g = await _grab(page, url, selector)
+                    # Антибот-заглушки (разбор прогона 2026-08-26): Карты отдают
+                    # страницу «limited» (158 байт), 2ГИС — «2gis captcha».
+                    # CAPTCHA не обходится (правовой режим) — честный blocked.
+                    low = g["content"][:3000].lower()
+                    if (g["bytes"] < 1000 and ">limited<" in low) or "captcha" in low:
+                        wall = "limited (антибот Яндекс.Карт)" if "limited" in low \
+                            else "CAPTCHA (антибот 2ГИС)"
+                        failures.append(f"{src_id}: заглушка {wall} — датацентровый IP "
+                                        f"Actions заблокирован каталогом")
+                        diag.append({"query": q["text"], "catalog": src_id, "url": url,
+                                     "http_status": g["http_status"], "bytes": g["bytes"],
+                                     "blocked_wall": wall,
+                                     "saved_html": _save_html(
+                                         city, f"{src_id}_{q['query_id']}", g["content"])})
+                        await asyncio.sleep(RATE_DELAY_SEC)
+                        continue
                     cards = _dedupe_cards(g["cards"], domain)
                     n_results += len(cards)
                     n_new += sum(queue.add(c, q["query_id"], src_id) for c in cards)
@@ -155,7 +171,11 @@ async def run_l1_async(city: str, city_slug: str, l1_queries: list[dict],
                      f"ошибок — сырые HTML сохранены в data/l1_diag/{city}/, разобрать до "
                      f"доверия слою; полнота занижена")
     if errors:
-        notes.append(f"рубрик с ошибками каталогов: {errors} — полнота занижена")
+        walls = {d["blocked_wall"] for d in diag if d.get("blocked_wall")}
+        notes.append(f"рубрик с ошибками/блокировками каталогов: {errors}"
+                     + (f" [{'; '.join(sorted(walls))}]" if walls else "")
+                     + " — полнота занижена; антибот-заглушки НЕ обходятся "
+                       "(правовой режим), нужен запуск вне датацентрового IP")
     if not ym:
         notes.append("Яндекс.Карты пропущены: нет region_id города")
     if notes:

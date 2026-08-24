@@ -771,6 +771,7 @@ Chistaya_kozha_research/
 | `DADATA_API_KEY` | dadata.ru/profile/ → API-ключ | Да |
 | `DADATA_SECRET_KEY` | dadata.ru/profile/ → Секретный ключ | Да |
 | `PERPLEXITY_API_KEY` | perplexity.ai/settings/api | Нет |
+| `JINA_API_KEY` | jina.ai (бесплатный) — снимает 403 уровня 1 каскада с датацентровых IP Actions | Нет |
 | `CITY` | задаётся при запуске | Да |
 
 Все ключи только в GitHub Secrets. В коде — только через `os.environ.get(...)`. В файлы и логи ключи не пишутся никогда.

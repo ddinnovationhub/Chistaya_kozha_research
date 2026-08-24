@@ -25,11 +25,11 @@
 """
 
 import datetime
+import os
 import random
 import re
 import sqlite3
 import time
-import urllib.robotparser
 
 import httpx
 
@@ -44,7 +44,7 @@ BROWSER_HEADERS = {
 }
 PRICE_RE = re.compile(r"\d[\d\s]{0,8}\s*(?:₽|руб\.?)", re.IGNORECASE)
 
-_robots_cache: dict[str, urllib.robotparser.RobotFileParser | None] = {}
+_robots_cache: dict[str, list[tuple[str, str]] | None] = {}
 
 
 def ensure_fetch_tables(db: sqlite3.Connection):
@@ -70,48 +70,95 @@ def _log(db, domain, url, level, status, nbytes, selector_hit, content_ok, note)
 def has_content_signals(text: str | None, form_index: dict,
                         min_bytes: int = CONTENT_MIN_BYTES) -> bool:
     """Признак контента: цены ИЛИ названия услуг из справочника ИЛИ объём
-    не меньше порога (главная без цен — тоже контент). 200 без признаков —
+    видимого текста не меньше порога (главная без цен — тоже контент).
+    HTML сперва конвертируется в видимый текст (иначе словарь не совпадёт
+    с разметкой, а разметка сойдёт за объём). 200 без признаков —
     suspicious_zero страницы, не взято."""
     if not text:
         return False
-    if PRICE_RE.search(text):
+    from src.html_text import html_to_text
+    visible = html_to_text(text)
+    if PRICE_RE.search(visible):
         return True
     from src.mapper import normalize_service_name
-    for line in text.splitlines():
+    for line in visible.splitlines():
         s = line.strip(" -–—·|#*")
         if 4 <= len(s) <= 200 and normalize_service_name(s) in form_index:
             return True
-    return len(text.encode("utf-8")) >= min_bytes
+    return len(visible.encode("utf-8")) >= min_bytes
+
+
+# ── robots.txt: собственный матчер REP ────────────────────────────────────
+# Стандартный urllib.robotparser читает Яндекс/Google-стиль правил
+# («Disallow: /?», «Disallow: */?*») как запрет ВСЕГО сайта — ложная
+# блокировка, доказано на alleya-nsk.ru и akriderm.com (2026-08-26).
+# Здесь — семантика Google REP: * = подстановка, $ = конец, побеждает
+# самое длинное правило, при равенстве Allow важнее Disallow.
+def _parse_robots(text: str) -> list[tuple[str, str]]:
+    """Правила группы User-agent: * → [(directive, pattern)]."""
+    rules, in_star_group, seen_star = [], False, False
+    for raw in text.splitlines():
+        line = raw.split("#", 1)[0].replace("\xa0", " ").strip()
+        if not line or ":" not in line:
+            continue
+        key, _, val = line.partition(":")
+        key, val = key.strip().lower(), val.strip()
+        if key == "user-agent":
+            in_star_group = (val == "*")
+            seen_star = seen_star or in_star_group
+        elif key in ("allow", "disallow") and in_star_group and val:
+            rules.append((key, val))
+    return rules
+
+
+def _rule_matches(pattern: str, path: str) -> bool:
+    regex = re.escape(pattern).replace(r"\*", ".*")
+    if regex.endswith(r"\$"):
+        regex = regex[:-2] + "$"
+    return re.match(regex, path) is not None
+
+
+def _robots_decision(rules: list[tuple[str, str]], path: str) -> bool:
+    best_len, best_allow = -1, True
+    for directive, pattern in rules:
+        if _rule_matches(pattern, path):
+            plen = len(pattern)
+            allow = directive == "allow"
+            if plen > best_len or (plen == best_len and allow):
+                best_len, best_allow = plen, allow
+    return best_allow
 
 
 def robots_allows(url: str) -> bool:
     """robots.txt чтится на всех уровнях (Юрист OSINT). Недоступный robots.txt
     трактуется как разрешение (стандартная практика), запрет — как запрет."""
-    m = re.match(r"(https?://[^/]+)", url)
+    m = re.match(r"(https?://[^/]+)(/.*)?$", url)
     if not m:
         return True
-    base = m.group(1)
+    base, path = m.group(1), m.group(2) or "/"
     if base not in _robots_cache:
-        rp = urllib.robotparser.RobotFileParser()
         try:
             resp = httpx.get(f"{base}/robots.txt", timeout=10,
                              headers=BROWSER_HEADERS, follow_redirects=True)
-            if resp.status_code == 200:
-                rp.parse(resp.text.splitlines())
-                _robots_cache[base] = rp
-            else:
-                _robots_cache[base] = None
+            _robots_cache[base] = _parse_robots(resp.text) if resp.status_code == 200 else None
         except Exception:  # noqa: BLE001
             _robots_cache[base] = None
-    rp = _robots_cache[base]
-    return True if rp is None else rp.can_fetch(BROWSER_UA, url)
+    rules = _robots_cache[base]
+    return True if rules is None else _robots_decision(rules, path)
 
 
 # ── Уровни ────────────────────────────────────────────────────────────────
 def _level1_jina(url: str) -> tuple[str | None, str, int]:
+    # Прогон 2026-08-26: Jina отдаёт 403 датацентровым IP GitHub Actions
+    # (из песочницы — 200). Ключ JINA_API_KEY (бесплатный, jina.ai) поднимает
+    # лимит и снимает блокировку; без ключа уровень честно падает на 403
+    # и сайт берёт уровень 2 — каскад это и предусматривает.
+    headers = {"User-Agent": BROWSER_UA}
+    if os.environ.get("JINA_API_KEY"):
+        headers["Authorization"] = f"Bearer {os.environ['JINA_API_KEY']}"
     try:
         r = httpx.get(f"https://r.jina.ai/{url}", timeout=60,
-                      headers={"User-Agent": BROWSER_UA}, follow_redirects=True)
+                      headers=headers, follow_redirects=True)
         return (r.text if r.status_code == 200 else None), str(r.status_code), len(r.content)
     except Exception as exc:  # noqa: BLE001
         return None, type(exc).__name__, 0

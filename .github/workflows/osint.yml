@@ -36,6 +36,9 @@ jobs:
       DADATA_SECRET_KEY: ${{ secrets.DADATA_SECRET_KEY }}
       # ANTHROPIC_API_KEY удалён (решение заказчика 2026-08-26, п.6):
       # этап 6 работает без внешнего API — ступень 1 кодом + ручная разметка
+      # JINA_API_KEY (необязателен): Jina отдаёт 403 датацентровым IP Actions;
+      # бесплатный ключ jina.ai возвращает уровень 1 каскада в строй
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
       CITY: ${{ github.event.inputs.city }}
       QUERY_LIMIT: ${{ github.event.inputs.limit }}
     steps:

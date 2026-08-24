@@ -45,21 +45,30 @@ TYPE_STATUS_FINAL = "финальный (после разметки)"
 
 
 def _find_section_links(home_text: str, base_url: str) -> list[str]:
-    links = re.findall(r"\((https?://[^)\s]+)\)", home_text) + \
-            re.findall(r'href="(https?://[^"]+|/[^"]+)"', home_text)
+    """Ссылки разделов: HTML — через DOM (a[href] + urljoin, а не регулярка —
+    прогон 2026-08-26 показал шторм 404 на криво склеенных путях),
+    markdown от Jina — по (url) в скобках."""
+    from urllib.parse import urljoin
+
+    from src.html_text import looks_like_html
+    if looks_like_html(home_text):
+        from src.html_text import _soup
+        links = [urljoin(base_url + "/", a["href"])
+                 for a in _soup(home_text).find_all("a", href=True)]
+    else:
+        links = [urljoin(base_url + "/", u) for u in
+                 re.findall(r"\((https?://[^)\s]+|/[^)\s]+)\)", home_text)]
     base_dom = normalize_domain(base_url)
     out, seen = [], set()
     for link in links:
-        if link.startswith("/"):
-            link = base_url.rstrip("/") + link
-        if normalize_domain(link) != base_dom:
+        if not link.startswith("http") or normalize_domain(link) != base_dom:
             continue
         low = link.lower()
         if any(w in low for w in ("uslug", "price", "prais", "napravlen", "vrach",
                                   "doctor", "licen", "rekvizit", "contact", "kontakt",
                                   "about", "o-klinike", "o-nas", "ceny", "services")):
-            key = link.split("#")[0].rstrip("/")
-            if key not in seen:
+            key = link.split("#")[0].split("?")[0].rstrip("/")
+            if key not in seen and key.rstrip("/") != base_url.rstrip("/"):
                 seen.add(key)
                 out.append(key)
     return out[:MAX_PAGES_PER_SITE - 1]
@@ -96,7 +105,8 @@ def crawl_site(url: str, city: str, form_index: dict, db=None,
 def ensure_stage6_tables(db: sqlite3.Connection):
     db.executescript("""
     CREATE TABLE IF NOT EXISTS clinics (
-        clinic_id TEXT PRIMARY KEY, title TEXT, domain TEXT, url TEXT,
+        clinic_id TEXT PRIMARY KEY, title TEXT, title_source TEXT,
+        domain TEXT, url TEXT,
         gate TEXT, gate_reason TEXT, type TEXT, type_status TEXT, rule TEXT,
         grade TEXT, esthetic_markers TEXT, nonadjacent TEXT,
         flag_single_nonadjacent INTEGER, flag_removal_outside_derm INTEGER,
@@ -116,7 +126,8 @@ def ensure_stage6_tables(db: sqlite3.Connection):
     """)
     # миграция таблиц, созданных кодом до 2026-08-26
     for col, typ in (("type_status", "TEXT"), ("flag_site_unreachable", "INTEGER"),
-                     ("unreachable_note", "TEXT"), ("fetch_level", "INTEGER")):
+                     ("unreachable_note", "TEXT"), ("fetch_level", "INTEGER"),
+                     ("title_source", "TEXT")):
         try:
             db.execute(f"ALTER TABLE clinics ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
@@ -140,21 +151,34 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         note = (f"robots.txt запрещает обход" if fetch_meta["blocked_by_robots"]
                 else f"последний уровень: {fetch_meta['last_level']}, "
                      f"ответ: {fetch_meta['last_status']}") + f", {now[:10]}"
-        db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, domain, url, "
-                   "gate, gate_reason, type, type_status, rule, grade, "
+        db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, title_source, "
+                   "domain, url, gate, gate_reason, type, type_status, rule, grade, "
                    "flag_site_unreachable, unreachable_note, fetch_level, inn_status, "
-                   "checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                   (clinic_id, cand["title"], dom, url, "Требует проверки",
-                    "Сайт недоступен", "Не классифицировано", None,
+                   "checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                   (clinic_id, cand["title"], "карточка discovery", dom, url,
+                    "Требует проверки", "Сайт недоступен", "Не классифицировано", None,
                     None, "C", 1, note, None, "Сайт недоступен", now))
         db.commit()
         return {"clinic_id": clinic_id, "gate": "Требует проверки", "grade": "C",
                 "services": 0, "tier1_mapped": 0, "to_markup": 0,
                 "fetch_level": None, "unreachable": True, "domain": dom}
 
+    # Экстракция — анализ страниц в памяти; ЗАПИСЬ строк услуг — только
+    # после ворот (порядок заказчика 2026-08-26: скачать → G1 → G2 →
+    # только если прошла — извлекать услуги в таблицу)
     data = extract_pages(pages, form_index)
 
-    # ── Ступень 1 (код): точное совпадение; остальное — «на разметке» ──
+    # ── Имя организации (п.4): og:site_name → шапка → discovery → title ──
+    if data["site_name"]:
+        title, title_source = data["site_name"], data["site_name_source"]
+    elif cand.get("title"):
+        title, title_source = cand["title"], "карточка discovery"
+    elif data["page_title"]:
+        title, title_source = data["page_title"], "title страницы — Уточнить"
+    else:
+        title, title_source = dom, "домен — Уточнить"
+
+    # ── Ступень 1 (код) — нужна воротам G2, но в базу пока не пишется ──
     mapped, to_markup = [], []
     for s in data["services"]:
         m1 = map_tier1(s["name"], form_index)
@@ -162,19 +186,28 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             mapped.append({**s, **m1})
         else:
             to_markup.append(s)
+    profile_tags = {m["tag"] for m in mapped if m.get("tag")} & set(contours)
 
-    found_tags = {m["tag"] for m in mapped if m.get("tag")} & set(contours)
-    if data["esthetic_cosmetology_present"]:
-        found_tags.add("hardware_rejuvenation")  # агрегатный эстетический маркер
-
-    # ── Ворота ──
+    # ── Ворота G1 → G2 ──
     g1 = data["license_evidence"]["found"] or bool(data["doctor_specialties"])
+    g2 = bool(profile_tags or data["profile_markers_found"]
+              or data["esthetic_cosmetology_present"])
     if not g1:
         gate, reason = "Исключён", "салон красоты / нет медицинской деятельности"
-    elif not found_tags and not to_markup:
-        gate, reason = "Исключён", "нет релевантного профиля"
+    elif not g2:
+        fact = ", ".join(data["doctor_specialties"][:4])
+        gate = "Исключён"
+        reason = ("нет релевантного профиля"
+                  + (f" (фактический: {fact})" if fact else ""))
+        mapped, to_markup = [], []   # услуги нерелевантной клиники НЕ пишутся
     else:
         gate, reason = "Включён", "G1-G2 пройдены"
+
+    found_tags = set(profile_tags)
+    if data["esthetic_cosmetology_present"]:
+        found_tags.add("hardware_rejuvenation")  # агрегатный эстетический маркер
+    if gate != "Включён":
+        mapped, to_markup = [], []   # ТЕСТ заказчика: Исключён → ноль строк услуг
 
     nonadj = sorted({n["direction"] for n in data["nonadjacent_signs"]})
     if gate == "Включён" and found_tags:
@@ -201,13 +234,14 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             inn_status = (f"Уточнить — формат отбит: «{raw_inn[:40]}»"
                           + (", формат ОГРН" if validate_ogrn(raw_inn) else ""))
 
-    db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, domain, url, gate, "
+    db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, title_source, "
+               "domain, url, gate, "
                "gate_reason, type, type_status, rule, grade, esthetic_markers, "
                "nonadjacent, flag_single_nonadjacent, flag_removal_outside_derm, "
                "flag_site_unreachable, unreachable_note, fetch_level, "
                "has_packages, specialists_count, inn, inn_status, legal_name, "
-               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-               (clinic_id, cand["title"], dom, url, gate, reason,
+               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+               (clinic_id, title, title_source, dom, url, gate, reason,
                 cls["type"], type_status, cls.get("rule"), grade,
                 "; ".join(cls["esthetic_markers_found"]) or None,
                 "; ".join(nonadj) or None,
@@ -220,7 +254,7 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, "
                    "description_raw, page_url, price, tag, code_804n, mapping_basis, "
                    "mapping_tier, confidence, client_has) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                   (clinic_id, cand["title"], m["name"], m.get("description"),
+                   (clinic_id, title, m["name"], m.get("description"),
                     m["page_url"], m.get("price"), m.get("tag"), m.get("code_804n"),
                     m.get("basis"), m.get("tier"), m.get("confidence"),
                     "Да" if (m.get("tag") in client_tags) else "Нет"))
@@ -228,7 +262,7 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, "
                    "description_raw, page_url, price, tag, code_804n, mapping_basis, "
                    "mapping_tier, confidence, client_has) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-                   (clinic_id, cand["title"], s["name"], s.get("description"),
+                   (clinic_id, title, s["name"], s.get("description"),
                     s["page_url"], s.get("price"), None, None,
                     "ступень 1: точного совпадения со справочником нет",
                     "на разметке", None, None))
@@ -249,10 +283,21 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         db.execute("INSERT INTO clinic_evidence (clinic_id, kind, detail, quote, url) "
                    "VALUES (?,?,?,?,?)", (clinic_id, kind, detail, quote, evurl))
     db.commit()
-    return {"clinic_id": clinic_id, "gate": gate, "type": cls["type"],
-            "type_status": type_status, "grade": grade,
+    # замер п.3 (промпт 2026-08-26): строк с ценами на страницах vs в таблице
+    from src.fetch_cascade import PRICE_RE
+    from src.html_text import html_to_text
+    price_lines_on_pages = sum(
+        1 for txt in pages.values() for ln in html_to_text(txt).splitlines()
+        if PRICE_RE.search(ln))
+    price_rows_written = sum(1 for x in (*mapped, *to_markup) if x.get("price"))
+
+    return {"clinic_id": clinic_id, "title": title, "gate": gate,
+            "type": cls["type"], "type_status": type_status, "grade": grade,
             "services": len(mapped) + len(to_markup),
             "tier1_mapped": len(mapped), "to_markup": len(to_markup),
+            "price_lines_on_pages": price_lines_on_pages,
+            "price_rows_written": price_rows_written,
+            "dirty_names_rejected": data["dirty_names_rejected"],
             "fetch_level": fetch_meta["level"], "unreachable": False, "domain": dom}
 
 
@@ -297,6 +342,17 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
         results.append(r)
         processed += 1
         time.sleep(RATE_DELAY_SEC)
+
+    # ── ТЕСТ заказчика (2026-08-26, п.1): клиника, не прошедшая ворота,
+    # не может иметь строк в services_found. Нарушение — ошибка выполнения.
+    bad = [row[0] for row in db.execute(
+        "SELECT DISTINCT c.clinic_id FROM clinics c "
+        "JOIN services_found s ON s.clinic_id = c.clinic_id "
+        "WHERE c.gate != 'Включён'")]
+    if bad:
+        raise RuntimeError(
+            f"нарушение ворот: клиники вне 'Включён' имеют строки услуг: {bad} — "
+            f"запись услуг до прохождения G1-G2 запрещена")
 
     # ── Замер для решения «остаёмся ли на ручной разметке» (п.6) ──
     total = sum(r["services"] for r in results)
