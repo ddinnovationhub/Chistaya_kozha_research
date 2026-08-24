@@ -1,0 +1,53 @@
+{
+  "city": "Новосибирск",
+  "date": "2026-08-24",
+  "query_limit": 30,
+  "stage": "discovery_done",
+  "api_checks": {
+    "yandex_search_api": 200,
+    "dadata": 200
+  },
+  "l1": {
+    "l1_executed": 12,
+    "l1_errors": 0,
+    "l1_new_candidates": 0
+  },
+  "discovery": {
+    "city": "Новосибирск",
+    "queries_total_api": 462,
+    "queries_executed": 30,
+    "queries_errors": 0,
+    "queries_catalog_deferred": 12,
+    "candidates_unique": 130,
+    "saturation": {
+      "stopped": false,
+      "reason": "остановка по лимиту 30"
+    },
+    "budget": "Бюджет проекта: 12.40 ₽ из 5000 ₽ (0.2%) · запросы: dadata: 1, yandex_search_api: 31"
+  },
+  "recall": {
+    "total": 31,
+    "found": 13,
+    "missed": [
+      "Elix (Эликс)",
+      "LeDi Medica (Леди Медика)",
+      "Plazma Siberia",
+      "Медицинский центр «Блеск»",
+      "МЦ «Медсанчасть-168»",
+      "МЦ «Медика» (Medica NSK)",
+      "МЦ «Лада»",
+      "МЦ «Мой доктор»",
+      "МЦ «Альфа Клиник»",
+      "МЦ «Лайм клиник»",
+      "МЦ «Эрсимед»",
+      "МЦ «Аперто»",
+      "Medica.team",
+      "МЦ «Доступная медицина»",
+      "МЦ «5П Медицина»",
+      "МЦ «Эра»",
+      "МЦ «Практика ОбьГЭС»",
+      "МЦ «Сибнейромед»"
+    ],
+    "source": "data/recall_test_Новосибирск.yaml"
+  }
+}
