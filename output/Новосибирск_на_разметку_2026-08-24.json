@@ -1,0 +1,356 @@
+{
+ "city": "Новосибирск",
+ "date": "2026-08-24",
+ "instructions": "Разметка в Claude Code по prompts/06_markup_batch.md. Результат — output/{city}_разметка_{date}.json, подхватывается: python -m src.merge_markup --city 'Новосибирск' --file output/Новосибирск_разметка_2026-08-24.json",
+ "tags_reference": "derm_consult · Приём дерматолога / дерматовенеролога · контур derm · 804н: B01.008.001, B01.008.002\ncosm_consult · Приём врача-косметолога · контур cosm_med · 804н: B01.008.003, B01.008.004\nonco_consult · Приём онколога (онкодерматология) · контур oncoderm · 804н: B01.027.001, B01.027.002\ndermatoscopy · Дерматоскопия · контур oncoderm · 804н: A03.01.001\nskin_biopsy · Биопсия кожи · контур derm · 804н: A11.01.001\nhistology_skin · Гистологическое / цитологическое исследование кожи · контур oncoderm · 804н: A08.01.001, A08.01.002\nmyco_lab · Лабораторная диагностика микозов (соскоб, микроскопия, ПЦР) · контур derm · 804н: A11.01.009, A26.01.011, A26.01.030.001\nremoval_pigmented · Удаление пигментных новообразований (родинки, невусы) · контур dermsurg · 804н: A16.01.017\nremoval_viral · Удаление вирусных образований (папилломы, бородавки, кондиломы, моллюск) · контур dermsurg · 804н: A16.01.017\nremoval_keratosis · Удаление кератом · контур dermsurg · 804н: A16.01.017\nremoval_soft_tissue · Удаление образований мягких тканей (атеромы, липомы, фибромы) · контур dermsurg · 804н: A16.01.017\nremoval_vascular · Удаление сосудистых образований (гемангиомы) · контур dermsurg · 804н: A16.01.017\nneoplasm_removal_electro · Удаление новообразований электрокоагуляцией · контур dermsurg · 804н: A16.01.017.001\nneoplasm_removal_cryo · Криодеструкция кожи (удаление жидким азотом) · контур dermsurg · 804н: A24.01.004\nneoplasm_removal_laser · Лазерное удаление новообразований / лазерная деструкция · контур dermsurg · 804н: A22.01.003\nneoplasm_removal_radio · Радиоволновое удаление новообразований · контур dermsurg · 804н: A16.01.017\nonco_excision · Иссечение злокачественных новообразований кожи (меланома, базалиома) · контур oncoderm · 804н: A16.01.005, A16.01.005.001, A16.01.005.005\ntrich_treatment · Лечебные процедуры волосистой части головы · контур trich · 804н: A14.01.014, A21.01.005\nphototherapy · Фототерапия / ПУВА-терапия · контур derm · 804н: A20.01.005, A22.01.006.004\nface_cleaning · Чистка лица · контур cosm_est · 804н: A14.01.005, A14.01.009, A14.01.010\npeeling · Пилинг (дерматологический, ультразвуковой) · контур cosm_est · 804н: A16.01.024, A22.01.001.002\nlaser_resurfacing · Лазерная шлифовка кожи · контур cosm_est · 804н: A22.01.002\nlaser_vascular · Лечение сосудистых патологий кожи (лазерная коагуляция, купероз, телеангиэктазии) · контур derm · 804н: A22.01.004\nepilation · Эпиляция (лазерная и др.) · контур cosm_est · 804н: A14.01.013\nface_massage · Массаж лица медицинский · контур cosm_est · 804н: A21.01.002\nmesotherapy_face · Мезотерапия лица · контур cosm_est · 804н: кода в 804н нет\nmesotherapy_scalp · Мезотерапия волосистой части головы · контур trich · 804н: кода в 804н нет\nbotulinum_cosm · Ботулинотерапия (косметология) · контур cosm_est · 804н: кода в 804н нет\ncontour_filler · Контурная пластика (филлеры) · контур cosm_est · 804н: кода в 804н нет\nmole_mapping · Картирование родинок / цифровая дерматоскопия всего тела · контур oncoderm · 804н: кода в 804н нет\nderm_consult_child · Приём детского дерматолога · контур derm · 804н: кода в 804н нет\ndermsurg_consult · Приём дерматохирурга · контур dermsurg · 804н: кода в 804н нет\nacne_treatment · Лечение акне · контур derm · 804н: кода в 804н нет\npsoriasis_treatment · Лечение псориаза · контур derm · 804н: кода в 804н нет\neczema_dermatitis_treatment · Лечение экземы и дерматитов · контур derm · 804н: кода в 804н нет\nurticaria_treatment · Лечение крапивницы · контур derm · 804н: кода в 804н нет\nrosacea_treatment · Лечение розацеа · контур derm · 804н: кода в 804н нет\nvitiligo_treatment · Лечение витилиго · контур derm · 804н: кода в 804н нет\nmycosis_treatment · Лечение дерматомикозов · контур derm · 804н: кода в 804н нет\nherpes_treatment · Лечение герпеса · контур derm · 804н: кода в 804н нет\nhyperhidrosis_treatment · Лечение гипергидроза · контур derm · 804н: кода в 804н нет\nbiorevitalization · Биоревитализация · контур cosm_est · 804н: кода в 804н нет\nhardware_rejuvenation · Аппаратное омоложение · контур cosm_est · 804н: кода в 804н нет\ntrich_consult · Приём трихолога · контур trich · 804н: B01.008.001\ntrich_diagnostics · Диагностика волос (трихоскопия, фототрихограмма, анализ волос) · контур trich · 804н: A26.01.011\nstd_consult · Приём дерматовенеролога по ИППП · контур derm · 804н: B01.008.001\nstd_lab · Лабораторная диагностика ИППП · контур derm · 804н: A26.06.082\nremoval_complex_site · Удаление новообразований сложной локализации (веко, ресничный край, периорбитальная зона, ушная раковина, слизистая рта) · контур dermsurg · 804н: кода в 804н нет\nihc_study · Иммуногистохимическое исследование (ИГХ) · контур oncoderm · 804н: кода в 804н нет\nexcisional_biopsy · Эксцизионная биопсия новообразования кожи · контур oncoderm · 804н: кода в 804н нет\npunch_biopsy · Щипковая панч-биопсия · контур oncoderm · 804н: кода в 804н нет\nexcision_reconstructive · Иссечение с реконструктивно-пластическим компонентом · контур oncoderm · 804н: A16.01.005.005\nkeloid_treatment · Лечение и иссечение келоидных и гипертрофических рубцов · контур derm · 804н: кода в 804н нет\nxanthelasma_removal · Удаление ксантелазмы · контур dermsurg · 804н: кода в 804н нет\ncytology_puncture · Цитологическое исследование пунктата · контур oncoderm · 804н: кода в 804н нет\ncarboxytherapy_scalp · Карбокситерапия волосистой части головы · контур trich · 804н: кода в 804н нет\ncarboxytherapy_derm · Карбокситерапия дерматологическая (по зонам) · контур derm · 804н: кода в 804н нет\ntick_removal · Извлечение клеща · контур derm · 804н: кода в 804н нет\nwood_lamp_exam · Осмотр под лампой Вуда · контур derm · 804н: кода в 804н нет\nmilia_removal · Механическое удаление милиумов · контур derm · 804н: кода в 804н нет\nneoplasm_removal_surgical · Хирургическое удаление новообразований кожи (скальпель) · контур dermsurg · 804н: A16.01.017",
+ "clinics": [
+  {
+   "clinic_id": "КЛН-alab54.ru",
+   "clinic_title": "Лечение волос и кожи головы в Новосибирске — «Лаборатория А»",
+   "services": [
+    {
+     "row_id": 1,
+     "name": "<p Цена консультации без скидки",
+     "description": null,
+     "price": "2000 руб",
+     "page_url": "https://alab54.ru/trichology/"
+    }
+   ]
+  },
+  {
+   "clinic_id": "КЛН-allergo-plus.ru",
+   "clinic_title": "Аллергологи в Новосибирске — Медицинский центр Аллерго+",
+   "services": [
+    {
+     "row_id": 24,
+     "name": "<div class=\"tabAccordionContent\" <p <span class=\"\" Спирография (диагностика функции внешнего дыхания)",
+     "description": null,
+     "price": "1 100 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 2,
+     "name": "<div class=\"tabAccordionContent\" <p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача детского пульмонолога первичная (Кицул И.Г.)",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 27,
+     "name": "<div class=\"tabAccordionContent\" <p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача по вопросам вакцинации и составления индивидуального графика вакцинации",
+     "description": null,
+     "price": "2 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 30,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Иммунизация вакциной & 8220;Клещ-Э-Вак& 8221; (РФ) & 8211; детская",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 6,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача аллерголога-иммунолога первичная",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 4,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача детского пульмонолога первичная (Скопа О.Н.)",
+     "description": null,
+     "price": "3 200 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 12,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача педиатра (Баева Н.Н.)",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 10,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача педиатра первичная",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 5,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача пульмонолога, к.м.н. (Пинегина Ю.С.)",
+     "description": null,
+     "price": "4 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 8,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача эндокринолога первичная",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 18,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача-онколога, химиотерапевта",
+     "description": null,
+     "price": "5 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 13,
+     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Оформление справки форма 079 (пионерский лагерь) педиатрия",
+     "description": null,
+     "price": "2 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 37,
+     "name": "<span class=\"\" Диаскинтест (РФ) & 8211; включает осмотр врача перед вакцинацией",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 47,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Адасель& 8221; (Канада)",
+     "description": null,
+     "price": "4 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 36,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;АльгавакМ& 8221;",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 46,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Варилрикс& 8221; (бельгия)",
+     "description": null,
+     "price": "6 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 48,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Гардасил& 8221; (Нидерланды/ США)",
+     "description": null,
+     "price": "13 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 31,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Клещ-Э-Вак& 8221; (РФ) & 8211; взрослая",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 45,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;МенКвадфи& 8221; (США)",
+     "description": null,
+     "price": "6 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 33,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Пентаксим& 8221; (Франция)",
+     "description": null,
+     "price": "4 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 42,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Пневмовакс 23& 8221; (США)",
+     "description": null,
+     "price": "4 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 32,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Полимилекс& 8221; (РФ)",
+     "description": null,
+     "price": "4 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 40,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Превенар 13& 8221; (США)",
+     "description": null,
+     "price": "4 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 35,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Регевак& 8221; против Гепатита B (РФ) & 8211; взрослая",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 34,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Регевак& 8221; против Гепатита B (РФ) & 8211; детская",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 39,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Рота-V-Эйд& 8221; (Индия)",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 41,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Ультрикс-Квадри& 8221;, Россия",
+     "description": null,
+     "price": "4 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 43,
+     "name": "<span class=\"\" Иммунизация вакциной & 8220;Хаврикс-720 ЕД& 8221; (Бельгия)",
+     "description": null,
+     "price": "4 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 44,
+     "name": "<span class=\"\" Иммунизация вакциной против К-К-П Вактривир (РФ)",
+     "description": null,
+     "price": "4 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 7,
+     "name": "<span class=\"\" Консультация врача аллерголога-иммунолога повторная (в течение 2 мес. В рамках 1 нозологии)",
+     "description": null,
+     "price": "3 200 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 3,
+     "name": "<span class=\"\" Консультация врача детского пульмонолога повторная (в течение 2 мес. В рамках 1 нозологии) (Кицул И.Г.)",
+     "description": null,
+     "price": "3 200 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 20,
+     "name": "<span class=\"\" Консультация врача онколога экспертного уровня (г. Москва)",
+     "description": null,
+     "price": "5 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 22,
+     "name": "<span class=\"\" Консультация врача онколога экспертного уровня д.м.н. (г. Москва)",
+     "description": null,
+     "price": "7 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 21,
+     "name": "<span class=\"\" Консультация врача онколога экспертного уровня к.м.н. (г. Москва)",
+     "description": null,
+     "price": "6 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 11,
+     "name": "<span class=\"\" Консультация врача педиатра повторная (в течение 1 мес. В рамках 1 нозологии)",
+     "description": null,
+     "price": "3 200 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 9,
+     "name": "<span class=\"\" Консультация врача эндокринолога повторная (в течение 1 мес. В рамках 1 нозологии)",
+     "description": null,
+     "price": "3 200 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 19,
+     "name": "<span class=\"\" Консультация врача-онколога, химиотерапевта в.к",
+     "description": null,
+     "price": "5 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 17,
+     "name": "<span class=\"\" Оформление больничного листа",
+     "description": null,
+     "price": "800 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 14,
+     "name": "<span class=\"\" Оформление санаторно-курортной карты педиатрия",
+     "description": null,
+     "price": "2 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 15,
+     "name": "<span class=\"\" Оформление справки в спортивную секцию",
+     "description": null,
+     "price": "500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 16,
+     "name": "<span class=\"\" Оформление справки для бассейна",
+     "description": null,
+     "price": "1 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 23,
+     "name": "<span class=\"\" Повторный прием с оформлением больничного листа (врач-пульмонолог, детский пульмонолог, аллерголог, детский аллерголог, педиатр, терапевт, онколог)",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 29,
+     "name": "<span class=\"\" Прививочный сертификат",
+     "description": null,
+     "price": "150 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 28,
+     "name": "<span class=\"\" Проверка реакции Манту/Деиаскинтеста (постановка в сторонней организации)",
+     "description": null,
+     "price": "500 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 25,
+     "name": "<span class=\"\" Спирография (ДФВД) с пробой с бронхолитиком (расшифровка без рекомендаций)",
+     "description": null,
+     "price": "2 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 38,
+     "name": "<span class=\"\" Туберкулин (РФ) & 8211; включает осмотр врача перед вакцинацией",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    },
+    {
+     "row_id": 26,
+     "name": "<span class=\"\" ЭКГ",
+     "description": null,
+     "price": "800 руб.",
+     "page_url": "https://allergo-plus.ru/"
+    }
+   ]
+  }
+ ]
+}

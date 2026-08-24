@@ -1,8 +1,8 @@
 {
   "city": "Новосибирск",
   "date": "2026-08-24",
-  "query_limit": 30,
-  "stage": "discovery_done",
+  "query_limit": 140,
+  "stage": "stage6_intermediate_stop",
   "api_checks": {
     "yandex_search_api": 200,
     "dadata": 200
@@ -10,31 +10,295 @@
   "l1": {
     "l1_executed": 12,
     "l1_errors": 0,
-    "l1_new_candidates": 0
+    "l1_suspicious_zero": 12,
+    "l1_new_candidates": 0,
+    "diag": [
+      {
+        "query": "частная клиника Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/частная клиника",
+        "http_status": 200,
+        "bytes": 5241,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-88ef00de.html.gz"
+      },
+      {
+        "query": "частная клиника Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/частная клиника Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-88ef00de.html.gz"
+      },
+      {
+        "query": "медицинский центр Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/медицинский центр",
+        "http_status": 200,
+        "bytes": 5257,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-128a97f1.html.gz"
+      },
+      {
+        "query": "медицинский центр Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/медицинский центр Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-128a97f1.html.gz"
+      },
+      {
+        "query": "многопрофильная клиника Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/многопрофильная клиника",
+        "http_status": 200,
+        "bytes": 5305,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-cfbc5c36.html.gz"
+      },
+      {
+        "query": "многопрофильная клиника Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/многопрофильная клиника Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-cfbc5c36.html.gz"
+      },
+      {
+        "query": "дерматология Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/дерматология",
+        "http_status": 200,
+        "bytes": 5220,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-5c604fd1.html.gz"
+      },
+      {
+        "query": "дерматология Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/дерматология Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-5c604fd1.html.gz"
+      },
+      {
+        "query": "дерматовенерология Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/дерматовенерология",
+        "http_status": 200,
+        "bytes": 5266,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-0dc0c94a.html.gz"
+      },
+      {
+        "query": "дерматовенерология Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/дерматовенерология Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-0dc0c94a.html.gz"
+      },
+      {
+        "query": "трихология Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/трихология",
+        "http_status": 200,
+        "bytes": 5204,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-1a1aba50.html.gz"
+      },
+      {
+        "query": "трихология Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/трихология Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-1a1aba50.html.gz"
+      },
+      {
+        "query": "косметология Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/косметология",
+        "http_status": 200,
+        "bytes": 5220,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-99805b26.html.gz"
+      },
+      {
+        "query": "косметология Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/косметология Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-99805b26.html.gz"
+      },
+      {
+        "query": "лазерная косметология Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/лазерная косметология",
+        "http_status": 200,
+        "bytes": 5289,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-092b1b2a.html.gz"
+      },
+      {
+        "query": "лазерная косметология Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/лазерная косметология Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-092b1b2a.html.gz"
+      },
+      {
+        "query": "удаление новообразований Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/удаление новообразований",
+        "http_status": 200,
+        "bytes": 5311,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-496f5e1c.html.gz"
+      },
+      {
+        "query": "удаление новообразований Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/удаление новообразований Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-496f5e1c.html.gz"
+      },
+      {
+        "query": "онкодерматология Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/онкодерматология",
+        "http_status": 200,
+        "bytes": 5252,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-5d943003.html.gz"
+      },
+      {
+        "query": "онкодерматология Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/онкодерматология Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-5d943003.html.gz"
+      },
+      {
+        "query": "эстетическая медицина Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/эстетическая медицина",
+        "http_status": 200,
+        "bytes": 5289,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-5af95e3b.html.gz"
+      },
+      {
+        "query": "эстетическая медицина Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/эстетическая медицина Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-5af95e3b.html.gz"
+      },
+      {
+        "query": "лечение кожи Новосибирск",
+        "catalog": "gis2",
+        "url": "https://2gis.ru/novosibirsk/search/лечение кожи",
+        "http_status": 200,
+        "bytes": 5217,
+        "selector": "a[href*='/firm/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/gis2_L1-rubric-novosibirsk-e16d7176.html.gz"
+      },
+      {
+        "query": "лечение кожи Новосибирск",
+        "catalog": "yandex_maps",
+        "url": "https://yandex.ru/maps/65/novosibirsk/search/лечение кожи Новосибирск/",
+        "http_status": 429,
+        "bytes": 158,
+        "selector": "a[href*='/maps/org/']",
+        "selector_hits": 0,
+        "saved_html": "data/l1_diag/Новосибирск/yandex_maps_L1-rubric-novosibirsk-e16d7176.html.gz"
+      }
+    ],
+    "quality_note": "ПОДОЗРИТЕЛЬНЫЙ НОЛЬ: 12 рубрик L1 вернули 0 карточек без ошибок — сырые HTML сохранены в data/l1_diag/Новосибирск/, разобрать до доверия слою; полнота занижена"
   },
   "discovery": {
+    "layer_stats": {
+      "L2": {
+        "executed": 126,
+        "new_candidates": 346,
+        "errors": 0
+      },
+      "L3": {
+        "executed": 33,
+        "new_candidates": 71,
+        "errors": 0
+      },
+      "L4": {
+        "executed": 6,
+        "new_candidates": 2,
+        "errors": 0
+      },
+      "L6": {
+        "executed": 5,
+        "new_candidates": 20,
+        "errors": 0
+      }
+    },
+    "suspicious_zero_layers": [],
     "city": "Новосибирск",
-    "queries_total_api": 462,
-    "queries_executed": 30,
+    "queries_total_api": 245,
+    "queries_executed": 140,
     "queries_errors": 0,
     "queries_catalog_deferred": 12,
-    "candidates_unique": 130,
+    "candidates_unique": 439,
     "saturation": {
       "stopped": false,
-      "reason": "остановка по лимиту 30"
+      "reason": "остановка по лимиту 140"
     },
-    "budget": "Бюджет проекта: 12.40 ₽ из 5000 ₽ (0.2%) · запросы: dadata: 1, yandex_search_api: 31"
+    "budget": "Бюджет проекта: 85.72 ₽ из 5000 ₽ (1.7%) · запросы: dadata: 2, yandex_search_api: 172"
   },
   "recall": {
     "total": 31,
-    "found": 13,
+    "found": 16,
     "missed": [
-      "Elix (Эликс)",
       "LeDi Medica (Леди Медика)",
       "Plazma Siberia",
-      "Медицинский центр «Блеск»",
       "МЦ «Медсанчасть-168»",
-      "МЦ «Медика» (Medica NSK)",
       "МЦ «Лада»",
       "МЦ «Мой доктор»",
       "МЦ «Альфа Клиник»",
@@ -49,5 +313,152 @@
       "МЦ «Сибнейромед»"
     ],
     "source": "data/recall_test_Новосибирск.yaml"
+  },
+  "stage6": {
+    "processed": 10,
+    "results": [
+      {
+        "clinic_id": "КЛН-akriderm.com",
+        "gate": "Требует проверки",
+        "grade": "C",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": null,
+        "unreachable": true,
+        "domain": "akriderm.com"
+      },
+      {
+        "clinic_id": "КЛН-alab54.ru",
+        "gate": "Включён",
+        "type": "Тип 1 (косметологический)",
+        "type_status": "предварительный (ступень 1, до разметки)",
+        "grade": "B",
+        "services": 1,
+        "tier1_mapped": 0,
+        "to_markup": 1,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "alab54.ru"
+      },
+      {
+        "clinic_id": "КЛН-albane.ru",
+        "gate": "Включён",
+        "type": "Тип 1 (косметологический)",
+        "type_status": "предварительный (ступень 1, до разметки)",
+        "grade": "B",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "albane.ru"
+      },
+      {
+        "clinic_id": "КЛН-alfa-clinic.com",
+        "gate": "Требует проверки",
+        "grade": "C",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": null,
+        "unreachable": true,
+        "domain": "alfa-clinic.com"
+      },
+      {
+        "clinic_id": "КЛН-alfaclinic-nsk.ru",
+        "gate": "Исключён",
+        "type": "Не классифицировано",
+        "type_status": null,
+        "grade": "B",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "alfaclinic-nsk.ru"
+      },
+      {
+        "clinic_id": "КЛН-allergo-plus.ru",
+        "gate": "Включён",
+        "type": "Не классифицировано",
+        "type_status": "ожидает разметки (ступень 1 тегов не дала)",
+        "grade": "B",
+        "services": 47,
+        "tier1_mapped": 0,
+        "to_markup": 47,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "allergo-plus.ru"
+      },
+      {
+        "clinic_id": "КЛН-allergocity.ru",
+        "gate": "Исключён",
+        "type": "Не классифицировано",
+        "type_status": null,
+        "grade": "B",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "allergocity.ru"
+      },
+      {
+        "clinic_id": "КЛН-alleya-nsk.ru",
+        "gate": "Требует проверки",
+        "grade": "C",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": null,
+        "unreachable": true,
+        "domain": "alleya-nsk.ru"
+      },
+      {
+        "clinic_id": "КЛН-altika-clinic.ru",
+        "gate": "Включён",
+        "type": "Тип 3",
+        "type_status": "предварительный (ступень 1, до разметки)",
+        "grade": "B",
+        "services": 0,
+        "tier1_mapped": 0,
+        "to_markup": 0,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "altika-clinic.ru"
+      },
+      {
+        "clinic_id": "КЛН-angeliy.ru",
+        "gate": "Включён",
+        "type": "Тип 1 (косметологический)",
+        "type_status": "предварительный (ступень 1, до разметки)",
+        "grade": "B",
+        "services": 1,
+        "tier1_mapped": 1,
+        "to_markup": 0,
+        "fetch_level": 2,
+        "unreachable": false,
+        "domain": "angeliy.ru"
+      }
+    ],
+    "services_total": 49,
+    "tier1_mapped": 1,
+    "to_markup": 48,
+    "avg_markup_batch": 24.0,
+    "taken_by_level": {
+      "1": 0,
+      "2": 7,
+      "3": 0,
+      "4": 0
+    },
+    "unreachable_domains": [
+      "akriderm.com",
+      "alfa-clinic.com",
+      "alleya-nsk.ru"
+    ],
+    "unreachable_share": 0.3,
+    "cascade_alert": "⛔ ОСТАНОВКА: недоступных 3/10 (30%) > 15% — проблема системная, а не в отдельных сайтах. Доклад заказчику обязателен.",
+    "stopped_reason": "обязательная остановка после 10 клиник — промежуточная выгрузка + файл «на разметку», ждём разметки заказчика"
   }
 }
