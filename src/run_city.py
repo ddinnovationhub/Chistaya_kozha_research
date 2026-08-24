@@ -125,11 +125,18 @@ def main() -> int:
             checkpoint["stage"] = "discovery_done"
             print("─" * 72)
             print(f" L1 (каталоги): рубрик исполнено {l1['l1_executed']}/{len(l1_queries)}"
-                  f" · новых кандидатов: {l1['l1_new_candidates']} · ошибок: {l1['l1_errors']}")
+                  f" · новых кандидатов: {l1['l1_new_candidates']}"
+                  f" · ошибок: {l1['l1_errors']}"
+                  f" · подозрительных нулей: {l1.get('l1_suspicious_zero', 0)}")
             if l1.get("quality_note"):
                 print(f" ⚠ КАЧЕСТВО: {l1['quality_note']}")
             print(f" Запросов исполнено (API): {summary['queries_executed']}"
                   f"/{summary['queries_total_api']} · ошибок: {summary['queries_errors']}")
+            for lname, st in sorted(summary.get("layer_stats", {}).items()):
+                print(f"   {lname}: исполнено {st['executed']} · новых кандидатов {st['new_candidates']} · ошибок {st['errors']}")
+            if summary.get("suspicious_zero_layers"):
+                print(f" ⚠ ПОДОЗРИТЕЛЬНЫЙ НОЛЬ по слоям: {', '.join(summary['suspicious_zero_layers'])} — "
+                      f"исполнены без ошибок, но 0 новых кандидатов; разобрать до доверия слою")
             print(f" Уникальных кандидатов в очереди: {summary['candidates_unique']}")
             print(f" Насыщение: {summary['saturation']['reason']}")
             recall = compute_recall(city, db)
@@ -138,8 +145,11 @@ def main() -> int:
                 print(f" Recall-тест: файл data/recall_test_{city}.yaml НЕ НАЙДЕН — "
                       f"полнота не проверена (запросить список известных клиник у заказчика)")
             else:
-                print(f" Recall-тест (известные клиники): {recall['found']}/{recall['total']}"
-                      + (f" · не найдены: {', '.join(recall['missed'][:5])}" if recall['missed'] else ""))
+                print(f" Recall-тест (известные клиники): {recall['found']}/{recall['total']}")
+                if recall["missed"]:
+                    # правило заказчика 2026-08-25: выводить всех, обрезка запрещена без пометки
+                    print(f"   не найдены (все {len(recall['missed'])}): "
+                          + "; ".join(recall["missed"]))
             print(f" {summary['budget']}")
             print("─" * 72)
             print("Проверка сайтов (этап 6): промпт утверждён 2026-08-25, код в разработке — не запускается.")

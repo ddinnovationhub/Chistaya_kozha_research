@@ -149,7 +149,18 @@ def run_discovery(city: str, queries: list[dict], limit: int = 0,
         time.sleep(1)  # ≤1 RPS (sources.yaml)
 
     n_candidates = db.execute("SELECT COUNT(*) FROM candidates").fetchone()[0]
+    # правило «подозрительный ноль» (заказчик 2026-08-25) на уровне слоя:
+    # слой исполнялся без ошибок, но не дал ни одного нового кандидата
+    layer_stats, suspicious_layers = {}, []
+    for layer, n_exec, n_new, n_err in db.execute(
+            "SELECT layer, COUNT(*), COALESCE(SUM(n_new_candidates),0), SUM(status='error') "
+            "FROM queries WHERE executed_at IS NOT NULL AND layer != 1 GROUP BY layer"):
+        layer_stats[f"L{layer}"] = {"executed": n_exec, "new_candidates": n_new, "errors": n_err}
+        if n_exec > 0 and not n_err and n_new == 0:
+            suspicious_layers.append(f"L{layer}")
     return {
+        "layer_stats": layer_stats,
+        "suspicious_zero_layers": suspicious_layers,
         "city": city,
         "queries_total_api": total,
         "queries_executed": executed,

@@ -1,37 +1,73 @@
 """Слой L1 — рубрики каталогов (2ГИС, Яндекс Карты) через Playwright.
 
-Решение заказчика 2026-08-25 по L1: вариант (а) — контур поднят до боевого
-прогона, с автоматическим фолбэком в (б): если каталог недоступен/блокирует,
-в чекпойнт и журнал пишется quality_note «рубричный слой не выполнялся,
-полнота занижена» — молчаливого «отложено» нет.
+ПРАВИЛО «ПОДОЗРИТЕЛЬНЫЙ НОЛЬ» (блокер заказчика 2026-08-25): ноль результатов
+без исключения — НЕ успех. Такой запрос получает статус suspicious_zero,
+сырой HTML сохраняется в data/l1_diag/, в отчёт идёт явная строка качества.
+Молчаливый ноль запрещён так же, как молчаливое «отложено».
 
-Правовой режим (sources.yaml): из каталогов сохраняется ТОЛЬКО факт
-существования карточки + название + URL карточки (для 2ГИС — и адрес из
-подписи карточки, если виден в выдаче). Содержимое карточек не сохраняется.
-Темп ≤1 запрос/3 с, честный браузерный User-Agent.
+Инструментировка каждого запроса: HTTP-статус, размер HTML в байтах,
+число совпадений селектора — пишется в диагностику чекпойнта.
 
-ВАЖНО: в песочнице разработки браузерный HTTPS через MITM-прокси не работает
-(ERR_CONNECTION_RESET на любом сайте, проверено 2026-08-25) — контур
-проверяется первым прогоном в GitHub Actions, где прокси нет.
+Диагностика 2026-08-25 (см. PROGRESS):
+- 2ГИС: сырой HTML = пустой SPA-каркас (~11 КБ, ноль /firm/) — данные только
+  через XHR после рендера; нужен реальный рендер и ожидание ПО СЕЛЕКТОРУ.
+- Яндекс.Карты: рабочий URL — /maps/{region_id}/{slug}/search/{query}/
+  (страница ?text= редиректит на yandex.com и списка не даёт — ЭТО была
+  причина нуля в первом прогоне); SSR отдаёт лишь часть выдачи (5 из 25),
+  полный список требует рендера.
+
+Правовой режим (sources.yaml): сохраняется только факт существования карточки
++ название + URL карточки. Темп ≤1 запрос/3 с.
 """
 
 import asyncio
 import datetime
+import gzip
 import os
+import pathlib
 import sqlite3
 
-from src.dedup import normalize_domain
-
 RATE_DELAY_SEC = 3
+SELECTOR_2GIS = "a[href*='/firm/']"
+SELECTOR_YMAPS = "a[href*='/maps/org/']"
+
+# Регионы Яндекс.Карт: город → (region_id, slug) для URL /maps/{id}/{slug}/search/
+# Заполняется по мере городов; id проверен живым запросом (200 + выдача).
+YANDEX_MAPS_REGIONS = {
+    "Новосибирск": (65, "novosibirsk"),   # проверено 2026-08-25: HTTP 200, орг-ссылки в SSR
+}
+
+_DIAG_DIR = pathlib.Path("data/l1_diag")
 
 
-async def _collect_2gis(page, city_slug: str, rubric: str) -> list[dict]:
-    url = f"https://2gis.ru/{city_slug}/search/{rubric}"
-    await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-    await page.wait_for_timeout(5000)
+def _save_html(city: str, tag: str, content: str) -> str:
+    d = _DIAG_DIR / city
+    d.mkdir(parents=True, exist_ok=True)
+    path = d / f"{tag}.html.gz"
+    path.write_bytes(gzip.compress(content.encode("utf-8", errors="replace")))
+    return str(path)
+
+
+async def _grab(page, url: str, selector: str, wait_ms: int = 15000) -> dict:
+    """Открыть страницу, дождаться селектора (или таймаута), снять метрики."""
+    resp = await page.goto(url, wait_until="domcontentloaded", timeout=45000)
+    status = resp.status if resp else None
+    try:
+        await page.wait_for_selector(selector, timeout=wait_ms)
+    except Exception:  # noqa: BLE001 — отсутствие селектора само по себе диагноз
+        pass
+    # скролл подталкивает ленивую подгрузку выдачи
+    for _ in range(3):
+        await page.mouse.wheel(0, 2000)
+        await page.wait_for_timeout(1200)
+    content = await page.content()
     cards = await page.eval_on_selector_all(
-        "a[href*='/firm/']",
-        "els => els.map(e => ({title: e.textContent?.trim(), href: e.href}))")
+        selector, "els => els.map(e => ({title: e.getAttribute('aria-label') || e.textContent?.trim(), href: e.href}))")
+    return {"http_status": status, "bytes": len(content), "selector": selector,
+            "selector_hits": len(cards), "cards": cards, "content": content}
+
+
+def _dedupe_cards(cards: list[dict], domain: str) -> list[dict]:
     seen, out = set(), []
     for c in cards:
         if not c.get("title") or not c.get("href"):
@@ -40,26 +76,7 @@ async def _collect_2gis(page, city_slug: str, rubric: str) -> list[dict]:
         if key in seen:
             continue
         seen.add(key)
-        out.append({"title": c["title"], "url": key, "domain": "2gis.ru"})
-    return out
-
-
-async def _collect_yandex_maps(page, city: str, rubric: str) -> list[dict]:
-    url = f"https://yandex.ru/maps/?text={rubric} {city}"
-    await page.goto(url, wait_until="domcontentloaded", timeout=45000)
-    await page.wait_for_timeout(5000)
-    cards = await page.eval_on_selector_all(
-        "a[href*='/maps/org/']",
-        "els => els.map(e => ({title: e.getAttribute('aria-label') || e.textContent?.trim(), href: e.href}))")
-    seen, out = set(), []
-    for c in cards:
-        if not c.get("title") or not c.get("href"):
-            continue
-        key = c["href"].split("?")[0]
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append({"title": c["title"], "url": key, "domain": "maps.yandex.ru"})
+        out.append({"title": c["title"], "url": key, "domain": domain})
     return out
 
 
@@ -69,34 +86,59 @@ async def run_l1_async(city: str, city_slug: str, l1_queries: list[dict],
     from src.discovery import CandidateQueue
 
     queue = CandidateQueue(db)
-    executed, errors, new_total = 0, 0, 0
-    notes = []
+    executed = errors = suspicious = new_total = 0
+    diag = []
+
+    ym = YANDEX_MAPS_REGIONS.get(city)
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        ctx = await browser.new_context(locale="ru-RU")
-        page = await ctx.new_page()
-        for q in l1_queries:
-            rubric = q["text"].rsplit(" ", 1)[0]  # текст = «{рубрика} {город}»
+        page = await (await browser.new_context(locale="ru-RU")).new_page()
+        for qi, q in enumerate(l1_queries):
+            rubric = q["text"].rsplit(" ", 1)[0]
             n_results = n_new = 0
-            status = "ok"
-            try:
-                for collector, src_id in ((_collect_2gis, "gis2"),
-                                          (_collect_yandex_maps, "yandex_maps")):
-                    if collector is _collect_2gis:
-                        cards = await collector(page, city_slug, rubric)
-                    else:
-                        cards = await collector(page, city, rubric)
+            failures = []
+            targets = [("gis2", "2gis.ru",
+                        f"https://2gis.ru/{city_slug}/search/{rubric}", SELECTOR_2GIS)]
+            if ym:
+                targets.append(("yandex_maps", "maps.yandex.ru",
+                                f"https://yandex.ru/maps/{ym[0]}/{ym[1]}/search/{rubric} {city}/",
+                                SELECTOR_YMAPS))
+            else:
+                failures.append("yandex_maps: region_id города нет в YANDEX_MAPS_REGIONS — каталог пропущен")
+
+            for src_id, domain, url, selector in targets:
+                try:
+                    g = await _grab(page, url, selector)
+                    cards = _dedupe_cards(g["cards"], domain)
                     n_results += len(cards)
                     n_new += sum(queue.add(c, q["query_id"], src_id) for c in cards)
-                    await asyncio.sleep(RATE_DELAY_SEC)
-                executed += 1
-                status = "ok" if n_new else ("0_results" if not n_results else "0_new")
-            except Exception as exc:  # noqa: BLE001 — блок каталога не роняет прогон
+                    rec = {"query": q["text"], "catalog": src_id, "url": url,
+                           "http_status": g["http_status"], "bytes": g["bytes"],
+                           "selector": selector, "selector_hits": g["selector_hits"]}
+                    # сохранить HTML: первая рубрика каждого каталога + любой ноль
+                    if qi == 0 or g["selector_hits"] == 0:
+                        rec["saved_html"] = _save_html(
+                            city, f"{src_id}_{q['query_id']}", g["content"])
+                    diag.append(rec)
+                except Exception as exc:  # noqa: BLE001
+                    failures.append(f"{src_id}: {type(exc).__name__}: {str(exc)[:120]}")
+                    diag.append({"query": q["text"], "catalog": src_id, "url": url,
+                                 "error": f"{type(exc).__name__}"})
+                await asyncio.sleep(RATE_DELAY_SEC)
+
+            executed += 1
+            new_total += n_new
+            if failures and n_results == 0:
                 errors += 1
                 status = "blocked"
-                notes.append(f"{q['query_id']}: {type(exc).__name__}")
-            new_total += n_new
+            elif n_results == 0:
+                suspicious += 1        # ноль без исключения — НЕ успех
+                status = "suspicious_zero"
+            elif n_new == 0:
+                status = "0_new"
+            else:
+                status = "ok"
             db.execute("INSERT OR REPLACE INTO queries VALUES (?,?,?,?,?,?,?,?,?,?,?)",
                        (q["query_id"], q["layer"], q["template_id"], city, q["text"],
                         q["source"], datetime.datetime.now().isoformat(timespec="seconds"),
@@ -104,24 +146,32 @@ async def run_l1_async(city: str, city_slug: str, l1_queries: list[dict],
             db.commit()
         await browser.close()
 
-    result = {"l1_executed": executed, "l1_errors": errors, "l1_new_candidates": new_total}
-    if errors or not executed:
-        result["quality_note"] = ("рубричный слой (L1) не выполнялся или выполнен частично "
-                                  f"({executed} из {len(l1_queries)} рубрик, ошибок {errors}) — "
-                                  "полнота занижена")
-        result["error_details"] = notes[:5]
+    result = {"l1_executed": executed, "l1_errors": errors,
+              "l1_suspicious_zero": suspicious, "l1_new_candidates": new_total,
+              "diag": diag}
+    notes = []
+    if suspicious:
+        notes.append(f"ПОДОЗРИТЕЛЬНЫЙ НОЛЬ: {suspicious} рубрик L1 вернули 0 карточек без "
+                     f"ошибок — сырые HTML сохранены в data/l1_diag/{city}/, разобрать до "
+                     f"доверия слою; полнота занижена")
+    if errors:
+        notes.append(f"рубрик с ошибками каталогов: {errors} — полнота занижена")
+    if not ym:
+        notes.append("Яндекс.Карты пропущены: нет region_id города")
+    if notes:
+        result["quality_note"] = "; ".join(notes)
     return result
 
 
 def run_l1(city: str, l1_queries: list[dict], db: sqlite3.Connection) -> dict:
-    """Синхронная обёртка. city_slug для 2ГИС берётся из city_code-транслита."""
     from src.query_gen import city_code
     if os.environ.get("SKIP_L1"):
-        return {"l1_executed": 0, "l1_errors": 0, "l1_new_candidates": 0,
+        return {"l1_executed": 0, "l1_errors": 0, "l1_suspicious_zero": 0,
+                "l1_new_candidates": 0,
                 "quality_note": "рубричный слой (L1) отключён переменной SKIP_L1 — полнота занижена"}
     try:
         return asyncio.run(run_l1_async(city, city_code(city), l1_queries, db))
     except Exception as exc:  # noqa: BLE001 — каталоги не должны ронять весь прогон
-        return {"l1_executed": 0, "l1_errors": len(l1_queries), "l1_new_candidates": 0,
-                "quality_note": "рубричный слой (L1) не выполнялся "
-                                f"({type(exc).__name__}) — полнота занижена"}
+        return {"l1_executed": 0, "l1_errors": len(l1_queries), "l1_suspicious_zero": 0,
+                "l1_new_candidates": 0,
+                "quality_note": f"рубричный слой (L1) не выполнялся ({type(exc).__name__}) — полнота занижена"}
