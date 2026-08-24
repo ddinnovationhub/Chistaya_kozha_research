@@ -13,8 +13,9 @@ from src.errors import AuthError, QuotaExhaustedError
 
 
 class FakeResponse:
-    def __init__(self, code):
+    def __init__(self, code, text="тестовое тело ответа"):
         self.status_code = code
+        self.text = text
 
 
 class TestHandleApiResponse(unittest.TestCase):
@@ -49,6 +50,31 @@ class TestHandleApiResponse(unittest.TestCase):
 
     def test_other_code_returns_none(self):
         self.assertIsNone(handle_api_response(FakeResponse(418), "X"))
+
+    def test_401_and_403_have_distinct_messages(self):
+        try:
+            handle_api_response(FakeResponse(401), "Яндекс Search API")
+        except AuthError as e:
+            msg401 = str(e)
+        try:
+            handle_api_response(FakeResponse(403), "Яндекс Search API")
+        except AuthError as e:
+            msg403 = str(e)
+        self.assertNotEqual(msg401, msg403)
+        self.assertIn("401", msg401)
+        for cause in ("биллинг", "search-api.webSearch.user",
+                      "yc.search-api.execute", "folderId"):
+            self.assertIn(cause, msg403)
+
+    def test_non200_prints_body_truncated_to_2000(self):
+        import io, contextlib
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            handle_api_response(FakeResponse(418, text="x" * 5000), "X")
+        out = buf.getvalue()
+        self.assertIn("x" * 100, out)
+        self.assertIn("[обрезано]", out)
+        self.assertNotIn("x" * 2001, out)
 
 
 if __name__ == "__main__":

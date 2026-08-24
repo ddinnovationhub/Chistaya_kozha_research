@@ -1,0 +1,194 @@
+# Мэппинг волны 0: нормализованные теги ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx → теги services.yaml
+# Правила G4.1; source_id: SRC-WAVE0-2026 («ручной сбор проекта, 4 города, 2026»)
+absorbed:
+- file_tag: Приём дерматолога
+  formulation: Консультация дерматолога
+  our_tag: derm_consult
+- file_tag: Приём дерматолога
+  formulation: Консультация дерматовенеролога
+  our_tag: derm_consult
+- file_tag: Приём онкодерматолога
+  formulation: Консультация онкодерматолога
+  our_tag: onco_consult
+- file_tag: Приём трихолога
+  formulation: Консультация трихолога
+  our_tag: trich_diag
+- file_tag: Дерматоскопия
+  formulation: Дерматоскопия
+  our_tag: dermatoscopy
+- file_tag: Цифровая дерматоскопия
+  formulation: Цифровая дерматоскопия
+  our_tag: mole_mapping
+- file_tag: Цифровая дерматоскопия
+  formulation: Цифровая дерматоскопия с картированием
+  our_tag: mole_mapping
+- file_tag: Цифровая дерматоскопия
+  formulation: Картирование невусов
+  our_tag: mole_mapping
+- file_tag: Гистология
+  formulation: Гистологическое исследование
+  our_tag: histology_skin
+- file_tag: Гистология
+  formulation: Биопсия кожи
+  our_tag: histology_skin
+- file_tag: Трихоскопия
+  formulation: Трихоскопия
+  our_tag: trich_diag
+- file_tag: Фототрихограмма
+  formulation: Фототрихограмма
+  our_tag: trich_diag
+- file_tag: Анализ волос
+  formulation: Анализ волос на микроэлементы
+  our_tag: trich_diag
+- file_tag: Удаление невусов
+  formulation: Удаление родинок
+  our_tag: neoplasm_removal
+- file_tag: Удаление невусов
+  formulation: Удаление невусов
+  our_tag: neoplasm_removal
+- file_tag: Удаление невусов
+  formulation: Лазерное удаление родинок
+  our_tag: neoplasm_removal
+- file_tag: Удаление папиллом
+  formulation: Удаление папиллом
+  our_tag: neoplasm_removal
+- file_tag: Удаление бородавок
+  formulation: Удаление бородавок
+  our_tag: neoplasm_removal
+- file_tag: Удаление кератом
+  formulation: Удаление кератом
+  our_tag: neoplasm_removal
+- file_tag: Удаление кондилом
+  formulation: Удаление кондилом
+  our_tag: neoplasm_removal
+- file_tag: Удаление гемангиом
+  formulation: Удаление гемангиом
+  our_tag: neoplasm_removal
+- file_tag: Удаление атером
+  formulation: Удаление атером
+  our_tag: neoplasm_removal
+- file_tag: Удаление фибром
+  formulation: Удаление фибром
+  our_tag: neoplasm_removal
+- file_tag: Удаление липом
+  formulation: Удаление липом
+  our_tag: neoplasm_removal
+- file_tag: Удаление контагиозного моллюска
+  formulation: Удаление контагиозного моллюска
+  our_tag: neoplasm_removal
+- file_tag: Удаление базалиомы
+  formulation: Удаление базалиомы
+  our_tag: melanoma_excision
+- file_tag: Криодеструкция
+  formulation: Криодеструкция
+  our_tag: neoplasm_removal_cryo
+- file_tag: Радиоволновое удаление
+  formulation: Радиоволновое удаление
+  our_tag: neoplasm_removal_radio
+- file_tag: Онкодерматологический скрининг
+  formulation: Онкодерматологический скрининг
+  our_tag: mole_mapping
+- file_tag: Онкодерматологический скрининг
+  formulation: Контроль меланомы
+  our_tag: mole_mapping
+- file_tag: Лечение ИППП
+  formulation: Лечение ИППП
+  our_tag: std_consult_lab
+- file_tag: Лечение алопеции
+  formulation: Лечение выпадения волос
+  our_tag: trich_treatment
+- file_tag: Лечение алопеции
+  formulation: Лечение алопеции
+  our_tag: trich_treatment
+- file_tag: Лечение себореи
+  formulation: Лечение себореи волосистой части
+  our_tag: trich_treatment
+- file_tag: Мезотерапия волос
+  formulation: Мезотерапия волосистой части головы
+  our_tag: mesotherapy_scalp
+- file_tag: PRP-терапия
+  formulation: PRP-терапия волос
+  our_tag: trich_treatment
+- file_tag: PRP-терапия
+  formulation: Плазмотерапия волос
+  our_tag: trich_treatment
+- file_tag: Ботулинотерапия
+  formulation: Ботулинотерапия
+  our_tag: botulinum_cosm
+- file_tag: Ботулинотерапия
+  formulation: Ботокс
+  our_tag: botulinum_cosm
+- file_tag: Контурная пластика
+  formulation: Контурная пластика
+  our_tag: contour_filler
+- file_tag: Контурная пластика
+  formulation: Филлеры
+  our_tag: contour_filler
+- file_tag: Лазерная эпиляция
+  formulation: Лазерная эпиляция
+  our_tag: epilation
+- file_tag: Лазерная эпиляция
+  formulation: Фотоэпиляция
+  our_tag: epilation
+- file_tag: Пилинги
+  formulation: Пилинги
+  our_tag: peeling
+- file_tag: Чистки лица
+  formulation: Чистки лица
+  our_tag: face_cleaning
+new_tags:
+- file_tag: Приём детского дерматолога
+  our_tag: derm_consult_child
+  contour: derm
+- file_tag: Приём дерматохирурга
+  our_tag: dermsurg_consult
+  contour: dermsurg
+- file_tag: Лечение акне
+  our_tag: acne_treatment
+  contour: derm
+- file_tag: Лечение псориаза
+  our_tag: psoriasis_treatment
+  contour: derm
+- file_tag: Лечение экземы и дерматитов
+  our_tag: eczema_dermatitis_treatment
+  contour: derm
+- file_tag: Лечение крапивницы
+  our_tag: urticaria_treatment
+  contour: derm
+- file_tag: Лечение розацеа
+  our_tag: rosacea_treatment
+  contour: derm
+- file_tag: Лечение витилиго
+  our_tag: vitiligo_treatment
+  contour: derm
+- file_tag: Лечение дерматомикозов
+  our_tag: mycosis_treatment
+  contour: derm
+- file_tag: Лечение герпеса
+  our_tag: herpes_treatment
+  contour: derm
+- file_tag: Лечение сосудистых патологий
+  our_tag: vascular_treatment
+  contour: derm
+- file_tag: Лечение гипергидроза
+  our_tag: hyperhidrosis_treatment
+  contour: derm
+- file_tag: Биоревитализация
+  our_tag: biorevitalization
+  contour: cosm_est
+- file_tag: Аппаратное омоложение
+  our_tag: hardware_rejuvenation
+  contour: cosm_est
+to_classifier:
+- file_tag: Приём гинеколога
+  formulation: Приём гинеколога
+- file_tag: Приём терапевта
+  formulation: Приём терапевта
+- file_tag: Приём педиатра
+  formulation: Приём педиатра
+- file_tag: УЗИ органов
+  formulation: УЗИ органов
+- file_tag: МРТ/КТ
+  formulation: МРТ / КТ
+- file_tag: Стоматология
+  formulation: Стоматология

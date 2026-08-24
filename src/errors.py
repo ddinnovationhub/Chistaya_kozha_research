@@ -12,3 +12,8 @@ class AuthError(RuntimeError):
 
 class MissingSourceError(RuntimeError):
     """Попытка записи узла/ребра/Claim без source_id — ошибка выполнения, прогон останавливается."""
+
+
+class BudgetExceededError(RuntimeError):
+    """Программный потолок бюджета пробит. Единственная реальная защита от
+    перерасхода: Yandex Cloud затраты не ограничивает (решение заказчика 2026-08-24)."""

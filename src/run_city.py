@@ -1,9 +1,9 @@
 """Точка входа боевого прогона по городу (GitHub Actions).
 
-Текущий объём: этап 0 (проверка окружения) + живая проверка ключей одним
-запросом к каждому API. Пайплайн разведки (этапы 4-8) подключается сюда же
-по мере утверждения. Чекпойнт пишется в data/ при любом исходе — воркфлоу
-выгружает его артефактом даже при падении шага.
+Текущий объём: этап 0 + смоук ключей. Смоук прогоняет ВСЕ проверки и выводит
+сводную таблицу, а не падает на первой ошибке (решение заказчика 2026-08-24).
+Бюджет: каждый платный запрос списывается через BudgetTracker (data/budget.json,
+накопительно по проекту). Чекпойнт пишется при любом исходе.
 
 Запуск: CITY='Казань' python -m src.run_city
 """
@@ -15,6 +15,7 @@ import pathlib
 import sys
 
 from src.api_client import dadata_find_raw, handle_api_response, yandex_search_raw
+from src.budget import BudgetTracker
 
 REQUIRED = {
     "YANDEX_API_KEY":    "Яндекс Search API — основной поиск",
@@ -25,55 +26,79 @@ REQUIRED = {
 
 
 def main() -> int:
-    missing = [f"  ✗ {k} — {v}" for k, v in REQUIRED.items() if not os.environ.get(k)]
-    if missing:
-        print("СТОП. Отсутствуют обязательные ключи:\n" + "\n".join(missing))
-        print("Добавь их в GitHub Secrets (Settings → Secrets → Actions)")
-        return 1
-
     city = os.environ.get("CITY", "").strip()
-    if not city:
-        print("СТОП. Город не задан. Укажи его при запуске: CITY='Казань'")
-        return 1
-
     limit = int(os.environ.get("QUERY_LIMIT", "0") or 0)
     today = datetime.date.today().isoformat()
-    checkpoint = {
-        "city": city,
-        "date": today,
-        "query_limit": limit,
-        "stage": "smoke",
-        "api_checks": {},
-    }
-    ckpt_path = pathlib.Path("data") / f"checkpoint_{city}_{today}.json"
 
+    results = []  # (проверка, статус, детали)
+
+    for key, purpose in REQUIRED.items():
+        ok = bool(os.environ.get(key))
+        results.append((f"ключ {key}", "OK" if ok else "ОШИБКА",
+                        purpose if ok else "отсутствует в окружении"))
+    results.append(("параметр CITY", "OK" if city else "ОШИБКА",
+                    city or "не задан (CITY='Казань')"))
+
+    keys_ok = all(s == "OK" for _, s, _ in results)
+    checkpoint = {"city": city or None, "date": today, "query_limit": limit,
+                  "stage": "smoke", "api_checks": {}}
+
+    budget = None
     try:
-        print(f"✓ Окружение проверено. Город: {city}. Лимит запросов: {limit or 'по насыщению'}")
+        budget = BudgetTracker()
+        results.append(("бюджетный счётчик", "OK", budget.report()))
+    except Exception as exc:  # noqa: BLE001
+        results.append(("бюджетный счётчик", "ОШИБКА", f"{type(exc).__name__}: {exc}"))
 
-        resp = yandex_search_raw(f"дерматолог {city}", n=1)
-        handle_api_response(resp, "Яндекс Search API")
-        checkpoint["api_checks"]["yandex_search_api"] = resp.status_code
-        print(f"✓ Яндекс Search API: живой запрос прошёл (HTTP {resp.status_code})")
+    if keys_ok and budget is not None:
+        for name, service_key, call in [
+            ("Яндекс Search API", "yandex_search_api",
+             lambda: yandex_search_raw(f"дерматолог {city}", n=1)),
+            ("DaData", "dadata",
+             lambda: dadata_find_raw("медицинский центр", city)),
+        ]:
+            try:
+                budget.charge(service_key, 1)
+                resp = call()
+                handle_api_response(resp, name)
+                checkpoint["api_checks"][service_key] = resp.status_code
+                results.append((f"живой запрос {name}", "OK", f"HTTP {resp.status_code}"))
+            except Exception as exc:  # noqa: BLE001 — собираем ВСЕ результаты
+                checkpoint["api_checks"][service_key] = f"{type(exc).__name__}"
+                results.append((f"живой запрос {name}", "ОШИБКА",
+                                f"{type(exc).__name__}: {str(exc).splitlines()[0][:160]}"))
+    else:
+        results.append(("живые запросы API", "ПРОПУЩЕНО",
+                        "нет ключей или счётчика — вызовы не выполнялись"))
 
-        resp = dadata_find_raw("медицинский центр", city)
-        handle_api_response(resp, "DaData")
-        checkpoint["api_checks"]["dadata"] = resp.status_code
-        print(f"✓ DaData: живой запрос прошёл (HTTP {resp.status_code})")
+    # ── Сводная таблица ──────────────────────────────────────────────────
+    failed = [r for r in results if r[1] == "ОШИБКА"]
+    width = max(len(r[0]) for r in results)
+    print("\n" + "═" * 72)
+    print(f"СМОУК-ПРОВЕРКА · город: {city or '—'} · {today}")
+    print("─" * 72)
+    for name, status, detail in results:
+        mark = {"OK": "✓", "ОШИБКА": "✗", "ПРОПУЩЕНО": "·"}[status]
+        print(f" {mark} {name.ljust(width)}  {status.ljust(9)}  {detail}")
+    print("─" * 72)
+    if budget is not None:
+        print(f" {budget.report()}")
+    print(f" Итог: {len(results) - len(failed)}/{len(results)} проверок пройдено")
+    print("═" * 72)
 
-        print(
-            "\nПайплайн разведки (этапы 4-8) ещё не подключён — прогон штатно "
-            "остановлен после проверки окружения и ключей. Это ожидаемое поведение."
-        )
+    if not failed:
+        print("\nПайплайн разведки (этапы 5-8) ещё не подключён — прогон штатно "
+              "остановлен после смоука. Это ожидаемое поведение.")
         checkpoint["stage"] = "smoke_ok"
-        return 0
-    except Exception as exc:  # noqa: BLE001 — чекпойнт пишется при любом исходе
-        checkpoint["stage"] = "failed"
-        checkpoint["error"] = f"{type(exc).__name__}: {exc}"
-        raise
-    finally:
-        ckpt_path.parent.mkdir(exist_ok=True)
-        ckpt_path.write_text(json.dumps(checkpoint, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"Чекпойнт: {ckpt_path}")
+    else:
+        checkpoint["stage"] = "smoke_failed"
+        checkpoint["failed"] = [r[0] for r in failed]
+
+    ckpt_path = pathlib.Path("data") / f"checkpoint_{city or 'nocity'}_{today}.json"
+    ckpt_path.parent.mkdir(exist_ok=True)
+    ckpt_path.write_text(json.dumps(checkpoint, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Чекпойнт: {ckpt_path}")
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

@@ -14,12 +14,39 @@ def save_checkpoint():
     """Заглушка до этапа 5: чекпойнт пишет модуль графа."""
 
 
+# Причины 403 по сервисам — конкретика вместо «проверь Secrets»
+_FORBIDDEN_HINTS = {
+    "Яндекс Search API": (
+        "403 у Яндекса — это ДОСТУП ЗАПРЕЩЁН при валидном ключе. Четыре причины по частоте:\n"
+        "  1. Платёжный аккаунт не привязан к облаку или неактивен (биллинг)\n"
+        "  2. У сервисного аккаунта нет роли search-api.webSearch.user на каталоге\n"
+        "  3. Область действия API-ключа не включает yc.search-api.execute\n"
+        "  4. В folderId передан ID облака (cloud-id) вместо ID каталога (folder-id)"
+    ),
+    "DaData": (
+        "403 у DaData: ключ неактивен, тариф исчерпан или запрос без заголовка "
+        "Authorization: Token. Проверь dadata.ru/profile/"
+    ),
+}
+
+
+def _body_excerpt(response) -> str:
+    """Тело ответа при любом коде кроме 200, обрезка до 2000 символов."""
+    try:
+        text = response.text or ""
+    except Exception:  # noqa: BLE001 — диагностика не должна ронять обработчик
+        return "<тело ответа недоступно>"
+    return text[:2000] + ("… [обрезано]" if len(text) > 2000 else "")
+
+
 def handle_api_response(response, service_name: str):
     code = response.status_code
     if code == 200:
         return response
 
-    elif code in (402, 429):
+    print(f"— тело ответа {service_name} (HTTP {code}): {_body_excerpt(response)}")
+
+    if code in (402, 429):
         msg = (
             f"\n{'='*60}\n"
             f"⛔ ЛИМИТ ИСЧЕРПАН — {service_name} (код {code})\n"
@@ -34,8 +61,16 @@ def handle_api_response(response, service_name: str):
         save_checkpoint()
         raise QuotaExhaustedError(msg)
 
-    elif code in (401, 403):
-        msg = f"⛔ ОШИБКА АВТОРИЗАЦИИ — {service_name} (код {code}). Проверь GitHub Secrets."
+    elif code == 401:
+        msg = (f"⛔ 401 АУТЕНТИФИКАЦИЯ — {service_name}: ключ отсутствует, опечатан "
+               f"или отозван. Сервис не узнал ключ. Проверь значение в GitHub Secrets.")
+        print(msg)
+        raise AuthError(msg)
+
+    elif code == 403:
+        hint = _FORBIDDEN_HINTS.get(
+            service_name, "доступ запрещён при валидном ключе — проверь права/тариф")
+        msg = f"⛔ 403 ДОСТУП ЗАПРЕЩЁН — {service_name}.\n{hint}"
         print(msg)
         raise AuthError(msg)
 

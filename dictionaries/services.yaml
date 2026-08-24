@@ -1,312 +1,637 @@
-# Справочник услуг — этап 1
-# ВЕРСИЯ: 0.1-seed · СТАТУС: НЕ УТВЕРЖДЁН ЗАКАЗЧИКОМ · разведка по нему не ведётся
-#
-# Сид построен ТОЛЬКО из независимого источника №3 (номенклатура МЗ + МКБ-10).
-# Источник №1 (язык предложения, обход сайтов — волны 1–2) и источник №2 (Вордстат,
-# язык спроса) НЕ обработаны: нет API-ключей. Поля formulations_site и
-# formulations_wordstat пусты у всех тегов — это честная неполнота, не завершённость.
-
 meta:
-  version: "0.1-seed"
-  date: "2026-08-23"
-  status: "не утверждён заказчиком; волны 1–2 и Вордстат не пройдены"
+  version: 0.2-wave0
+  date: '2026-08-23'
+  status: база v0.1-seed утверждена 2026-08-24; волна 0 влита 2026-08-24 — 14 новых тегов ждут ревью Врача-методолога/заказчика
   sources:
-    - source_id: SRC-804N-20260823
-      name: "Приказ Минздрава России от 13.10.2017 N 804н «Об утверждении номенклатуры медицинских услуг» (с изм. от 12.07.2018)"
-      url: "https://org.gnicpm.ru/wp-content/uploads/2019/01/Prikaz-Minzdrava-Rossii-ot-13.10.2017-N-804n-s-izm.-ot-12.0.pdf"
-      official_publication: "http://publication.pravo.gov.ru/Document/View/0001201711080030"
-      accessed: "2026-08-23"
-      note: "PDF 547 стр., распарсено 10 380 услуг; профильная выборка 803 строки — scratchpad/804n_derm_subset.txt"
-    - source_id: SRC-MKB10-20260823
-      name: "МКБ-10, блоки классов XII (L), II (C43-C44, D10-D36), I (A50-A64, B00-B09, B35-B49, B85-B89), XVIII (R50-R69), IX (I70-I79)"
-      url: "https://classinform.ru/mkb-10/l00-l99.html"
-      accessed: "2026-08-23"
-      note: "трёхзначные рубрики сверены по страницам блоков 2026-08-23 (L20,L23,L30,L40,L50,L57,L60,L63,L64,L65,L66,L68,L70,L71,L72,L80,L81,L82,L84,L90,L98,C43,C44,D17,D22,D23,B02,B07,B35,B86,R61 — совпали); четырёхзначные подрубрики (например B08.1, B35.1, B88.0, A63.0, I78.1, L57.0) на страницах блоков отсутствуют → статус «Уточнить», сверка на этапе 9"
-
-# contour — дерматологический маршрут для классификатора G4 (этап 2):
-#   derm        — медицинская дерматология (Тип 1)
-#   oncoderm    — онкодерматология (Тип 1)
-#   trich       — трихология (Тип 1)
-#   dermsurg    — дерматохирургия (Тип 1)
-#   cosm_est    — эстетическая косметология (маркер Типа 2 при сочетании с derm)
-#   cosm_med    — медицинская (врачебная) косметология — граница решается на этапе 2
-
+  - source_id: SRC-804N-20260823
+    name: Приказ Минздрава России от 13.10.2017 N 804н «Об утверждении номенклатуры медицинских услуг» (с изм. от 12.07.2018)
+    url: https://org.gnicpm.ru/wp-content/uploads/2019/01/Prikaz-Minzdrava-Rossii-ot-13.10.2017-N-804n-s-izm.-ot-12.0.pdf
+    official_publication: http://publication.pravo.gov.ru/Document/View/0001201711080030
+    accessed: '2026-08-23'
+    note: PDF 547 стр., распарсено 10 380 услуг; профильная выборка 803 строки — scratchpad/804n_derm_subset.txt
+  - source_id: SRC-MKB10-20260823
+    name: МКБ-10, блоки классов XII (L), II (C43-C44, D10-D36), I (A50-A64, B00-B09, B35-B49, B85-B89), XVIII (R50-R69), IX
+      (I70-I79)
+    url: https://classinform.ru/mkb-10/l00-l99.html
+    accessed: '2026-08-23'
+    note: трёхзначные рубрики сверены по страницам блоков 2026-08-23 (L20,L23,L30,L40,L50,L57,L60,L63,L64,L65,L66,L68,L70,L71,L72,L80,L81,L82,L84,L90,L98,C43,C44,D17,D22,D23,B02,B07,B35,B86,R61
+      — совпали); четырёхзначные подрубрики (например B08.1, B35.1, B88.0, A63.0, I78.1, L57.0) на страницах блоков отсутствуют
+      → статус «Уточнить», сверка на этапе 9
+  - source_id: SRC-WAVE0-2026
+    name: 'Волна 0: ручной сбор проекта, 4 города (Нижний Новгород, Самара, Екатеринбург, Новосибирск), 2026'
+    url: output/ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx, лист 05_Справочник_услуг
+    accessed: '2026-08-24'
+    note: 74 формулировки «как есть с сайта»; мэппинг — data/wave0_mapping.yaml
 tags:
-  # ── Приёмы и диагностика ────────────────────────────────────────────────
-  - tag: derm_consult
-    name_ru: "Приём дерматолога / дерматовенеролога"
-    contour: derm
-    icd10: ["L00-L99", "A63.0", "B07", "B35-B49"]
-    nomenclature:
-      - {code: "B01.008.001", name: "Прием (осмотр, консультация) врача-дерматовенеролога первичный", source_id: SRC-804N-20260823}
-      - {code: "B01.008.002", name: "Прием (осмотр, консультация) врача-дерматовенеролога повторный", source_id: SRC-804N-20260823}
-    formulations_site: []        # волна 1 — заблокировано: нет ключей
-    formulations_wordstat: []    # заблокировано: нет доступа к Вордстату
-
-  - tag: cosm_consult
-    name_ru: "Приём врача-косметолога"
-    contour: cosm_med
-    icd10: ["L57", "L70", "L81", "L90"]
-    nomenclature:
-      - {code: "B01.008.003", name: "Прием (осмотр, консультация) врача-косметолога первичный", source_id: SRC-804N-20260823}
-      - {code: "B01.008.004", name: "Прием (осмотр, консультация) врача-косметолога повторный", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: onco_consult
-    name_ru: "Приём онколога (онкодерматология)"
-    contour: oncoderm
-    icd10: ["C43", "C44", "D22", "D23", "D48.5"]
-    nomenclature:
-      - {code: "B01.027.001", name: "Прием (осмотр, консультация) врача-онколога первичный", source_id: SRC-804N-20260823}
-      - {code: "B01.027.002", name: "Прием (осмотр, консультация) врача-онколога повторный", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: dermatoscopy
-    name_ru: "Дерматоскопия"
-    contour: oncoderm
-    icd10: ["C43", "C44", "D22", "D23"]
-    nomenclature:
-      - {code: "A03.01.001", name: "Осмотр кожи под увеличением (дерматоскопия)", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: skin_biopsy
-    name_ru: "Биопсия кожи"
-    contour: derm
-    icd10: ["L00-L99", "C43", "C44"]
-    nomenclature:
-      - {code: "A11.01.001", name: "Биопсия кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: histology_skin
-    name_ru: "Гистологическое / цитологическое исследование кожи"
-    contour: oncoderm
-    icd10: ["C43", "C44", "D22", "D23"]
-    nomenclature:
-      - {code: "A08.01.001", name: "Патолого-анатомическое исследование биопсийного (операционного) материала кожи", source_id: SRC-804N-20260823}
-      - {code: "A08.01.002", name: "Цитологическое исследование микропрепарата кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: myco_lab
-    name_ru: "Лабораторная диагностика микозов (соскоб, микроскопия, ПЦР)"
-    contour: derm
-    icd10: ["B35-B49"]
-    nomenclature:
-      - {code: "A11.01.009", name: "Соскоб кожи", source_id: SRC-804N-20260823}
-      - {code: "A26.01.011", name: "Микроскопическое исследование волос на дерматомицеты", source_id: SRC-804N-20260823}
-      - {code: "A26.01.030.001", name: "Определение ДНК грибов дерматофитов (Dermatophytes)", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  # ── Удаление новообразований (дерматохирургия / онко) ──────────────────
-  - tag: neoplasm_removal
-    name_ru: "Удаление доброкачественных новообразований кожи (базовая услуга)"
-    contour: dermsurg
-    icd10: ["D22", "D23", "B07", "L82"]
-    nomenclature:
-      - {code: "A16.01.017", name: "Удаление доброкачественных новообразований кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: neoplasm_removal_electro
-    name_ru: "Удаление новообразований электрокоагуляцией"
-    contour: dermsurg
-    icd10: ["D22", "D23", "B07"]
-    nomenclature:
-      - {code: "A16.01.017.001", name: "Удаление доброкачественных новообразований кожи методом электрокоагуляции", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: neoplasm_removal_cryo
-    name_ru: "Криодеструкция кожи (удаление жидким азотом)"
-    contour: dermsurg
-    icd10: ["D22", "D23", "B07", "L82"]
-    nomenclature:
-      - {code: "A24.01.004", name: "Криодеструкция кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: neoplasm_removal_laser
-    name_ru: "Лазерное удаление новообразований / лазерная деструкция"
-    contour: dermsurg
-    icd10: ["D22", "D23", "B07", "L82"]
-    nomenclature:
-      - {code: "A22.01.003", name: "Лазерная деструкция ткани кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: neoplasm_removal_radio
-    name_ru: "Радиоволновое удаление новообразований"
-    contour: dermsurg
-    icd10: ["D22", "D23", "B07"]
-    nomenclature:
-      - {code: "A16.01.017", name: "Удаление доброкачественных новообразований кожи (радиоволновой метод отдельного кода в 804н не имеет — маппинг на базовый код)", source_id: SRC-804N-20260823}
-    note: "отдельного кода метода нет в 804н (проверено по полному тексту) — фиксация, не домысел"
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: melanoma_excision
-    name_ru: "Иссечение меланомы / широкое иссечение новообразования кожи"
-    contour: oncoderm
-    icd10: ["C43", "C44"]
-    nomenclature:
-      - {code: "A16.01.005", name: "Иссечение поражения кожи", source_id: SRC-804N-20260823}
-      - {code: "A16.01.005.001", name: "Широкое иссечение меланомы кожи", source_id: SRC-804N-20260823}
-      - {code: "A16.01.005.005", name: "Широкое иссечение новообразования кожи с реконструктивно-пластическим компонентом", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  # ── Трихология ──────────────────────────────────────────────────────────
-  - tag: trich_diag
-    name_ru: "Диагностика волос и кожи головы (приём трихолога, трихоскопия)"
-    contour: trich
-    icd10: ["L63-L66"]
-    nomenclature:
-      - {code: "B01.008.001", name: "Прием (осмотр, консультация) врача-дерматовенеролога первичный (приём трихолога — маппинг: отдельной специальности в 804н нет)", source_id: SRC-804N-20260823}
-      - {code: "A26.01.011", name: "Микроскопическое исследование волос на дерматомицеты", source_id: SRC-804N-20260823}
-    note: "трихоскопия отдельного кода в 804н не имеет; маппинг приёма на B01.008.001 — решение Врача-методолога (такт 3, 2026-08-23)"
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: trich_treatment
-    name_ru: "Лечебные процедуры волосистой части головы"
-    contour: trich
-    icd10: ["L63-L66"]
-    nomenclature:
-      - {code: "A14.01.014", name: "Втирание растворов в волосистую часть головы", source_id: SRC-804N-20260823}
-      - {code: "A21.01.005", name: "Массаж волосистой части головы медицинский", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  # ── Физиотерапия дерматологическая ─────────────────────────────────────
-  - tag: phototherapy
-    name_ru: "Фототерапия / ПУВА-терапия"
-    contour: derm
-    icd10: ["L40", "L20", "L80"]
-    nomenclature:
-      - {code: "A20.01.005", name: "Фототерапия кожи", source_id: SRC-804N-20260823}
-      - {code: "A22.01.006.004", name: "Ультрафиолетовое облучение кожи. Фотохимиотерапия с внутренним применением фотосенсибилизаторов (ПУВА)", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  # ── Эстетическая косметология ──────────────────────────────────────────
-  - tag: face_cleaning
-    name_ru: "Чистка лица"
-    contour: cosm_est
-    icd10: ["L70"]
-    nomenclature:
-      - {code: "A14.01.005", name: "Очищение кожи лица и шеи", source_id: SRC-804N-20260823}
-      - {code: "A14.01.009", name: "Удаление камедонов кожи", source_id: SRC-804N-20260823}
-      - {code: "A14.01.010", name: "Удаление милиумов кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: peeling
-    name_ru: "Пилинг (дерматологический, ультразвуковой)"
-    contour: cosm_est
-    icd10: ["L57", "L81", "L90"]
-    nomenclature:
-      - {code: "A16.01.024", name: "Дерматологический пилинг", source_id: SRC-804N-20260823}
-      - {code: "A22.01.001.002", name: "Ультразвуковой пилинг", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: laser_resurfacing
-    name_ru: "Лазерная шлифовка кожи"
-    contour: cosm_est
-    icd10: ["L90", "L57"]
-    nomenclature:
-      - {code: "A22.01.002", name: "Лазерная шлифовка кожи", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: laser_vascular
-    name_ru: "Лазерное удаление сосудов (телеангиэктазий)"
-    contour: cosm_med
-    icd10: ["I78.1 (Уточнить: подрубрика не сверена)", "L81"]
-    nomenclature:
-      - {code: "A22.01.004", name: "Лазерная коагуляция телеангиоэктазий", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: epilation
-    name_ru: "Эпиляция (лазерная и др.)"
-    contour: cosm_est
-    icd10: ["L68"]
-    nomenclature:
-      - {code: "A14.01.013", name: "Проведение эпиляции", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: face_massage
-    name_ru: "Массаж лица медицинский"
-    contour: cosm_est
-    icd10: []
-    nomenclature:
-      - {code: "A21.01.002", name: "Массаж лица медицинский", source_id: SRC-804N-20260823}
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: mesotherapy_face
-    name_ru: "Мезотерапия лица"
-    contour: cosm_est
-    classifier_role: "маркер Типа 2 (эстетическая косметология)"
-    icd10: []
-    nomenclature: []
-    note: "кода в 804н нет, проверено по полному тексту. Решение заказчика 2026-08-24: НЕ мапить на A11.01.010 (лечебная манипуляция в очаге поражения — присвоение медкода сломало бы ворота G4); тег-маркер без кода"
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: mesotherapy_scalp
-    name_ru: "Мезотерапия волосистой части головы"
-    contour: trich
-    classifier_role: "трихологический контур (Тип 1)"
-    icd10: ["L63-L66"]
-    nomenclature: []
-    note: "кода в 804н нет, проверено по полному тексту. НЕ сливать с mesotherapy_face НИКОГДА — правило локализации G4.1, подтверждено заказчиком 2026-08-24: разные контуры (трихология Тип 1 vs эстетическая косметология — маркер Типа 2)"
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: botulinum_cosm
-    name_ru: "Ботулинотерапия (косметология)"
-    contour: cosm_est
-    icd10: []
-    nomenclature: []
-    note: "прямого косметологического кода в 804н нет (A25.24.001.002 — неврологический контекст); маркер эстетического профиля для G4"
-    formulations_site: []
-    formulations_wordstat: []
-
-  - tag: contour_filler
-    name_ru: "Контурная пластика (филлеры)"
-    contour: cosm_est
-    icd10: []
-    nomenclature: []
-    note: "кода в 804н нет (проверено: «контурная пластика», «гиалурон» в тексте отсутствуют); маркер эстетического профиля для G4"
-    formulations_site: []
-    formulations_wordstat: []
-
-  # ── Венерология (дерматоВЕНЕРОлогический контур) ───────────────────────
-  - tag: std_consult_lab
-    name_ru: "Диагностика ИППП (приём дерматовенеролога, анализы на сифилис и др.)"
-    contour: derm
-    icd10: ["A50-A64"]
-    nomenclature:
-      - {code: "B01.008.001", name: "Прием (осмотр, консультация) врача-дерматовенеролога первичный", source_id: SRC-804N-20260823}
-      - {code: "A26.06.082", name: "Определение антител к бледной трепонеме (Treponema pallidum) в крови", source_id: SRC-804N-20260823}
-    note: "добавлен по ревью такта 3 (Дерматовенеролог): без венерологического контура клиники КВД-профиля не находятся слоем L2"
-    formulations_site: []
-    formulations_wordstat: []
-
-  # ── Онконастороженность (маркер без кода) ──────────────────────────────
-  - tag: mole_mapping
-    name_ru: "Картирование родинок / цифровая дерматоскопия всего тела"
-    contour: oncoderm
-    icd10: ["D22", "C43"]
-    nomenclature: []
-    note: "добавлен по ревью такта 3 (Онкодерматолог): отдельного кода в 804н нет; сильный маркер онкодерматологического профиля (Тип 1) для G4; ближайший код — A03.01.001 дерматоскопия"
-    formulations_site: []
-    formulations_wordstat: []
+- tag: derm_consult
+  name_ru: Приём дерматолога / дерматовенеролога
+  contour: derm
+  icd10:
+  - L00-L99
+  - A63.0
+  - B07
+  - B35-B49
+  nomenclature:
+  - code: B01.008.001
+    name: Прием (осмотр, консультация) врача-дерматовенеролога первичный
+    source_id: SRC-804N-20260823
+  - code: B01.008.002
+    name: Прием (осмотр, консультация) врача-дерматовенеролога повторный
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Консультация дерматолога
+  - Консультация дерматовенеролога
+  formulations_wordstat: []
+- tag: cosm_consult
+  name_ru: Приём врача-косметолога
+  contour: cosm_med
+  icd10:
+  - L57
+  - L70
+  - L81
+  - L90
+  nomenclature:
+  - code: B01.008.003
+    name: Прием (осмотр, консультация) врача-косметолога первичный
+    source_id: SRC-804N-20260823
+  - code: B01.008.004
+    name: Прием (осмотр, консультация) врача-косметолога повторный
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: onco_consult
+  name_ru: Приём онколога (онкодерматология)
+  contour: oncoderm
+  icd10:
+  - C43
+  - C44
+  - D22
+  - D23
+  - D48.5
+  nomenclature:
+  - code: B01.027.001
+    name: Прием (осмотр, консультация) врача-онколога первичный
+    source_id: SRC-804N-20260823
+  - code: B01.027.002
+    name: Прием (осмотр, консультация) врача-онколога повторный
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Консультация онкодерматолога
+  formulations_wordstat: []
+- tag: dermatoscopy
+  name_ru: Дерматоскопия
+  contour: oncoderm
+  icd10:
+  - C43
+  - C44
+  - D22
+  - D23
+  nomenclature:
+  - code: A03.01.001
+    name: Осмотр кожи под увеличением (дерматоскопия)
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Дерматоскопия
+  formulations_wordstat: []
+- tag: skin_biopsy
+  name_ru: Биопсия кожи
+  contour: derm
+  icd10:
+  - L00-L99
+  - C43
+  - C44
+  nomenclature:
+  - code: A11.01.001
+    name: Биопсия кожи
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: histology_skin
+  name_ru: Гистологическое / цитологическое исследование кожи
+  contour: oncoderm
+  icd10:
+  - C43
+  - C44
+  - D22
+  - D23
+  nomenclature:
+  - code: A08.01.001
+    name: Патолого-анатомическое исследование биопсийного (операционного) материала кожи
+    source_id: SRC-804N-20260823
+  - code: A08.01.002
+    name: Цитологическое исследование микропрепарата кожи
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Гистологическое исследование
+  - Биопсия кожи
+  formulations_wordstat: []
+- tag: myco_lab
+  name_ru: Лабораторная диагностика микозов (соскоб, микроскопия, ПЦР)
+  contour: derm
+  icd10:
+  - B35-B49
+  nomenclature:
+  - code: A11.01.009
+    name: Соскоб кожи
+    source_id: SRC-804N-20260823
+  - code: A26.01.011
+    name: Микроскопическое исследование волос на дерматомицеты
+    source_id: SRC-804N-20260823
+  - code: A26.01.030.001
+    name: Определение ДНК грибов дерматофитов (Dermatophytes)
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: neoplasm_removal
+  name_ru: Удаление доброкачественных новообразований кожи (базовая услуга)
+  contour: dermsurg
+  icd10:
+  - D22
+  - D23
+  - B07
+  - L82
+  nomenclature:
+  - code: A16.01.017
+    name: Удаление доброкачественных новообразований кожи
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Удаление родинок
+  - Удаление невусов
+  - Лазерное удаление родинок
+  - Удаление папиллом
+  - Удаление бородавок
+  - Удаление кератом
+  - Удаление кондилом
+  - Удаление гемангиом
+  - Удаление атером
+  - Удаление фибром
+  - Удаление липом
+  - Удаление контагиозного моллюска
+  formulations_wordstat: []
+- tag: neoplasm_removal_electro
+  name_ru: Удаление новообразований электрокоагуляцией
+  contour: dermsurg
+  icd10:
+  - D22
+  - D23
+  - B07
+  nomenclature:
+  - code: A16.01.017.001
+    name: Удаление доброкачественных новообразований кожи методом электрокоагуляции
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: neoplasm_removal_cryo
+  name_ru: Криодеструкция кожи (удаление жидким азотом)
+  contour: dermsurg
+  icd10:
+  - D22
+  - D23
+  - B07
+  - L82
+  nomenclature:
+  - code: A24.01.004
+    name: Криодеструкция кожи
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Криодеструкция
+  formulations_wordstat: []
+- tag: neoplasm_removal_laser
+  name_ru: Лазерное удаление новообразований / лазерная деструкция
+  contour: dermsurg
+  icd10:
+  - D22
+  - D23
+  - B07
+  - L82
+  nomenclature:
+  - code: A22.01.003
+    name: Лазерная деструкция ткани кожи
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: neoplasm_removal_radio
+  name_ru: Радиоволновое удаление новообразований
+  contour: dermsurg
+  icd10:
+  - D22
+  - D23
+  - B07
+  nomenclature:
+  - code: A16.01.017
+    name: Удаление доброкачественных новообразований кожи (радиоволновой метод отдельного кода в 804н не имеет — маппинг на
+      базовый код)
+    source_id: SRC-804N-20260823
+  note: отдельного кода метода нет в 804н (проверено по полному тексту) — фиксация, не домысел
+  formulations_site:
+  - Радиоволновое удаление
+  formulations_wordstat: []
+- tag: melanoma_excision
+  name_ru: Иссечение меланомы / широкое иссечение новообразования кожи
+  contour: oncoderm
+  icd10:
+  - C43
+  - C44
+  nomenclature:
+  - code: A16.01.005
+    name: Иссечение поражения кожи
+    source_id: SRC-804N-20260823
+  - code: A16.01.005.001
+    name: Широкое иссечение меланомы кожи
+    source_id: SRC-804N-20260823
+  - code: A16.01.005.005
+    name: Широкое иссечение новообразования кожи с реконструктивно-пластическим компонентом
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Удаление базалиомы
+  formulations_wordstat: []
+- tag: trich_diag
+  name_ru: Диагностика волос и кожи головы (приём трихолога, трихоскопия)
+  contour: trich
+  icd10:
+  - L63-L66
+  nomenclature:
+  - code: B01.008.001
+    name: 'Прием (осмотр, консультация) врача-дерматовенеролога первичный (приём трихолога — маппинг: отдельной специальности
+      в 804н нет)'
+    source_id: SRC-804N-20260823
+  - code: A26.01.011
+    name: Микроскопическое исследование волос на дерматомицеты
+    source_id: SRC-804N-20260823
+  note: трихоскопия отдельного кода в 804н не имеет; маппинг приёма на B01.008.001 — решение Врача-методолога (такт 3, 2026-08-23)
+  formulations_site:
+  - Консультация трихолога
+  - Трихоскопия
+  - Фототрихограмма
+  - Анализ волос на микроэлементы
+  formulations_wordstat: []
+- tag: trich_treatment
+  name_ru: Лечебные процедуры волосистой части головы
+  contour: trich
+  icd10:
+  - L63-L66
+  nomenclature:
+  - code: A14.01.014
+    name: Втирание растворов в волосистую часть головы
+    source_id: SRC-804N-20260823
+  - code: A21.01.005
+    name: Массаж волосистой части головы медицинский
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Лечение выпадения волос
+  - Лечение алопеции
+  - Лечение себореи волосистой части
+  - PRP-терапия волос
+  - Плазмотерапия волос
+  formulations_wordstat: []
+- tag: phototherapy
+  name_ru: Фототерапия / ПУВА-терапия
+  contour: derm
+  icd10:
+  - L40
+  - L20
+  - L80
+  nomenclature:
+  - code: A20.01.005
+    name: Фототерапия кожи
+    source_id: SRC-804N-20260823
+  - code: A22.01.006.004
+    name: Ультрафиолетовое облучение кожи. Фотохимиотерапия с внутренним применением фотосенсибилизаторов (ПУВА)
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: face_cleaning
+  name_ru: Чистка лица
+  contour: cosm_est
+  icd10:
+  - L70
+  nomenclature:
+  - code: A14.01.005
+    name: Очищение кожи лица и шеи
+    source_id: SRC-804N-20260823
+  - code: A14.01.009
+    name: Удаление камедонов кожи
+    source_id: SRC-804N-20260823
+  - code: A14.01.010
+    name: Удаление милиумов кожи
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Чистки лица
+  formulations_wordstat: []
+- tag: peeling
+  name_ru: Пилинг (дерматологический, ультразвуковой)
+  contour: cosm_est
+  icd10:
+  - L57
+  - L81
+  - L90
+  nomenclature:
+  - code: A16.01.024
+    name: Дерматологический пилинг
+    source_id: SRC-804N-20260823
+  - code: A22.01.001.002
+    name: Ультразвуковой пилинг
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Пилинги
+  formulations_wordstat: []
+- tag: laser_resurfacing
+  name_ru: Лазерная шлифовка кожи
+  contour: cosm_est
+  icd10:
+  - L90
+  - L57
+  nomenclature:
+  - code: A22.01.002
+    name: Лазерная шлифовка кожи
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: laser_vascular
+  name_ru: Лазерное удаление сосудов (телеангиэктазий)
+  contour: cosm_med
+  icd10:
+  - 'I78.1 (Уточнить: подрубрика не сверена)'
+  - L81
+  nomenclature:
+  - code: A22.01.004
+    name: Лазерная коагуляция телеангиоэктазий
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: epilation
+  name_ru: Эпиляция (лазерная и др.)
+  contour: cosm_est
+  icd10:
+  - L68
+  nomenclature:
+  - code: A14.01.013
+    name: Проведение эпиляции
+    source_id: SRC-804N-20260823
+  formulations_site:
+  - Лазерная эпиляция
+  - Фотоэпиляция
+  formulations_wordstat: []
+- tag: face_massage
+  name_ru: Массаж лица медицинский
+  contour: cosm_est
+  icd10: []
+  nomenclature:
+  - code: A21.01.002
+    name: Массаж лица медицинский
+    source_id: SRC-804N-20260823
+  formulations_site: []
+  formulations_wordstat: []
+- tag: mesotherapy_face
+  name_ru: Мезотерапия лица
+  contour: cosm_est
+  classifier_role: маркер Типа 2 (эстетическая косметология)
+  icd10: []
+  nomenclature: []
+  note: 'кода в 804н нет, проверено по полному тексту. Решение заказчика 2026-08-24: НЕ мапить на A11.01.010 (лечебная манипуляция
+    в очаге поражения — присвоение медкода сломало бы ворота G4); тег-маркер без кода'
+  formulations_site: []
+  formulations_wordstat: []
+- tag: mesotherapy_scalp
+  name_ru: Мезотерапия волосистой части головы
+  contour: trich
+  classifier_role: трихологический контур (Тип 1)
+  icd10:
+  - L63-L66
+  nomenclature: []
+  note: 'кода в 804н нет, проверено по полному тексту. НЕ сливать с mesotherapy_face НИКОГДА — правило локализации G4.1, подтверждено
+    заказчиком 2026-08-24: разные контуры (трихология Тип 1 vs эстетическая косметология — маркер Типа 2)'
+  formulations_site:
+  - Мезотерапия волосистой части головы
+  formulations_wordstat: []
+- tag: botulinum_cosm
+  name_ru: Ботулинотерапия (косметология)
+  contour: cosm_est
+  icd10: []
+  nomenclature: []
+  note: прямого косметологического кода в 804н нет (A25.24.001.002 — неврологический контекст); маркер эстетического профиля
+    для G4
+  formulations_site:
+  - Ботулинотерапия
+  - Ботокс
+  formulations_wordstat: []
+- tag: contour_filler
+  name_ru: Контурная пластика (филлеры)
+  contour: cosm_est
+  icd10: []
+  nomenclature: []
+  note: 'кода в 804н нет (проверено: «контурная пластика», «гиалурон» в тексте отсутствуют); маркер эстетического профиля
+    для G4'
+  formulations_site:
+  - Контурная пластика
+  - Филлеры
+  formulations_wordstat: []
+- tag: std_consult_lab
+  name_ru: Диагностика ИППП (приём дерматовенеролога, анализы на сифилис и др.)
+  contour: derm
+  icd10:
+  - A50-A64
+  nomenclature:
+  - code: B01.008.001
+    name: Прием (осмотр, консультация) врача-дерматовенеролога первичный
+    source_id: SRC-804N-20260823
+  - code: A26.06.082
+    name: Определение антител к бледной трепонеме (Treponema pallidum) в крови
+    source_id: SRC-804N-20260823
+  note: 'добавлен по ревью такта 3 (Дерматовенеролог): без венерологического контура клиники КВД-профиля не находятся слоем
+    L2'
+  formulations_site:
+  - Лечение ИППП
+  formulations_wordstat: []
+- tag: mole_mapping
+  name_ru: Картирование родинок / цифровая дерматоскопия всего тела
+  contour: oncoderm
+  icd10:
+  - D22
+  - C43
+  nomenclature: []
+  note: 'добавлен по ревью такта 3 (Онкодерматолог): отдельного кода в 804н нет; сильный маркер онкодерматологического профиля
+    (Тип 1) для G4; ближайший код — A03.01.001 дерматоскопия'
+  formulations_site:
+  - Цифровая дерматоскопия
+  - Цифровая дерматоскопия с картированием
+  - Картирование невусов
+  - Онкодерматологический скрининг
+  - Контроль меланомы
+  formulations_wordstat: []
+- tag: derm_consult_child
+  name_ru: Приём детского дерматолога
+  contour: derm
+  icd10:
+  - L00-L99
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Консультация детского дерматолога
+  - Детская дерматология
+  formulations_wordstat: []
+- tag: dermsurg_consult
+  name_ru: Приём дерматохирурга
+  contour: dermsurg
+  icd10:
+  - D22
+  - D23
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Консультация дерматохирурга
+  formulations_wordstat: []
+- tag: acne_treatment
+  name_ru: Лечение акне
+  contour: derm
+  icd10:
+  - L70
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение акне
+  - Лечение постакне
+  - Лечение угревой болезни
+  formulations_wordstat: []
+- tag: psoriasis_treatment
+  name_ru: Лечение псориаза
+  contour: derm
+  icd10:
+  - L40
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение псориаза
+  formulations_wordstat: []
+- tag: eczema_dermatitis_treatment
+  name_ru: Лечение экземы и дерматитов
+  contour: derm
+  icd10:
+  - L20-L30
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение экземы
+  - Лечение атопического дерматита
+  - Лечение себорейного дерматита
+  formulations_wordstat: []
+- tag: urticaria_treatment
+  name_ru: Лечение крапивницы
+  contour: derm
+  icd10:
+  - L50
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение крапивницы
+  formulations_wordstat: []
+- tag: rosacea_treatment
+  name_ru: Лечение розацеа
+  contour: derm
+  icd10:
+  - L71
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение розацеа
+  - Лечение купероза
+  formulations_wordstat: []
+- tag: vitiligo_treatment
+  name_ru: Лечение витилиго
+  contour: derm
+  icd10:
+  - L80
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение витилиго
+  formulations_wordstat: []
+- tag: mycosis_treatment
+  name_ru: Лечение дерматомикозов
+  contour: derm
+  icd10:
+  - B35-B49
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение грибковых инфекций
+  - Лечение ногтей (онихомикоз)
+  formulations_wordstat: []
+- tag: herpes_treatment
+  name_ru: Лечение герпеса
+  contour: derm
+  icd10:
+  - B02
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение герпеса
+  - Лечение опоясывающего лишая
+  formulations_wordstat: []
+- tag: vascular_treatment
+  name_ru: Лечение сосудистых патологий
+  contour: derm
+  icd10:
+  - L81
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение сосудистых патологий кожи
+  formulations_wordstat: []
+- tag: hyperhidrosis_treatment
+  name_ru: Лечение гипергидроза
+  contour: derm
+  icd10:
+  - R61
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лечение гипергидроза
+  formulations_wordstat: []
+- tag: biorevitalization
+  name_ru: Биоревитализация
+  contour: cosm_est
+  icd10: []
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Биоревитализация
+  formulations_wordstat: []
+- tag: hardware_rejuvenation
+  name_ru: Аппаратное омоложение
+  contour: cosm_est
+  icd10: []
+  nomenclature: []
+  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
+    Врача-методолога (правило G4.1)
+  review_wave0: true
+  formulations_site:
+  - Лазерное омоложение
+  - Фракционный лазер
+  formulations_wordstat: []
