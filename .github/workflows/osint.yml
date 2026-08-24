@@ -47,7 +47,10 @@ jobs:
           cache: pip
 
       - name: Зависимости
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          # Chromium для слоя L1 (каталоги) и SPA-сайтов этапа 6
+          python -m playwright install --with-deps chromium
 
       - name: Быстрые проверки (обработчик API, валидаторы, РЕГРЕССИЯ НА КЛИЕНТЕ)
         # tests/test_client_regression.py — обязательный приёмочный тест:

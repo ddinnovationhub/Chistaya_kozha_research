@@ -104,19 +104,28 @@ def main() -> int:
                     f.write(json.dumps(q, ensure_ascii=False) + "\n")
             print(f"\nDISCOVERY · {city}: запросов в списке {len(queries)} "
                   f"(лимит: {limit or 'по насыщению'})")
-            summary = run_discovery(city, queries, limit=limit, budget=budget, db=open_db())
+            db = open_db()
+            # L1 (каталоги) — решение заказчика 2026-08-25, вариант (а):
+            # Playwright-контур в бою; блок каталога → quality_note, не молчание
+            from src.catalogs import run_l1
+            l1_queries = [q for q in queries if q["layer"] == 1]
+            l1 = run_l1(city, l1_queries, db)
+            checkpoint["l1"] = l1
+            summary = run_discovery(city, queries, limit=limit, budget=budget, db=db)
             checkpoint["discovery"] = summary
             checkpoint["stage"] = "discovery_done"
             print("─" * 72)
+            print(f" L1 (каталоги): рубрик исполнено {l1['l1_executed']}/{len(l1_queries)}"
+                  f" · новых кандидатов: {l1['l1_new_candidates']} · ошибок: {l1['l1_errors']}")
+            if l1.get("quality_note"):
+                print(f" ⚠ КАЧЕСТВО: {l1['quality_note']}")
             print(f" Запросов исполнено (API): {summary['queries_executed']}"
                   f"/{summary['queries_total_api']} · ошибок: {summary['queries_errors']}")
-            print(f" Каталожных запросов (L1) отложено: {summary['queries_catalog_deferred']}"
-                  f" — исполняются отдельным контуром (антибот каталогов)")
             print(f" Уникальных кандидатов в очереди: {summary['candidates_unique']}")
             print(f" Насыщение: {summary['saturation']['reason']}")
             print(f" {summary['budget']}")
             print("─" * 72)
-            print("Проверка сайтов (этап 6) не запускается: её промпт не утверждён.")
+            print("Проверка сайтов (этап 6): промпт утверждён 2026-08-25, код в разработке — не запускается.")
         except Exception as exc:  # noqa: BLE001 — чекпойнт при любом исходе
             checkpoint["stage"] = "discovery_failed"
             checkpoint["discovery_error"] = f"{type(exc).__name__}: {exc}"

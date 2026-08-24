@@ -1,5 +1,7 @@
 # Мэппинг волны 0: нормализованные теги ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx → теги services.yaml
 # Правила G4.1; source_id: SRC-WAVE0-2026 («ручной сбор проекта, 4 города, 2026»)
+# ПРАВИЛО (заказчик 2026-08-25): после любого решения на уровне тега — перепроверять
+# этот файл на затронутые формулировки; тест: tests/test_dictionary_integrity.py
 absorbed:
 - file_tag: Приём дерматолога
   formulation: Консультация дерматолога
@@ -30,7 +32,8 @@ absorbed:
   our_tag: histology_skin
 - file_tag: Гистология
   formulation: Биопсия кожи
-  our_tag: histology_skin
+  our_tag: skin_biopsy
+  note: 'перенесено проверкой «одна формулировка — один тег» 2026-08-25: забор материала ≠ исследование'
 - file_tag: Трихоскопия
   formulation: Трихоскопия
   our_tag: trich_diag
