@@ -98,7 +98,15 @@ def main() -> int:
         try:
             services = yaml.safe_load(pathlib.Path("dictionaries/services.yaml").read_text(encoding="utf-8"))
             nosology = yaml.safe_load(pathlib.Path("dictionaries/nosology.yaml").read_text(encoding="utf-8"))
-            queries = generate_all(city, services, nosology)
+            districts = None
+            dfile = pathlib.Path("data/city_districts.json")
+            if dfile.exists():
+                districts = json.loads(dfile.read_text(encoding="utf-8")).get(city)
+            queries = generate_all(city, services, nosology, districts)
+            if districts:
+                print(f"L6 включён: {len(districts)} районов ({dfile})")
+            else:
+                print("L6 выключен: районов для города нет в data/city_districts.json — полнота по окраинам ниже")
             qfile = pathlib.Path("data") / f"queries_{city_code(city)}.jsonl"
             with qfile.open("w", encoding="utf-8") as f:
                 for q in queries:

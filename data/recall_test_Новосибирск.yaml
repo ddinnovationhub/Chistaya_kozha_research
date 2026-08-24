@@ -1,0 +1,164 @@
+meta:
+  source_id: SRC-NSK-MANUAL-2026
+  source: data/Клиники_Новосибирск_узкоспециализированные_по_дерматологии.xlsx · лист «Все клиники» · ручная выгрузка заказчика
+  date: '2026-08-25'
+  note: 'Только название/домен/ИНН — типы и услуги из файла НЕ перенесены (решение заказчика 2026-08-25: выборка собиралась по другим правилам
+    классификации и эталоном классификатора не является). Recall отвечает только на вопрос «нашли ли мы эти клиники»; расхождение по типу — наблюдение
+    для отчёта, не дефект.'
+  inn_validation: каждое значение ИНН прогнано через src/validators.validate_inn; не прошедшие — статус «Уточнить», значение не записано
+clinics:
+- name: Skinerica (Скинерика)
+  site: novosib.skinerica-clinic.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Elix (Эликс)
+  site: elix.pro
+  inn: null
+  inn_status: 'Уточнить — валидатор ОТБИЛ значение «1115476097934 (ОГРН)»: 13 цифр, формат ОГРН'
+  source_id: SRC-NSK-MANUAL-2026
+- name: Be Lucce (Би Лучче)
+  site: belucce.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Аллея красоты / Аллея Мед
+  site: alleya-nsk.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: LeDi Medica (Леди Медика)
+  site: ledimedica.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Plazma Siberia
+  site: плазмасибирь.рф
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Медицинский центр «Блеск»
+  site: bleskmed.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Центр косметологии ЦНМТ (косм. отдел)
+  site: cnmt.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Клинический госпиталь «Авиценна»
+  site: avicenna-nsk.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Клиника «Евромед»
+  site: euromednsk.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Здравица»
+  site: zdravitsa.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Дуэт Клиник»
+  site: duetclinic.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Клиника «Мать и дитя» Новосибирск
+  site: novosibirsk.mamadeti.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Клиника «Эксперт»
+  site: nsk.klinikaexpert.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Медсанчасть-168»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: ЦНМТ
+  site: cnmt.ru
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Медика» (Medica NSK)
+  site: medica-nsk.clinic
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Лада»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Мой доктор»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Альфа технологии»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Альфа Клиник»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Лайм клиник»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Эрсимед»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Медклик»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Аперто»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: Medica.team
+  site: medica.team
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Доступная медицина»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «5П Медицина»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Эра»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Практика ОбьГЭС»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
+- name: МЦ «Сибнейромед»
+  site: null
+  inn: null
+  inn_status: Уточнить (в файле не указан)
+  source_id: SRC-NSK-MANUAL-2026
