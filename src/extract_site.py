@@ -102,11 +102,32 @@ def _clean_line(line: str) -> str:
     return re.sub(r"\s+", " ", s).strip(" -–—·|")
 
 
-def _service_candidates_from_line(line: str, form_index: dict) -> dict | None:
+_PRICE_ONLY_RE = re.compile(
+    r"^(?:цена|стоимость)?[:\s]*(?:от|до)?\s*\d[\d\s]{0,8}(?:[.,]\d{2})?\s*(?:₽|руб\.?)"
+    r"(?:\s*/\s*\S{1,12})?$", re.IGNORECASE)
+
+
+def _plausible_name(s: str) -> bool:
+    return (4 <= len(s) <= 200 and re.search(r"[а-яА-ЯёЁ]", s) is not None
+            and not PRICE_RE.search(s)
+            and not any(j in s.lower() for j in _NAV_JUNK))
+
+
+def _service_candidates_from_line(line: str, form_index: dict,
+                                  prev_line: str = "") -> dict | None:
     """Одна строка → кандидат услуги или None. Без домысливания: имя —
-    дословный текст строки без ценового хвоста."""
+    дословный текст строки без ценового хвоста. Если строка — ТОЛЬКО цена
+    (вёрстка «название и цена в соседних блоках» — прогон 2026-08-26:
+    178 цен на странице, 1 в таблице), именем берётся предыдущая строка."""
     s = _clean_line(line)
-    if not (4 <= len(s) <= 200) or not re.search(r"[а-яА-ЯёЁ]", s):
+    if not s or not re.search(r"[а-яА-ЯёЁ0-9]", s):
+        return None
+    if _PRICE_ONLY_RE.match(s):
+        prev = _clean_line(prev_line)
+        if _plausible_name(prev):
+            return {"name": prev, "price": PRICE_RE.search(s).group(0).strip()}
+        return None
+    if not (4 <= len(s) <= 200):
         return None
     low = s.lower()
     if any(j in low for j in _NAV_JUNK):
@@ -159,7 +180,7 @@ def extract_pages(pages: dict[str, str], form_index: dict,
                        "quote": None, "url": None},
         "specialists_count": None,  # только явное число; код его не выводит
     }
-    seen_names = set()
+    seen_names: dict[str, dict] = {}
     seen_nonadj = set()
 
     first = True
@@ -170,6 +191,7 @@ def extract_pages(pages: dict[str, str], form_index: dict,
             first = False
         text = html_to_text(raw)   # п.2: только видимый текст из DOM, не разметка
         low_url = url.lower()
+        prev_line = ""
         for canon, keys in _SECTION_CANON:
             if any(k in low_url for k in keys):
                 result["sections_found"].add(canon)
@@ -185,16 +207,21 @@ def extract_pages(pages: dict[str, str], form_index: dict,
                     result["sections_found"].add(canon)
 
             cand = (_table_row_candidate(line, form_index) if "|" in line
-                    else _service_candidates_from_line(line, form_index))
+                    else _service_candidates_from_line(line, form_index, prev_line))
+            prev_line = line
             if cand:
                 if not is_clean_name(cand["name"]):
                     result["dirty_names_rejected"] += 1   # п.2: HTML-мусор не пишется
                 else:
                     key = normalize_service_name(cand["name"])
                     if key and key not in seen_names:
-                        seen_names.add(key)
-                        result["services"].append({"name": cand["name"], "description": None,
-                                                   "price": cand["price"], "page_url": url})
+                        seen_names[key] = {"name": cand["name"], "description": None,
+                                           "price": cand["price"], "page_url": url}
+                        result["services"].append(seen_names[key])
+                    elif key and cand["price"] and seen_names[key]["price"] is None:
+                        # название уже поймано без цены (словарное совпадение),
+                        # цена пришла соседней строкой — дописываем, не дублируем
+                        seen_names[key]["price"] = cand["price"]
                     if PACKAGE_RE.search(cand["name"]):
                         result["has_packages"] = True
 
