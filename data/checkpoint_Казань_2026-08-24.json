@@ -1,0 +1,10 @@
+{
+  "city": "Казань",
+  "date": "2026-08-24",
+  "query_limit": 0,
+  "stage": "smoke_ok",
+  "api_checks": {
+    "yandex_search_api": 200,
+    "dadata": 200
+  }
+}
