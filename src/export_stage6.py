@@ -1,13 +1,20 @@
 """Промежуточная выгрузка этапа 6 (п.8 промпта 2026-08-26):
 лист 02_Услуги по обработанным клиникам, Спорные маппинги (средняя/низкая
-уверенность), Услуги без тега, Сводка распределения, По клиникам."""
+уверенность), Услуги без тега, Сводка распределения, По клиникам.
+
+Плюс файл «на разметку» (п.6 промпта исправления 2026-08-26): всё, что
+ступень 1 не закрыла, уходит в output/{город}_на_разметку_{дата}.json —
+заказчик размечает батчи в Claude Code по prompts/06_markup_batch.md."""
 
 import datetime
+import json
 import pathlib
 import sqlite3
 
 import openpyxl
 from openpyxl.styles import Alignment, Font, PatternFill
+
+from src.mapper import tags_reference_text
 
 ARIAL = Font(name="Arial", size=10)
 BOLD = Font(name="Arial", size=10, bold=True)
@@ -65,7 +72,8 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
         _put(ws, r, row); r += 1
 
     ws = wb.create_sheet("Услуги_без_тега")
-    r = _sheet(ws, "Услуги, для которых тега не нашлось — прямой ответ «что оказывают конкуренты и не оказывает клиент».",
+    r = _sheet(ws, "Услуги, для которых тега не нашлось (после разметки) или разметка ещё не выполнена — "
+                   "прямой ответ «что оказывают конкуренты и не оказывает клиент».",
                SERVICE_COLS, [16, 26, 40, 36, 32, 10, 20, 14, 30, 12, 12, 10])
     for row in _svc_rows(db, "WHERE tag IS NULL"):
         _put(ws, r, row); r += 1
@@ -77,10 +85,10 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
     stats = [
         ("Всего строк услуг", total),
         ("Смаплено кодом (ступень 1, точное совпадение)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='код'")),
-        ("Смаплено моделью (ступень 2)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='модель'")),
-        ("По одному названию без описания", q("SELECT COUNT(*) FROM services_found WHERE mapping_basis LIKE '%описание отсутствует%'")),
+        ("Размечено вручную (Claude Code, ступень 2)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='разметка'")),
+        ("Ожидает разметки", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='на разметке'")),
         ("Без кода 804н", q("SELECT COUNT(*) FROM services_found WHERE code_804n IS NULL")),
-        ("Без тега (вне справочника)", q("SELECT COUNT(*) FROM services_found WHERE tag IS NULL")),
+        ("Без тега (вне справочника, после разметки)", q("SELECT COUNT(*) FROM services_found WHERE tag IS NULL AND mapping_tier='разметка'")),
         ("Уверенность высокая / средняя / низкая",
          f"{q('SELECT COUNT(*) FROM services_found WHERE confidence=' + chr(39) + 'высокая' + chr(39))}"
          f" / {q('SELECT COUNT(*) FROM services_found WHERE confidence=' + chr(39) + 'средняя' + chr(39))}"
@@ -90,18 +98,60 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
         _put(ws, r, [k, v]); r += 1
 
     ws = wb.create_sheet("По_клиникам")
-    r = _sheet(ws, "Итог по каждой обработанной клинике: ворота, тип, флаги, грейд.",
-               ["ИД", "Клиника", "Домен", "Ворота", "Причина", "Тип", "Правило", "Грейд",
-                "Эстетические маркеры", "Несмежные", "Флаг: единств. несмежное",
-                "Флаг: удаление вне дерм-контура", "Пакеты", "ИНН", "Статус ИНН", "Разделы"],
-               [14, 26, 20, 14, 24, 14, 10, 8, 24, 24, 12, 14, 8, 14, 24, 26])
+    r = _sheet(ws, "Итог по каждой обработанной клинике: ворота, тип, флаги, грейд. "
+                   "Тип до слияния разметки — ПРЕДВАРИТЕЛЬНЫЙ (см. «Статус типа»).",
+               ["ИД", "Клиника", "Домен", "Ворота", "Причина", "Тип", "Статус типа",
+                "Правило", "Грейд", "Эстетические маркеры", "Несмежные",
+                "Флаг: единств. несмежное", "Флаг: удаление вне дерм-контура",
+                "Пакеты", "ИНН", "Статус ИНН", "Разделы"],
+               [14, 26, 20, 14, 24, 14, 22, 10, 8, 24, 24, 12, 14, 8, 14, 24, 26])
     for row in db.execute(
-            "SELECT clinic_id, title, domain, gate, gate_reason, type, rule, grade, "
-            "esthetic_markers, nonadjacent, flag_single_nonadjacent, "
+            "SELECT clinic_id, title, domain, gate, gate_reason, type, type_status, "
+            "rule, grade, esthetic_markers, nonadjacent, flag_single_nonadjacent, "
             "flag_removal_outside_derm, has_packages, inn, inn_status, sections_found "
             "FROM clinics ORDER BY clinic_id"):
         _put(ws, r, list(row)); r += 1
 
+    ws = wb.create_sheet("03_Доказательства")
+    r = _sheet(ws, "Каждый факт вне списка услуг — с цитатой и URL (лицензия, несмежные "
+                   "направления, эстетика, реквизиты). Такт 3, Верификатор: вывод без цитаты запрещён.",
+               ["ИД клиники", "Факт", "Деталь", "Цитата", "URL"],
+               [16, 22, 22, 60, 34])
+    for row in db.execute("SELECT clinic_id, kind, detail, quote, url "
+                          "FROM clinic_evidence ORDER BY clinic_id, kind"):
+        _put(ws, r, list(row)); r += 1
+
     out = pathlib.Path("output") / f"{city}_этап6_промежуточная_{day}.xlsx"
     wb.save(out)
+    return out
+
+
+def export_markup(city: str, db: sqlite3.Connection) -> pathlib.Path | None:
+    """Файл «на разметку» (п.6, 2026-08-26): все строки mapping_tier='на разметке'
+    батчами по клиникам, с row_id для обратной записи merge_markup.
+    Возвращает None, если размечать нечего."""
+    rows = list(db.execute(
+        "SELECT id, clinic_id, clinic_title, name_raw, description_raw, page_url, price "
+        "FROM services_found WHERE mapping_tier='на разметке' "
+        "ORDER BY clinic_id, name_raw"))
+    if not rows:
+        return None
+    day = datetime.date.today().isoformat()
+    clinics: dict[str, dict] = {}
+    for rid, cid, ctitle, name, desc, purl, price in rows:
+        c = clinics.setdefault(cid, {"clinic_id": cid, "clinic_title": ctitle,
+                                     "services": []})
+        c["services"].append({"row_id": rid, "name": name, "description": desc,
+                              "price": price, "page_url": purl})
+    payload = {
+        "city": city, "date": day,
+        "instructions": ("Разметка в Claude Code по prompts/06_markup_batch.md. "
+                         "Результат — output/{city}_разметка_{date}.json, "
+                         "подхватывается: python -m src.merge_markup "
+                         f"--city '{city}' --file output/{city}_разметка_{day}.json"),
+        "tags_reference": tags_reference_text(),
+        "clinics": sorted(clinics.values(), key=lambda c: c["clinic_id"]),
+    }
+    out = pathlib.Path("output") / f"{city}_на_разметку_{day}.json"
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding="utf-8")
     return out

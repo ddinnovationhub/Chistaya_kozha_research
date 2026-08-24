@@ -1,9 +1,10 @@
 meta:
-  version: 0.4-price
+  version: 0.5-search-policy
   date: '2026-08-23'
-  status: 'v0.3 + переработка по прайсу клиента 2026-08-26 (SRC-PRICE-CK-NN-2026): 14 новых тегов (онкохирургический блок,
-    сложная локализация, карбокситерапия по локализациям и др.); размерные/номерные градации схлопнуты, локализация — отдельный
-    признак; НЕ утверждён'
+  status: 'v0.4-price + промпт исправления 2026-08-26: поля use_in_search / search_needs_profile_qualifier / search_phrases
+    на каждом теге; carboxytherapy_face → carboxytherapy_derm (контур derm, решение заказчика п.4); wood_lamp_exam МКБ → Не
+    применимо (п.7); 14 тегов прайса утверждены заказчиком 2026-08-26 кроме карбокситерапии (переработана по п.4); НЕ утверждён
+    целиком'
   sources:
   - source_id: SRC-804N-20260823
     name: Приказ Минздрава России от 13.10.2017 N 804н «Об утверждении номенклатуры медицинских услуг» (с изм. от 12.07.2018)
@@ -46,6 +47,8 @@ tags:
   - Консультация врача дерматолога
   formulations_wordstat: []
   icd10_note: 'тег-приём: нормативный якорь — код номенклатуры 804н, диагноз не присваивается (правка заказчика 2026-08-25)'
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: cosm_consult
   name_ru: Приём врача-косметолога
   contour: cosm_med
@@ -60,6 +63,8 @@ tags:
   formulations_site: []
   formulations_wordstat: []
   icd10_note: 'тег-приём: нормативный якорь — код номенклатуры 804н, диагноз не присваивается (правка заказчика 2026-08-25)'
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: onco_consult
   name_ru: Приём онколога (онкодерматология)
   contour: oncoderm
@@ -76,6 +81,8 @@ tags:
   - Консультация врача онколога
   formulations_wordstat: []
   icd10_note: 'тег-приём: нормативный якорь — код номенклатуры 804н, диагноз не присваивается (правка заказчика 2026-08-25)'
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: dermatoscopy
   name_ru: Дерматоскопия
   contour: oncoderm
@@ -91,6 +98,8 @@ tags:
   formulations_site:
   - Дерматоскопия
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: skin_biopsy
   name_ru: Биопсия кожи
   contour: derm
@@ -109,6 +118,10 @@ tags:
   note: 'формулировка «Биопсия кожи» перенесена из histology_skin (проверка «одна формулировка — один тег», 2026-08-25): биопсия
     — забор материала (A11.01.001), гистология — исследование (A08.01.*) | Правка 2026-08-25: биопсия — процедура при подозрении
     на новообразование, не вся глава L'
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - Биопсия кожи
 - tag: histology_skin
   name_ru: Гистологическое / цитологическое исследование кожи
   contour: oncoderm
@@ -128,6 +141,10 @@ tags:
   - Гистологическое исследование
   - Гистологическое исследование биопсийного материала
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - Гистологическое исследование кожи
 - tag: myco_lab
   name_ru: Лабораторная диагностика микозов (соскоб, микроскопия, ПЦР)
   contour: derm
@@ -152,6 +169,8 @@ tags:
   - ПЦР на дерматофиты
   formulations_wordstat: []
   note: диапазон сужен до B35-B36 (системная правка заказчика 2026-08-25, класс ошибки «слишком широкий диапазон»)
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: removal_pigmented
   name_ru: Удаление пигментных новообразований (родинки, невусы)
   contour: dermsurg
@@ -168,6 +187,8 @@ tags:
   - Удаление невусов
   - Лазерное удаление родинок
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: removal_viral
   name_ru: Удаление вирусных образований (папилломы, бородавки, кондиломы, моллюск)
   contour: dermsurg
@@ -187,6 +208,8 @@ tags:
   - Удаление кондилом
   - Удаление контагиозного моллюска
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: removal_keratosis
   name_ru: Удаление кератом
   contour: dermsurg
@@ -201,6 +224,8 @@ tags:
   formulations_site:
   - Удаление кератом
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: removal_soft_tissue
   name_ru: Удаление образований мягких тканей (атеромы, липомы, фибромы)
   contour: dermsurg
@@ -221,6 +246,8 @@ tags:
   - Удаление атеромы, липомы, фибролипомы, липогранулемы
   - Удаление гигромы сухожильного формирования
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: removal_vascular
   name_ru: Удаление сосудистых образований (гемангиомы)
   contour: dermsurg
@@ -235,6 +262,8 @@ tags:
   formulations_site:
   - Удаление гемангиом
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: neoplasm_removal_electro
   name_ru: Удаление новообразований электрокоагуляцией
   contour: dermsurg
@@ -248,6 +277,8 @@ tags:
     source_id: SRC-804N-20260823
   formulations_site: []
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: neoplasm_removal_cryo
   name_ru: Криодеструкция кожи (удаление жидким азотом)
   contour: dermsurg
@@ -264,6 +295,8 @@ tags:
   - Криодеструкция
   - Удаление жидким азотом
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: neoplasm_removal_laser
   name_ru: Лазерное удаление новообразований / лазерная деструкция
   contour: dermsurg
@@ -278,6 +311,8 @@ tags:
     source_id: SRC-804N-20260823
   formulations_site: []
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: neoplasm_removal_radio
   name_ru: Радиоволновое удаление новообразований
   contour: dermsurg
@@ -294,6 +329,8 @@ tags:
   formulations_site:
   - Радиоволновое удаление
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: onco_excision
   name_ru: Иссечение злокачественных новообразований кожи (меланома, базалиома)
   contour: oncoderm
@@ -315,6 +352,8 @@ tags:
   formulations_wordstat: []
   note: 'переименовано из melanoma_excision (заказчик 2026-08-25): базалиома C44 не меланома C43, но хирургически одно иссечение
     A16.01.005, обе требуют гистологии'
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: trich_treatment
   name_ru: Лечебные процедуры волосистой части головы
   contour: trich
@@ -336,6 +375,8 @@ tags:
   - Инъекционное лечение алопеции
   - Плазмотерапия по технологии PRP
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: phototherapy
   name_ru: Фототерапия / ПУВА-терапия
   contour: derm
@@ -352,6 +393,11 @@ tags:
     source_id: SRC-804N-20260823
   formulations_site: []
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - ПУВА-терапия
+  - Фототерапия кожи
 - tag: face_cleaning
   name_ru: Чистка лица
   contour: cosm_est
@@ -370,6 +416,10 @@ tags:
   formulations_site:
   - Чистки лица
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: peeling
   name_ru: Пилинг (дерматологический, ультразвуковой)
   contour: cosm_est
@@ -387,6 +437,10 @@ tags:
   formulations_site:
   - Пилинги
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: laser_resurfacing
   name_ru: Лазерная шлифовка кожи
   contour: cosm_est
@@ -399,6 +453,10 @@ tags:
     source_id: SRC-804N-20260823
   formulations_site: []
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: laser_vascular
   name_ru: Лечение сосудистых патологий кожи (лазерная коагуляция, купероз, телеангиэктазии)
   contour: derm
@@ -418,6 +476,8 @@ tags:
     сосудов в блоке медицинской лазерной дерматологии). vascular_treatment (волна 0) слит сюда; НЕ эстетический маркер для
     R2'
   icd10_status: I78.1 — подрубрика не сверена (Уточнить, этап 9)
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: epilation
   name_ru: Эпиляция (лазерная и др.)
   contour: cosm_est
@@ -431,6 +491,10 @@ tags:
   - Лазерная эпиляция
   - Фотоэпиляция
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: face_massage
   name_ru: Массаж лица медицинский
   contour: cosm_est
@@ -442,6 +506,10 @@ tags:
   formulations_site: []
   formulations_wordstat: []
   icd10_note: эстетическая услуга без нозологической привязки
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: mesotherapy_face
   name_ru: Мезотерапия лица
   contour: cosm_est
@@ -453,6 +521,10 @@ tags:
   formulations_site: []
   formulations_wordstat: []
   icd10_note: эстетическая услуга без нозологической привязки
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: mesotherapy_scalp
   name_ru: Мезотерапия волосистой части головы
   contour: trich
@@ -465,6 +537,8 @@ tags:
   formulations_site:
   - Мезотерапия волосистой части головы
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: botulinum_cosm
   name_ru: Ботулинотерапия (косметология)
   contour: cosm_est
@@ -477,6 +551,10 @@ tags:
   - Ботокс
   formulations_wordstat: []
   icd10_note: эстетическая услуга без нозологической привязки
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: contour_filler
   name_ru: Контурная пластика (филлеры)
   contour: cosm_est
@@ -489,6 +567,10 @@ tags:
   - Филлеры
   formulations_wordstat: []
   icd10_note: эстетическая услуга без нозологической привязки
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: mole_mapping
   name_ru: Картирование родинок / цифровая дерматоскопия всего тела
   contour: oncoderm
@@ -506,6 +588,8 @@ tags:
   - Контроль меланомы
   - Комплексная дерматоскопия
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: derm_consult_child
   name_ru: Приём детского дерматолога
   contour: derm
@@ -520,6 +604,8 @@ tags:
   - Консультация детского врача дерматолога
   formulations_wordstat: []
   icd10_note: 'тег-приём: нормативный якорь — код номенклатуры 804н, диагноз не присваивается (правка заказчика 2026-08-25)'
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: dermsurg_consult
   name_ru: Приём дерматохирурга
   contour: dermsurg
@@ -534,6 +620,8 @@ tags:
   - Осмотр врача дерматолога, хирурга-онколога при удалении новообразований
   formulations_wordstat: []
   icd10_note: 'тег-приём: нормативный якорь — код номенклатуры 804н, диагноз не присваивается (правка заказчика 2026-08-25)'
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: acne_treatment
   name_ru: Лечение акне
   contour: derm
@@ -549,6 +637,8 @@ tags:
   - Лечение угревой болезни
   - Лечение акне лазером
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: psoriasis_treatment
   name_ru: Лечение псориаза
   contour: derm
@@ -561,6 +651,8 @@ tags:
   formulations_site:
   - Лечение псориаза
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: eczema_dermatitis_treatment
   name_ru: Лечение экземы и дерматитов
   contour: derm
@@ -575,6 +667,8 @@ tags:
   - Лечение атопического дерматита
   - Лечение себорейного дерматита
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: urticaria_treatment
   name_ru: Лечение крапивницы
   contour: derm
@@ -587,6 +681,8 @@ tags:
   formulations_site:
   - Лечение крапивницы
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: rosacea_treatment
   name_ru: Лечение розацеа
   contour: derm
@@ -600,6 +696,8 @@ tags:
   formulations_site:
   - Лечение розацеа
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: vitiligo_treatment
   name_ru: Лечение витилиго
   contour: derm
@@ -612,6 +710,8 @@ tags:
   formulations_site:
   - Лечение витилиго
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: mycosis_treatment
   name_ru: Лечение дерматомикозов
   contour: derm
@@ -626,6 +726,8 @@ tags:
   - Лечение грибковых инфекций
   - Лечение ногтей (онихомикоз)
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: herpes_treatment
   name_ru: Лечение герпеса
   contour: derm
@@ -639,6 +741,8 @@ tags:
   - Лечение герпеса
   - Лечение опоясывающего лишая
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: hyperhidrosis_treatment
   name_ru: Лечение гипергидроза
   contour: derm
@@ -651,6 +755,8 @@ tags:
   formulations_site:
   - Лечение гипергидроза
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: biorevitalization
   name_ru: Биоревитализация
   contour: cosm_est
@@ -663,6 +769,10 @@ tags:
   - Биоревитализация
   formulations_wordstat: []
   icd10_note: эстетическая услуга без нозологической привязки
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: hardware_rejuvenation
   name_ru: Аппаратное омоложение
   contour: cosm_est
@@ -676,6 +786,10 @@ tags:
   - Фракционный лазер
   formulations_wordstat: []
   icd10_note: эстетическая услуга без нозологической привязки
+  use_in_search: нет
+  search_exclude_reason: 'эстетический маркер конкурента Типа 2: у клиента нет и не было; в справочнике только для распознавания
+    на сайте (решение заказчика 2026-08-26, п.2)'
+  search_needs_profile_qualifier: нет
 - tag: trich_consult
   name_ru: Приём трихолога
   contour: trich
@@ -692,6 +806,8 @@ tags:
   - Консультация врача-трихолога
   - Консультация врача - трихолога с аппаратным диагностированием
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: trich_diagnostics
   name_ru: Диагностика волос (трихоскопия, фототрихограмма, анализ волос)
   contour: trich
@@ -710,6 +826,12 @@ tags:
   - Фототрихограмма 2-х этапная
   - Фототрихограмма экспресс
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - Трихоскопия
+  - Фототрихограмма
+  - Диагностика волос
 - tag: std_consult
   name_ru: Приём дерматовенеролога по ИППП
   contour: derm
@@ -723,6 +845,10 @@ tags:
   formulations_site:
   - Лечение ИППП
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - Приём дерматовенеролога по ИППП
 - tag: std_lab
   name_ru: Лабораторная диагностика ИППП
   contour: derm
@@ -737,6 +863,9 @@ tags:
   formulations_site:
   - Анализ на социально-значимые инфекции (сифилис, гепатиты, ВИЧ)
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: фраза находит лаборатории и гинекологию; уточнение «кожи» к ИППП неприменимо (п.3)
+  search_needs_profile_qualifier: да
 - tag: removal_complex_site
   name_ru: Удаление новообразований сложной локализации (веко, ресничный край, периорбитальная зона, ушная раковина, слизистая
     рта)
@@ -755,6 +884,8 @@ tags:
   - Удаление новообразований сложной локализации
   - Установка защитной шильды глаза
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: ihc_study
   name_ru: Иммуногистохимическое исследование (ИГХ)
   contour: oncoderm
@@ -767,6 +898,9 @@ tags:
   - Иммуногистохимическое исследование
   - Биопсийная диагностика дерматозов с ИГХ
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: процедура существует во всей онкологии; уточнение «кожи» не сужает выдачу — отсечён заказчиком (п.3)
+  search_needs_profile_qualifier: да
 - tag: excisional_biopsy
   name_ru: Эксцизионная биопсия новообразования кожи
   contour: oncoderm
@@ -781,6 +915,10 @@ tags:
   - Эксцизионная биопсия новообразования кожи
   - Эксцизионная биопсия
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - Эксцизионная биопсия кожи
 - tag: punch_biopsy
   name_ru: Щипковая панч-биопсия
   contour: oncoderm
@@ -795,6 +933,10 @@ tags:
   - Панч-биопсия
   - Биопсия щипковая
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: квалифицированная фраза «Биопсия кожи» дублирует тег skin_biopsy — отдельный запрос не добавляет
+    ничего (п.3)
+  search_needs_profile_qualifier: да
 - tag: excision_reconstructive
   name_ru: Иссечение с реконструктивно-пластическим компонентом
   contour: oncoderm
@@ -811,6 +953,9 @@ tags:
   formulations_site:
   - Иссечение новообразований кожи с реконструктивно пластическим компонентом
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: процедура существует во всей хирургии; уточнение неестественно, формулировки длиннее 5 слов (п.3)
+  search_needs_profile_qualifier: да
 - tag: keloid_treatment
   name_ru: Лечение и иссечение келоидных и гипертрофических рубцов
   contour: derm
@@ -825,6 +970,8 @@ tags:
   - Лазерная шлифовка гипертрофических и келоидных рубцов
   - Лечение келоидных рубцов
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: xanthelasma_removal
   name_ru: Удаление ксантелазмы
   contour: dermsurg
@@ -837,6 +984,8 @@ tags:
   - Хирургическое удаление ксантелазмы
   - Удаление ксантелазмы
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: cytology_puncture
   name_ru: Цитологическое исследование пунктата
   contour: oncoderm
@@ -850,6 +999,9 @@ tags:
   formulations_site:
   - Цитологическое исследование пунктата
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: процедура существует во всех специальностях; отсечён заказчиком как слишком общий (п.3)
+  search_needs_profile_qualifier: да
 - tag: carboxytherapy_scalp
   name_ru: Карбокситерапия волосистой части головы
   contour: trich
@@ -860,16 +1012,25 @@ tags:
   formulations_site:
   - Карбокситерапия ВЧГ
   formulations_wordstat: []
-- tag: carboxytherapy_face
-  name_ru: Карбокситерапия лица
-  contour: cosm_est
+  use_in_search: нет
+  search_exclude_reason: запрос «карбокситерапия» выводит на косметологические салоны (решение заказчика 2026-08-26, п.4)
+  search_needs_profile_qualifier: нет
+- tag: carboxytherapy_derm
+  name_ru: Карбокситерапия дерматологическая (по зонам)
+  contour: derm
   icd10: Не применимо
   nomenclature: []
-  note: эстетический маркер; прайсовая «Карбокситерапия CarboxyPen 1 зона» без локализации — НЕ отнесена ни к одному тегу,
-    вопрос заказчику (источник SRC-PRICE-CK-NN-2026)
+  note: 'решение заказчика 2026-08-26 (п.4): у клиента нет ни одной эстетической услуги — карбокситерапия лечебная, применение
+    по зонам в рамках дерматологии; переименовано из carboxytherapy_face, контур cosm_est → derm, из эстетических маркеров
+    исключена; «CarboxyPen 1 зона» из прайса отнесена сюда (источник SRC-PRICE-CK-NN-2026)'
   formulations_site:
   - Карбокситерапия лица
+  - Карбокситерапия CarboxyPen 1 зона
+  - Карбокситерапия
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: запрос «карбокситерапия» выводит на косметологические салоны (решение заказчика 2026-08-26, п.4)
+  search_needs_profile_qualifier: нет
 - tag: tick_removal
   name_ru: Извлечение клеща
   contour: derm
@@ -880,17 +1041,22 @@ tags:
   formulations_site:
   - Извлечение клеща
   formulations_wordstat: []
+  use_in_search: нет
+  search_exclude_reason: извлечение клеща делают травмпункты и СЭС; уточнение профиля неестественно (п.3)
+  search_needs_profile_qualifier: да
 - tag: wood_lamp_exam
   name_ru: Осмотр под лампой Вуда
   contour: derm
-  icd10:
-  - B35-B36
+  icd10: Не применимо
   nomenclature: []
-  note: люминесцентная диагностика микозов/пигментации (источник SRC-PRICE-CK-NN-2026)
+  note: 'решение заказчика 2026-08-26 (п.7): лампа Вуда применяется при микозах, витилиго, эритразме, порфирии — диагностическая
+    процедура, МКБ не применим (источник SRC-PRICE-CK-NN-2026)'
   formulations_site:
   - Осмотр под лампой Вуда
   - Осмотр под лампой ВУДА
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: milia_removal
   name_ru: Механическое удаление милиумов
   contour: derm
@@ -903,6 +1069,8 @@ tags:
   - Механическое удаление милиумов, контагиозный моллюск
   - Удаление милиумов механически
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: нет
 - tag: neoplasm_removal_surgical
   name_ru: Хирургическое удаление новообразований кожи (скальпель)
   contour: dermsurg
@@ -918,3 +1086,7 @@ tags:
   - Хирургическое удаление поверхностных доброкачественных новообразований кожи
   - Хирургическое удаление новообразований
   formulations_wordstat: []
+  use_in_search: да
+  search_needs_profile_qualifier: да
+  search_phrases:
+  - Хирургическое удаление новообразований кожи

@@ -1,18 +1,13 @@
-"""Двухступенчатый маппинг услуг (п.3 промпта этапа 6, 2026-08-26).
+"""Маппинг услуг: ступень 1 — код (п.3 промпта этапа 6, 2026-08-26).
 
-Ступень 1 — код, без модели: нормализация строки и точное совпадение
-с формулировками справочника.
-Ступень 2 — модель (Anthropic API), ТОЛЬКО для несовпавшего, ОДИН вызов
-на клинику со всеми её неопознанными услугами разом.
-
-Жёсткие запреты модели (вшиты в системный промпт):
-- не додумывать услугу сверх текста названия и описания;
-- не присваивать код 804н «по смыслу» — лучше «код не определён»
-  (официальных разъяснений к 804н не существует — принято как факт);
-- маркетинговые пакеты кодом не размечать, помечать «пакет».
+Ступень 1 — нормализация строки и точное совпадение с формулировками
+справочника. Ступень 2 — РУЧНАЯ разметка батчей в Claude Code (решение
+заказчика 2026-08-26, п.6: Anthropic API не используется, вызовов к внешним
+моделям нет ни одного): всё, что ступень 1 не закрыла, выгружается в
+output/{город}_на_разметку_{дата}.json, размечается агентом в Claude Code
+по prompts/06_markup_batch.md и подхватывается src/merge_markup.py.
 """
 
-import json
 import pathlib
 import re
 
@@ -65,84 +60,9 @@ def map_tier1(raw_name: str, index: dict[str, str]) -> dict | None:
     return None
 
 
-# ── Ступень 2: модель, батч на клинику ───────────────────────────────────
-_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "services": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "tag": {"type": ["string", "null"]},
-                    "code_804n": {"type": ["string", "null"]},
-                    "basis": {"type": "string"},
-                    "confidence": {"type": "string", "enum": ["высокая", "средняя", "низкая"]},
-                    "is_package": {"type": "boolean"},
-                },
-                "required": ["name", "tag", "code_804n", "basis", "confidence", "is_package"],
-                "additionalProperties": False,
-            },
-        }
-    },
-    "required": ["services"],
-    "additionalProperties": False,
-}
-
-_SYSTEM = """Ты — врач-методолог проекта разведки рынка дерматологических клиник.
-Твоя задача: сопоставить услуги с сайта клиники с тегами справочника проекта.
-
-ЖЁСТКИЕ ЗАПРЕТЫ (методология проекта запрещает галлюцинации):
-1. НЕ додумывай услугу сверх текста названия и описания.
-2. НЕ присваивай код номенклатуры 804н «по смыслу»: официальных разъяснений
-   к кодам не существует; если наименование в номенклатуре не соответствует
-   тексту услуги — ставь code_804n = null (это нормальный результат, не дефект).
-3. Маркетинговые упаковки («Онкодозор», «Комплекс …», «… под ключ», Check UP)
-   кодом НЕ размечай: is_package = true, tag = null.
-4. Если подходящего тега нет — tag = null. Не натягивай ближайший.
-5. basis — короткая фраза, ПО КАКОМУ ПРИЗНАКУ решено (проверяемая).
-6. Если описания нет, маппинг только по названию — в basis добавь
-   «только название, описание отсутствует».
-Верни ровно по одной записи на каждую входную услугу, в том же порядке."""
-
-
-def map_tier2_batch(clinic_name: str, unmapped: list[dict],
-                    tags_reference: str, model: str, budget=None,
-                    client=None) -> list[dict]:
-    """unmapped: [{name, description|None}]. ОДИН вызов на клинику.
-    Возвращает список в формате _SCHEMA['services']."""
-    import anthropic
-    client = client or anthropic.Anthropic()
-
-    lines = []
-    for s in unmapped:
-        d = s.get("description") or ""
-        lines.append(f"- {s['name']}" + (f" — {d[:300]}" if d else " (описания нет)"))
-    user = (f"Клиника: {clinic_name}\n\nСправочник тегов проекта:\n{tags_reference}\n\n"
-            f"Неопознанные услуги ({len(unmapped)}):\n" + "\n".join(lines))
-
-    if budget is not None:
-        budget.charge("anthropic", 1)  # фиксация вызова до отправки
-    response = client.messages.create(
-        model=model,
-        max_tokens=16000,
-        system=_SYSTEM,
-        output_config={"format": {"type": "json_schema", "schema": _SCHEMA}},
-        messages=[{"role": "user", "content": user}],
-    )
-    if budget is not None:
-        budget.charge_tokens("anthropic", response.usage.input_tokens,
-                             response.usage.output_tokens)
-    text = next(b.text for b in response.content if b.type == "text")
-    result = json.loads(text)["services"]
-    for r in result:
-        r["tier"] = "модель"
-    return result
-
-
 def tags_reference_text(services: dict | None = None) -> str:
-    """Компактная справка тегов для промпта ступени 2."""
+    """Компактная справка тегов — вкладывается в файл «на разметку», чтобы
+    батч был самодостаточным для разметки в Claude Code."""
     services = services or yaml.safe_load(_SERVICES.read_text(encoding="utf-8"))
     lines = []
     for t in services["tags"]:

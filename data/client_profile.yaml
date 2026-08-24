@@ -2,7 +2,7 @@ meta:
   sources:
   - source_id: SRC-PRICE-CK-NN-2026
     role: 'первичный (решение заказчика 2026-08-26: прайс точнее сайта)'
-    tags: 32
+    tags: 33
   - source_id: SRC-WAVE0-2026
     role: 'дополняющий: «Оказывает ли клиент = Да» там, где прайс молчит (отсутствие позиции в прайсе ≠ не оказывает: нозологическое
       лечение входит в консультацию)'
@@ -13,10 +13,12 @@ meta:
     esthetic_markers_found: []
     nonadjacent_found: []
   note: 'пересобран по прайсу (п.2.5 промпта этапа 6). Прайсовые нозологии удалений сформулированы «элементами» без нозологий
-    — removal_pigmented/viral/keratosis подтверждены сайтом. carboxytherapy_face НЕ включена: прайсовая «CarboxyPen 1 зона»
-    без локализации — открытый вопрос заказчику'
+    — removal_pigmented/viral/keratosis подтверждены сайтом. Решение заказчика 2026-08-26 (п.4 промпта исправления):
+    карбокситерапия у клиента лечебная, «CarboxyPen 1 зона» отнесена к carboxytherapy_derm (контур derm), тег включён
+    в профиль из прайса'
 tags:
 - acne_treatment
+- carboxytherapy_derm
 - carboxytherapy_scalp
 - cytology_puncture
 - derm_consult
@@ -63,6 +65,7 @@ tags:
 tags_by_source:
   price:
   - acne_treatment
+  - carboxytherapy_derm
   - carboxytherapy_scalp
   - cytology_puncture
   - derm_consult

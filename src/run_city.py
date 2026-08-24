@@ -152,20 +152,24 @@ def main() -> int:
                           + "; ".join(recall["missed"]))
             print(f" {summary['budget']}")
             print("─" * 72)
-            # ── Этап 6: первые 10 клиник и ОБЯЗАТЕЛЬНАЯ ОСТАНОВКА (п.8) ──
-            if os.environ.get("ANTHROPIC_API_KEY"):
-                from src.export_stage6 import export_intermediate
-                from src.site_checker import run_stage6
-                s6 = run_stage6(city, budget=budget, db=db, max_clinics=10)
-                checkpoint["stage6"] = s6
-                checkpoint["stage"] = "stage6_intermediate_stop"
-                out = export_intermediate(city, db)
-                print(f"ЭТАП 6: обработано клиник: {s6['processed']} · {s6['stopped_reason']}")
-                print(f"Промежуточная выгрузка: {out}")
-                print(f" {budget.report()}")
-            else:
-                print("Этап 6 пропущен: ANTHROPIC_API_KEY отсутствует в окружении — "
-                      "добавь ключ в Secrets и переменную в воркфлоу.")
+            # ── Этап 6: первые 10 клиник и ОБЯЗАТЕЛЬНАЯ ОСТАНОВКА (п.8).
+            # Без внешнего API (решение заказчика 2026-08-26, п.6): экстракция
+            # и ступень 1 кодом, остальное — файл «на разметку» для Claude Code
+            from src.export_stage6 import export_intermediate, export_markup
+            from src.site_checker import run_stage6
+            s6 = run_stage6(city, db=db, max_clinics=10)
+            checkpoint["stage6"] = s6
+            checkpoint["stage"] = "stage6_intermediate_stop"
+            out = export_intermediate(city, db)
+            markup = export_markup(city, db)
+            print(f"ЭТАП 6: обработано клиник: {s6['processed']} · {s6['stopped_reason']}")
+            print(f" Замер (п.6): строк услуг {s6['services_total']} · "
+                  f"закрыто ступенью 1 кодом: {s6['tier1_mapped']} · "
+                  f"на ручную разметку: {s6['to_markup']} · "
+                  f"средний батч на клинику: {s6['avg_markup_batch']}")
+            print(f"Промежуточная выгрузка: {out}")
+            print(f"Файл «на разметку»: {markup or 'размечать нечего — ступень 1 закрыла всё'}")
+            print(f" {budget.report()}")
         except Exception as exc:  # noqa: BLE001 — чекпойнт при любом исходе
             checkpoint["stage"] = "discovery_failed"
             checkpoint["discovery_error"] = f"{type(exc).__name__}: {exc}"

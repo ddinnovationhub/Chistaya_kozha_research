@@ -107,6 +107,54 @@ def _freq_order(items: list[dict]) -> list[dict]:
     ))
 
 
+# ── Приоритет L2 (промпт исправления 2026-08-26, п.1) ─────────────────────
+# Группа 1 — теги из data/client_profile.yaml (что оказывает клиент);
+# Группа 2 — остальное ядро дерматологического контура;
+# Группа 3 — прочее. Внутри группы: частотность Вордстата по убыванию,
+# при отсутствии частот (сейчас) — по алфавиту текста.
+DERM_CORE_CONTOURS = {"derm", "oncoderm", "trich", "dermsurg"}
+_CLIENT_PROFILE = pathlib.Path("data/client_profile.yaml")
+
+
+def load_client_tags(path: pathlib.Path = _CLIENT_PROFILE) -> set[str]:
+    return set(yaml.safe_load(path.read_text(encoding="utf-8"))["tags"])
+
+
+def assert_profile_contours(services: dict, client_tags: set[str]):
+    """Ошибка СБОРКИ, а не молчаливое расхождение (заказчик, 2026-08-26, п.4):
+    тег из профиля клиента в контуре cosm_est противоречит регрессии
+    «эстетических маркеров у клиента ноль» (второй случай после laser_vascular).
+    Неизвестный тег профиля ловит переименования в справочнике."""
+    by_tag = {t["tag"]: t for t in services["tags"]}
+    unknown = sorted(client_tags - set(by_tag))
+    if unknown:
+        raise ValueError(f"ошибка сборки: теги client_profile отсутствуют в services.yaml: {unknown}")
+    esthetic = sorted(t for t in client_tags if by_tag[t]["contour"] == "cosm_est")
+    if esthetic:
+        raise ValueError(
+            f"ошибка сборки: теги client_profile лежат в контуре cosm_est: {esthetic} — "
+            f"противоречит регрессии «эстетических маркеров у клиента ноль»")
+
+
+def _priority_group(tag: dict, client_tags: set[str]) -> int:
+    if tag["tag"] in client_tags:
+        return 1
+    if tag["contour"] in DERM_CORE_CONTOURS:
+        return 2
+    return 3
+
+
+def _priority_order(items: list[tuple[int, dict]]) -> list[dict]:
+    """(группа, запрос) → приоритет, внутри группы частотность, затем алфавит."""
+    ranked = sorted(items, key=lambda gi: (
+        gi[0],
+        gi[1]["wordstat_freq"] is None,
+        -(gi[1]["wordstat_freq"] or 0),
+        gi[1]["text"],
+    ))
+    return [q for _, q in ranked]
+
+
 _BAD_SEARCH_CHARS = set("/();№«»")
 
 
@@ -126,21 +174,42 @@ def make_search_phrase(phrase: str) -> str | None:
     return s
 
 
-def generate_l2(city: str, services: dict) -> list[dict]:
-    out = []
+def tag_search_phrases(tag: dict) -> list[str]:
+    """Поисковые фразы тега с учётом политики поиска (2026-08-26, пп.2-3):
+    use_in_search=нет → тег в поиск не идёт (остаётся для распознавания);
+    search_needs_profile_qualifier=да → ТОЛЬКО явные search_phrases
+    (квалифицированные уточнением профиля), не name_ru/formulations."""
+    if tag.get("use_in_search", "да") == "нет":
+        return []
+    if tag.get("search_needs_profile_qualifier", "нет") == "да":
+        raw = tag.get("search_phrases", [])
+    else:
+        raw = [tag["name_ru"], *tag.get("formulations_site", [])]
+    out, seen = [], set()
+    for phrase in raw:
+        sp = make_search_phrase(phrase)
+        if sp is not None and sp.lower() not in seen:
+            seen.add(sp.lower())
+            out.append(sp)
+    return out
+
+
+def generate_l2(city: str, services: dict, client_tags: set[str]) -> list[dict]:
+    entries = []
     for tag in services["tags"]:
-        seen_texts = set()
-        for phrase in [tag["name_ru"], *tag.get("formulations_site", [])]:
-            sp = make_search_phrase(phrase)
-            if sp is None:
-                continue
-            text = f"{sp} {city}"
-            if text.lower() in seen_texts:   # хэш id регистронезависимый — дедуп тоже
-                continue
-            seen_texts.add(text.lower())
-            out.append(_q(2, f"svc-{tag['tag']}", city, text,
-                          "services.yaml", tag.get("wordstat_freq")))
-    return _freq_order(out)
+        group = _priority_group(tag, client_tags)
+        for sp in tag_search_phrases(tag):
+            entries.append((group, _q(2, f"svc-{tag['tag']}", city, f"{sp} {city}",
+                                      "services.yaml", tag.get("wordstat_freq"))))
+    ordered = _priority_order(entries)
+    # междутеговый дедуп текста: одинаковая фраза у двух тегов — один запрос,
+    # остаётся у более приоритетного (первого в порядке)
+    out, seen = [], set()
+    for q in ordered:
+        if q["text"].lower() not in seen:
+            seen.add(q["text"].lower())
+            out.append(q)
+    return out
 
 
 def generate_l3(city: str, nosology: dict) -> list[dict]:
@@ -167,24 +236,42 @@ def generate_l5(city: str, brands: list[str]) -> list[dict]:
     return out
 
 
+# L6 — ЗАКРЫТЫЙ список ключевых услуг (заказчик, 2026-08-26, п.5): в ТЗ
+# «ключевые услуги × районы», а не «все услуги × районы» — иначе слой съедает
+# 69% бюджета города. Состав: пять приёмов + пять групп удалений + дерматоскопия.
+L6_KEY_TAGS = [
+    "derm_consult", "onco_consult", "derm_consult_child", "trich_consult",
+    "dermsurg_consult",
+    "removal_pigmented", "removal_viral", "removal_keratosis",
+    "removal_soft_tissue", "removal_vascular",
+    "dermatoscopy",
+]
+
+
 def generate_l6(city: str, services: dict, districts: list[str]) -> list[dict]:
     """Только для городов >1 млн (наличие районов в data/city_districts.json —
-    и есть включатель слоя). Ключевые услуги × районы."""
-    key_tags = [t for t in services["tags"]
-                if t["contour"] in ("derm", "oncoderm", "dermsurg")]
+    и есть включатель слоя). Ключевые услуги (L6_KEY_TAGS) × районы,
+    одна каноническая фраза на тег."""
+    by_tag = {t["tag"]: t for t in services["tags"]}
     out = []
     for d in sorted(districts):
-        for tag in key_tags:
-            out.append(_q(6, f"geo-{tag['tag']}", city,
-                          f"{tag['name_ru']} {city} {d}", "city_districts.json"))
+        for key in L6_KEY_TAGS:
+            phrases = tag_search_phrases(by_tag[key])
+            if not phrases:
+                continue
+            out.append(_q(6, f"geo-{key}", city,
+                          f"{phrases[0]} {city} {d}", "city_districts.json"))
     return out
 
 
 def generate_all(city: str, services: dict, nosology: dict,
-                 districts: list[str] | None = None) -> list[dict]:
+                 districts: list[str] | None = None,
+                 client_tags: set[str] | None = None) -> list[dict]:
+    client_tags = client_tags if client_tags is not None else load_client_tags()
+    assert_profile_contours(services, client_tags)   # ошибка сборки, не расхождение
     queries = [
         *generate_l1(city),
-        *generate_l2(city, services),
+        *generate_l2(city, services, client_tags),
         *generate_l3(city, nosology),
         *generate_l4(city),
         # L5 — вторая волна, после обнаружения брендов (generate_l5)
@@ -192,6 +279,11 @@ def generate_all(city: str, services: dict, nosology: dict,
     ]
     ids = [q["query_id"] for q in queries]
     assert len(ids) == len(set(ids)), "дубль query_id — нарушение детерминизма"
+    banned = {t["tag"] for t in services["tags"] if t.get("use_in_search", "да") == "нет"}
+    for q in queries:
+        if q["layer"] in (2, 6):
+            tag = q["template_id"].split("-", 1)[1]
+            assert tag not in banned, f"тег {tag} с use_in_search=нет попал в запросы"
     return queries
 
 

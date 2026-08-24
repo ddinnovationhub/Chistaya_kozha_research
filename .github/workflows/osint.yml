@@ -34,7 +34,8 @@ jobs:
       YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
       DADATA_API_KEY: ${{ secrets.DADATA_API_KEY }}
       DADATA_SECRET_KEY: ${{ secrets.DADATA_SECRET_KEY }}
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # ANTHROPIC_API_KEY удалён (решение заказчика 2026-08-26, п.6):
+      # этап 6 работает без внешнего API — ступень 1 кодом + ручная разметка
       CITY: ${{ github.event.inputs.city }}
       QUERY_LIMIT: ${{ github.event.inputs.limit }}
     steps:
