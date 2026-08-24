@@ -1,8 +1,9 @@
 """Точка входа боевого прогона по городу (GitHub Actions).
 
-Текущий объём: этап 0 + смоук ключей. Смоук прогоняет ВСЕ проверки и выводит
-сводную таблицу, а не падает на первой ошибке (решение заказчика 2026-08-24).
-Бюджет: каждый платный запрос списывается через BudgetTracker (data/budget.json,
+Объём: этап 0 (смоук всех проверок со сводной таблицей) → этап 5 (discovery
+по утверждённому промпту prompts/05_discovery_executor.md). Проверка сайтов
+(этап 6) подключается после утверждения её промпта. Бюджет: каждый платный
+запрос списывается через BudgetTracker ДО отправки (data/budget.json,
 накопительно по проекту). Чекпойнт пишется при любом исходе.
 
 Запуск: CITY='Казань' python -m src.run_city
@@ -14,8 +15,12 @@ import os
 import pathlib
 import sys
 
+import yaml
+
 from src.api_client import dadata_find_raw, handle_api_response, yandex_search_raw
 from src.budget import BudgetTracker
+from src.discovery import open_db, run_discovery
+from src.query_gen import city_code, generate_all
 
 REQUIRED = {
     "YANDEX_API_KEY":    "Яндекс Search API — основной поиск",
@@ -87,9 +92,36 @@ def main() -> int:
     print("═" * 72)
 
     if not failed:
-        print("\nПайплайн разведки (этапы 5-8) ещё не подключён — прогон штатно "
-              "остановлен после смоука. Это ожидаемое поведение.")
         checkpoint["stage"] = "smoke_ok"
+        # ── Этап 5: discovery по утверждённому промпту ────────────────────
+        try:
+            services = yaml.safe_load(pathlib.Path("dictionaries/services.yaml").read_text(encoding="utf-8"))
+            nosology = yaml.safe_load(pathlib.Path("dictionaries/nosology.yaml").read_text(encoding="utf-8"))
+            queries = generate_all(city, services, nosology)
+            qfile = pathlib.Path("data") / f"queries_{city_code(city)}.jsonl"
+            with qfile.open("w", encoding="utf-8") as f:
+                for q in queries:
+                    f.write(json.dumps(q, ensure_ascii=False) + "\n")
+            print(f"\nDISCOVERY · {city}: запросов в списке {len(queries)} "
+                  f"(лимит: {limit or 'по насыщению'})")
+            summary = run_discovery(city, queries, limit=limit, budget=budget, db=open_db())
+            checkpoint["discovery"] = summary
+            checkpoint["stage"] = "discovery_done"
+            print("─" * 72)
+            print(f" Запросов исполнено (API): {summary['queries_executed']}"
+                  f"/{summary['queries_total_api']} · ошибок: {summary['queries_errors']}")
+            print(f" Каталожных запросов (L1) отложено: {summary['queries_catalog_deferred']}"
+                  f" — исполняются отдельным контуром (антибот каталогов)")
+            print(f" Уникальных кандидатов в очереди: {summary['candidates_unique']}")
+            print(f" Насыщение: {summary['saturation']['reason']}")
+            print(f" {summary['budget']}")
+            print("─" * 72)
+            print("Проверка сайтов (этап 6) не запускается: её промпт не утверждён.")
+        except Exception as exc:  # noqa: BLE001 — чекпойнт при любом исходе
+            checkpoint["stage"] = "discovery_failed"
+            checkpoint["discovery_error"] = f"{type(exc).__name__}: {exc}"
+            print(f"⛔ discovery остановлен: {type(exc).__name__}: {exc}")
+            failed.append(("discovery", "ОШИБКА", str(exc)[:160]))
     else:
         checkpoint["stage"] = "smoke_failed"
         checkpoint["failed"] = [r[0] for r in failed]

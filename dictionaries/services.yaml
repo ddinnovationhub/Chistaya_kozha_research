@@ -348,8 +348,8 @@ tags:
   formulations_site: []
   formulations_wordstat: []
 - tag: laser_vascular
-  name_ru: Лазерное удаление сосудов (телеангиэктазий)
-  contour: cosm_med
+  name_ru: Лечение сосудистых патологий кожи (лазерная коагуляция, купероз, телеангиэктазии)
+  contour: derm
   icd10:
   - 'I78.1 (Уточнить: подрубрика не сверена)'
   - L81
@@ -357,8 +357,12 @@ tags:
   - code: A22.01.004
     name: Лазерная коагуляция телеангиоэктазий
     source_id: SRC-804N-20260823
-  formulations_site: []
+  formulations_site:
+  - Лечение сосудистых патологий кожи
   formulations_wordstat: []
+  note: 'УТВЕРЖДЕНО ЗАКАЗЧИКОМ 2026-08-24: сосудистый контур — ДЕРМАТОЛОГИЯ, не косметология (у клиента лазерная коагуляция
+    сосудов в блоке медицинской лазерной дерматологии). vascular_treatment (волна 0) слит сюда; НЕ эстетический маркер для
+    R2'
 - tag: epilation
   name_ru: Эпиляция (лазерная и др.)
   contour: cosm_est
@@ -587,18 +591,6 @@ tags:
   formulations_site:
   - Лечение герпеса
   - Лечение опоясывающего лишая
-  formulations_wordstat: []
-- tag: vascular_treatment
-  name_ru: Лечение сосудистых патологий
-  contour: derm
-  icd10:
-  - L81
-  nomenclature: []
-  note: создан волной 0 из ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx (источник SRC-WAVE0-2026); близкого тега в сиде 804н не было — флаг на ревью
-    Врача-методолога (правило G4.1)
-  review_wave0: true
-  formulations_site:
-  - Лечение сосудистых патологий кожи
   formulations_wordstat: []
 - tag: hyperhidrosis_treatment
   name_ru: Лечение гипергидроза

@@ -136,6 +136,10 @@ absorbed:
 - file_tag: Чистки лица
   formulation: Чистки лица
   our_tag: face_cleaning
+- file_tag: Лечение сосудистых патологий
+  formulation: Лечение сосудистых патологий кожи
+  our_tag: laser_vascular
+  note: 'слито решением заказчика 2026-08-24: сосуды — дерматология'
 new_tags:
 - file_tag: Приём детского дерматолога
   our_tag: derm_consult_child
@@ -166,9 +170,6 @@ new_tags:
   contour: derm
 - file_tag: Лечение герпеса
   our_tag: herpes_treatment
-  contour: derm
-- file_tag: Лечение сосудистых патологий
-  our_tag: vascular_treatment
   contour: derm
 - file_tag: Лечение гипергидроза
   our_tag: hyperhidrosis_treatment
