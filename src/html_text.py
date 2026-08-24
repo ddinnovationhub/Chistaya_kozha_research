@@ -74,12 +74,16 @@ def site_name_from_html(content: str) -> tuple[str | None, str | None]:
         return _WS_RE.sub(" ", og["content"]).strip()[:120], "og:site_name"
     header = soup.find("header") or soup.find(class_=re.compile(r"\bheader\b", re.I))
     if header:
+        junk = {"вкл", "выкл", "меню", "главная", "поиск", "войти", "контакты",
+                "версия для слабовидящих", "ru", "en"}
         logo_img = header.find("img", alt=True)
-        if logo_img and len(logo_img["alt"].strip()) >= 3:
+        if logo_img and len(logo_img["alt"].strip()) >= 3 \
+                and logo_img["alt"].strip().lower().rstrip(".") not in junk:
             return _WS_RE.sub(" ", logo_img["alt"]).strip()[:120], "шапка сайта (alt логотипа)"
         for a in header.find_all("a", href=True):
             txt = _WS_RE.sub(" ", a.get_text(" ", strip=True))
-            if 3 <= len(txt) <= 80 and a["href"].rstrip("/") in ("", "/", "#", "."):
+            if (5 <= len(txt) <= 80 and a["href"].rstrip("/") in ("", "/", "#", ".")
+                    and txt.lower().rstrip(".") not in junk):
                 return txt, "шапка сайта"
     return None, None
 

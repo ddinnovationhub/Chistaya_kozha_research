@@ -9,8 +9,8 @@
    "clinic_title": "Лечение волос и кожи головы в Новосибирске — «Лаборатория А»",
    "services": [
     {
-     "row_id": 1,
-     "name": "<p Цена консультации без скидки",
+     "row_id": 125,
+     "name": "Цена консультации без скидки",
      "description": null,
      "price": "2000 руб",
      "page_url": "https://alab54.ru/trichology/"
@@ -18,337 +18,1579 @@
    ]
   },
   {
-   "clinic_id": "КЛН-allergo-plus.ru",
-   "clinic_title": "Аллергологи в Новосибирске — Медицинский центр Аллерго+",
+   "clinic_id": "КЛН-alfa-clinic.com",
+   "clinic_title": "Альфа клиника",
    "services": [
     {
-     "row_id": 24,
-     "name": "<div class=\"tabAccordionContent\" <p <span class=\"\" Спирография (диагностика функции внешнего дыхания)",
+     "row_id": 141,
+     "name": "PRP терапия",
      "description": null,
-     "price": "1 100 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "7000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 2,
-     "name": "<div class=\"tabAccordionContent\" <p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача детского пульмонолога первичная (Кицул И.Г.)",
+     "row_id": 138,
+     "name": "Выдача справки дерматовенеролога (допуск к операции)",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "2500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 27,
-     "name": "<div class=\"tabAccordionContent\" <p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача по вопросам вакцинации и составления индивидуального графика вакцинации",
+     "row_id": 171,
+     "name": "Криодеструкция и удаление новообразований",
      "description": null,
-     "price": "2 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "960 руб.",
+     "page_url": "https://alfa-clinic.com/doctors/olga-valerevna-shestakova"
     },
     {
-     "row_id": 30,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Иммунизация вакциной & 8220;Клещ-Э-Вак& 8221; (РФ) & 8211; детская",
+     "row_id": 146,
+     "name": "Лазерное Удаление гемангеом 1 степени сложности (1 элемент)",
      "description": null,
-     "price": "3 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "1100 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 6,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача аллерголога-иммунолога первичная",
+     "row_id": 147,
+     "name": "Лазерное Удаление гемангеом 2 степени сложности (1 элемент)",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "2500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 4,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача детского пульмонолога первичная (Скопа О.Н.)",
+     "row_id": 148,
+     "name": "Лазерное Удаление гемангеом 3 степени сложности (1 элемент)",
      "description": null,
-     "price": "3 200 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "6000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 12,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача педиатра (Баева Н.Н.)",
+     "row_id": 149,
+     "name": "Лазерное Удаление кератом 1 степени сложности (1 элемент)",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "2000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 10,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача педиатра первичная",
+     "row_id": 150,
+     "name": "Лазерное Удаление кератом 2 степени сложности (1 элемент)",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 5,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача пульмонолога, к.м.н. (Пинегина Ю.С.)",
+     "row_id": 151,
+     "name": "Лазерное Удаление кератом 3 степени сложности (1 элемент)",
      "description": null,
-     "price": "4 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "5000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 8,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача эндокринолога первичная",
+     "row_id": 152,
+     "name": "Лазерное Удаление ксантом (1 элемент)",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 18,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Консультация врача-онколога, химиотерапевта",
+     "row_id": 153,
+     "name": "Лазерное Удаление невуса 1 категория — от 5 мм (1 ед.)",
      "description": null,
-     "price": "5 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "2500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 13,
-     "name": "<p class=\"ds-markdown-paragraph\" <span class=\"\" Оформление справки форма 079 (пионерский лагерь) педиатрия",
+     "row_id": 154,
+     "name": "Лазерное Удаление невуса 2 категория — от 5 мм (1 ед.)",
      "description": null,
-     "price": "2 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "5000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 37,
-     "name": "<span class=\"\" Диаскинтест (РФ) & 8211; включает осмотр врача перед вакцинацией",
+     "row_id": 155,
+     "name": "Лазерное Удаление невуса на лице (1 ед.)",
      "description": null,
-     "price": "3 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "3700 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 47,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Адасель& 8221; (Канада)",
+     "row_id": 159,
+     "name": "Лазерное Удаление папилломы (1 элемент)",
      "description": null,
-     "price": "4 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "1000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 36,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;АльгавакМ& 8221;",
+     "row_id": 160,
+     "name": "Лазерное Удаление просяного угря (1 элемент)",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "350 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 46,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Варилрикс& 8221; (бельгия)",
+     "row_id": 156,
+     "name": "Лазерное удаление новообразований кожи вирусная бородавчатая папиллома (за 1 единицу) 1 категория сложности",
      "description": null,
-     "price": "6 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "2500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 48,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Гардасил& 8221; (Нидерланды/ США)",
+     "row_id": 157,
+     "name": "Лазерное удаление новообразований кожи вирусная бородавчатая папиллома (за 1 единицу) 2 категория сложности",
      "description": null,
-     "price": "13 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "3500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 31,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Клещ-Э-Вак& 8221; (РФ) & 8211; взрослая",
+     "row_id": 158,
+     "name": "Лазерное удаление новообразований кожи вирусная бородавчатая папиллома (за 1 единицу) 3 категория сложности",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "6000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 45,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;МенКвадфи& 8221; (США)",
+     "row_id": 173,
+     "name": "Мезотерапия кожи головы",
      "description": null,
-     "price": "6 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "6500 руб.",
+     "page_url": "https://alfa-clinic.com/doctors/tatiana-sergeevna-vitman"
     },
     {
-     "row_id": 33,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Пентаксим& 8221; (Франция)",
+     "row_id": 139,
+     "name": "Мезотерапия кожи головы Hair X",
      "description": null,
-     "price": "4 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "6500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 42,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Пневмовакс 23& 8221; (США)",
+     "row_id": 140,
+     "name": "Мезотерапия кожи головы Tricholax",
      "description": null,
-     "price": "4 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "3900 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 32,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Полимилекс& 8221; (РФ)",
+     "row_id": 168,
+     "name": "Мезотерапия кожи головы препаратом Hair X",
      "description": null,
-     "price": "4 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "6500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/mezoterapiya-volos"
     },
     {
-     "row_id": 40,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Превенар 13& 8221; (США)",
+     "row_id": 169,
+     "name": "Мезотерапия кожи головы препаратом Tricholax",
      "description": null,
-     "price": "4 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "3900 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/mezoterapiya-volos"
     },
     {
-     "row_id": 35,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Регевак& 8221; против Гепатита B (РФ) & 8211; взрослая",
+     "row_id": 165,
+     "name": "Механическая экстракция (удаление) моллюска 1шт",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "600 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 34,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Регевак& 8221; против Гепатита B (РФ) & 8211; детская",
+     "row_id": 164,
+     "name": "Обработка бородавки/стержневой мозоли",
      "description": null,
-     "price": "3 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "1500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 39,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Рота-V-Эйд& 8221; (Индия)",
+     "row_id": 142,
+     "name": "Пилинг ретиноевый",
      "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "5500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 41,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Ультрикс-Квадри& 8221;, Россия",
+     "row_id": 170,
+     "name": "Прием дерматовенеролога",
      "description": null,
-     "price": "4 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "3700 руб.",
+     "page_url": "https://alfa-clinic.com/doctors/olga-valerevna-shestakova"
     },
     {
-     "row_id": 43,
-     "name": "<span class=\"\" Иммунизация вакциной & 8220;Хаврикс-720 ЕД& 8221; (Бельгия)",
+     "row_id": 132,
+     "name": "Прием дерматовенеролога первичный",
      "description": null,
-     "price": "4 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 44,
-     "name": "<span class=\"\" Иммунизация вакциной против К-К-П Вактривир (РФ)",
+     "row_id": 133,
+     "name": "Прием дерматовенеролога повторный",
      "description": null,
-     "price": "4 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "3500 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 7,
-     "name": "<span class=\"\" Консультация врача аллерголога-иммунолога повторная (в течение 2 мес. В рамках 1 нозологии)",
+     "row_id": 134,
+     "name": "Прием детского дерматолога",
      "description": null,
-     "price": "3 200 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 3,
-     "name": "<span class=\"\" Консультация врача детского пульмонолога повторная (в течение 2 мес. В рамках 1 нозологии) (Кицул И.Г.)",
+     "row_id": 137,
+     "name": "Прием перед удалением врача-дерматовенеролога",
      "description": null,
-     "price": "3 200 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 20,
-     "name": "<span class=\"\" Консультация врача онколога экспертного уровня (г. Москва)",
+     "row_id": 172,
+     "name": "Прием трихолога",
      "description": null,
-     "price": "5 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/doctors/tatiana-sergeevna-vitman"
     },
     {
-     "row_id": 22,
-     "name": "<span class=\"\" Консультация врача онколога экспертного уровня д.м.н. (г. Москва)",
+     "row_id": 135,
+     "name": "Прием трихолога первичный",
      "description": null,
-     "price": "7 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "4000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
     },
     {
-     "row_id": 21,
-     "name": "<span class=\"\" Консультация врача онколога экспертного уровня к.м.н. (г. Москва)",
+     "row_id": 136,
+     "name": "Прием трихолога повторный",
+     "description": null,
+     "price": "3000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 167,
+     "name": "Сдайте комплекс анализов за",
+     "description": null,
+     "price": "1300 руб",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 163,
+     "name": "Удаление милиумов (1 ед.)",
+     "description": null,
+     "price": "450 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 174,
+     "name": "Удаление новообразований",
+     "description": null,
+     "price": "960 руб.",
+     "page_url": "https://alfa-clinic.com/doctors/tatiana-sergeevna-vitman"
+    },
+    {
+     "row_id": 161,
+     "name": "Удаление радиоволновым аппаратом 1ед. 0,5-2см",
+     "description": null,
+     "price": "1200 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 162,
+     "name": "Удаление радиоволновым аппаратом 1ед. более 2 см",
+     "description": null,
+     "price": "1700 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 166,
+     "name": "Химическое удаление бородавок",
+     "description": null,
+     "price": "1800 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 143,
+     "name": "Хирургическое удаление новообразования 1 степени сложности",
+     "description": null,
+     "price": "12000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 144,
+     "name": "Хирургическое удаление новообразования 2 степени сложности",
+     "description": null,
+     "price": "16000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    },
+    {
+     "row_id": 145,
+     "name": "Хирургическое удаление новообразования 3 степени сложности",
+     "description": null,
+     "price": "24000 руб.",
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+    }
+   ]
+  },
+  {
+   "clinic_id": "КЛН-alfaclinic-nsk.ru",
+   "clinic_title": "Альфа Технологии",
+   "services": [
+    {
+     "row_id": 394,
+     "name": "A17.21.002.001 Импульсное электровоздействие, воздействие магнитными полями при заболеваниях половых органов на аппарате Андрогин (комплекс)",
+     "description": null,
+     "price": "1290 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+    },
+    {
+     "row_id": 393,
+     "name": "A17.30.010.001 Вакуумное воздействие с фототерапией (ЛОД-терапия)",
+     "description": null,
+     "price": "890 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+    },
+    {
+     "row_id": 386,
+     "name": "A22.30.015.001 Ударно-волновая терапия эректильной дисфункции на аппарате Renova",
+     "description": null,
+     "price": "14990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/udarno_volnovaya_terapiya_v_urologii"
+    },
+    {
+     "row_id": 387,
+     "name": "A22.30.015.002 Ударно-волновая терапия при лечении урологических заболеваний (радиальная)",
+     "description": null,
+     "price": "3790 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/udarno_volnovaya_terapiya_v_urologii"
+    },
+    {
+     "row_id": 388,
+     "name": "A22.30.015.011 Ударно-волновая терапия при лечении урологических заболеваний (фокусированная)",
+     "description": null,
+     "price": "7490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/udarno_volnovaya_terapiya_v_urologii"
+    },
+    {
+     "row_id": 389,
+     "name": "B01.053.001 Прием (осмотр, консультация) врача-уролога первичный",
+     "description": null,
+     "price": "2990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+    },
+    {
+     "row_id": 391,
+     "name": "B01.053.001.001 Прием (осмотр, консультация) врача-уролога, к.м.н. Печуриной И.Н. первичный",
+     "description": null,
+     "price": "3990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+    },
+    {
+     "row_id": 390,
+     "name": "B01.053.002 Прием (осмотр, консультация) врача-уролога повторный",
+     "description": null,
+     "price": "2590 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+    },
+    {
+     "row_id": 392,
+     "name": "B01.053.002.001 Прием (осмотр, консультация) врача-уролога, к.м.н. Печуриной И.Н. повторный",
+     "description": null,
+     "price": "3590 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+    }
+   ]
+  },
+  {
+   "clinic_id": "КЛН-alleya-nsk.ru",
+   "clinic_title": "Аллея красоты",
+   "services": [
+    {
+     "row_id": 203,
+     "name": "PDRN + RF lifting мощный осенний протокол",
+     "description": null,
+     "price": "9 200 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya/botylinotherapy/"
+    },
+    {
+     "row_id": 222,
+     "name": "SMAS-лифтинг лица",
+     "description": null,
+     "price": "12 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 209,
+     "name": "Бедра (передняя и задняя поверхности)",
+     "description": null,
+     "price": "80 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 204,
+     "name": "Ботулинотерапия лица + коррекция гипергидроза",
+     "description": null,
+     "price": "100 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya/botylinotherapy/"
+    },
+    {
+     "row_id": 201,
+     "name": "Диспорт при гипергидрозе Великобритания",
+     "description": null,
+     "price": "100 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya/botylinotherapy/"
+    },
+    {
+     "row_id": 208,
+     "name": "Живот/ Ягодицы",
+     "description": null,
+     "price": "60 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 221,
+     "name": "Зона декольте",
+     "description": null,
+     "price": "8 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 211,
+     "name": "Зона предплечья (обе руки)",
+     "description": null,
+     "price": "50 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 220,
+     "name": "Зона щек",
+     "description": null,
+     "price": "8 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 212,
+     "name": "Кисти рук",
+     "description": null,
+     "price": "14 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 210,
+     "name": "Колени/ Локти/ Подмышки",
+     "description": null,
+     "price": "45 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 227,
+     "name": "Комбинированная процедура: тело 40 мин + лицо 20 мин. (1 визит)",
+     "description": null,
+     "price": "5 200 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 228,
+     "name": "Комбинированная процедура: тело 60 мин + лицо 20 мин. (1 визит)",
      "description": null,
      "price": "6 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 11,
-     "name": "<span class=\"\" Консультация врача педиатра повторная (в течение 1 мес. В рамках 1 нозологии)",
+     "row_id": 234,
+     "name": "Контролируемая глубина воздействия на ткани позволяет максимально безопасно получить выраженный эстетический эффект.",
      "description": null,
-     "price": "3 200 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "price": "5 000 ₽",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya/lazernaya-shlifovka-koji"
     },
     {
-     "row_id": 9,
-     "name": "<span class=\"\" Консультация врача эндокринолога повторная (в течение 1 мес. В рамках 1 нозологии)",
-     "description": null,
-     "price": "3 200 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 19,
-     "name": "<span class=\"\" Консультация врача-онколога, химиотерапевта в.к",
-     "description": null,
-     "price": "5 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 17,
-     "name": "<span class=\"\" Оформление больничного листа",
-     "description": null,
-     "price": "800 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 14,
-     "name": "<span class=\"\" Оформление санаторно-курортной карты педиатрия",
-     "description": null,
-     "price": "2 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 15,
-     "name": "<span class=\"\" Оформление справки в спортивную секцию",
-     "description": null,
-     "price": "500 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 16,
-     "name": "<span class=\"\" Оформление справки для бассейна",
-     "description": null,
-     "price": "1 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 23,
-     "name": "<span class=\"\" Повторный прием с оформлением больничного листа (врач-пульмонолог, детский пульмонолог, аллерголог, детский аллерголог, педиатр, терапевт, онколог)",
-     "description": null,
-     "price": "3 500 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 29,
-     "name": "<span class=\"\" Прививочный сертификат",
-     "description": null,
-     "price": "150 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 28,
-     "name": "<span class=\"\" Проверка реакции Манту/Деиаскинтеста (постановка в сторонней организации)",
-     "description": null,
-     "price": "500 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 25,
-     "name": "<span class=\"\" Спирография (ДФВД) с пробой с бронхолитиком (расшифровка без рекомендаций)",
-     "description": null,
-     "price": "2 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
-    },
-    {
-     "row_id": 38,
-     "name": "<span class=\"\" Туберкулин (РФ) & 8211; включает осмотр врача перед вакцинацией",
+     "row_id": 232,
+     "name": "Костюм icoone LASER MED",
      "description": null,
      "price": "3 000 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 26,
-     "name": "<span class=\"\" ЭКГ",
+     "row_id": 233,
+     "name": "Костюм обычный",
+     "description": null,
+     "price": "1 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 223,
+     "name": "Крылья носа",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 214,
+     "name": "Лазерная шлифовка кожи СО2",
+     "description": null,
+     "price": "5 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 235,
+     "name": "Лазерная эпиляция зон на сумму от",
+     "description": null,
+     "price": "8000 ₽",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya/lazernaya-epilyacziya"
+    },
+    {
+     "row_id": 205,
+     "name": "Лицо полностью",
+     "description": null,
+     "price": "60 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 206,
+     "name": "Лицо полностью + шея",
+     "description": null,
+     "price": "70 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 207,
+     "name": "Лицо полностью + шея + декольте",
+     "description": null,
+     "price": "80 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 216,
+     "name": "Лицо полностью Deka Synchro FT",
+     "description": null,
+     "price": "8 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 215,
+     "name": "Лицо полностью Lumecca",
+     "description": null,
+     "price": "10 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 217,
+     "name": "Носогубный треугольник",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 218,
+     "name": "Подбородок",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 202,
+     "name": "При записи на любую процедуру, действует спец. предложение биоревитализация Nucleospire DNA‑RNA: одна зона на выбор",
+     "description": null,
+     "price": "6 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya/botylinotherapy/"
+    },
+    {
+     "row_id": 229,
+     "name": "Процедура на лицо, 20 мин. (1 визит)",
+     "description": null,
+     "price": "2 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 230,
+     "name": "Процедура на тело, 40 мин. (1 визит)",
+     "description": null,
+     "price": "3 600 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 231,
+     "name": "Процедура на тело, 60 мин. (1 визит)",
+     "description": null,
+     "price": "4 500 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 219,
+     "name": "Скуловая область",
+     "description": null,
+     "price": "3 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 225,
+     "name": "Удаление сосудов до 1 кв. см.",
+     "description": null,
+     "price": "2 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 226,
+     "name": "Удаление телеангиоэктазий до 1 кв. см.",
+     "description": null,
+     "price": "1 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 213,
+     "name": "Фотоомоложение",
+     "description": null,
+     "price": "25 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 224,
+     "name": "Щека (одна сторона)",
+     "description": null,
+     "price": "4 000 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
+    },
+    {
+     "row_id": 236,
+     "name": "скидка на весь чек 15%",
+     "description": null,
+     "price": "0 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya/lazernaya-epilyacziya"
+    }
+   ]
+  },
+  {
+   "clinic_id": "КЛН-altika-clinic.ru",
+   "clinic_title": "БьютиСервис",
+   "services": [
+    {
+     "row_id": 247,
+     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Double Shine (Bellarti Lift 1,0 мл + Bellarti Hydrate 1,0 мл) / А11.01.012",
+     "description": null,
+     "price": "21 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 245,
+     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Lift 1,0 мл / А11.01.012",
+     "description": null,
+     "price": "13 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 250,
+     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Nucleo 20 2% - 2,0 мл",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 248,
+     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Vita Plus, 2,0 мл, / А11.01.012",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 258,
+     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair Deep Booster 2,5%, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "12 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 257,
+     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair Deep, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "15 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 256,
+     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair-02, 1,5 мл / А11.01.012",
+     "description": null,
+     "price": "13 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 259,
+     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair-04, 1,5 мл / А11.01.012",
+     "description": null,
+     "price": "13 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 260,
+     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair-08, 1,5 мл / А11.01.012",
+     "description": null,
+     "price": "13 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 278,
+     "name": "Введение искусственных имплантатов в мягкие ткани Hyon Soft Line, 3 мл / А11.01.012",
+     "description": null,
+     "price": "9 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 276,
+     "name": "Введение искусственных имплантатов в мягкие ткани JALUPRO HMW, 2,5 мл / А11.01.012",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 277,
+     "name": "Введение искусственных имплантатов в мягкие ткани JALUPRO, 3,0 мл / А11.01.012",
+     "description": null,
+     "price": "19 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 266,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Hydro Deluxe, 2,5 мл / А11.01.012",
+     "description": null,
+     "price": "18 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 267,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense Flux, 1 мл / А11.01.012",
+     "description": null,
+     "price": "19 900 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 269,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense LV, 1 мл / А11.01.012",
+     "description": null,
+     "price": "19 900 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 268,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense Lips, 1 мл / А11.01.012",
+     "description": null,
+     "price": "19 900 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 270,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense MAN, 1 мл / А11.01.012",
+     "description": null,
+     "price": "19 900 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 271,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense, 1 мл / А11.01.012",
+     "description": null,
+     "price": "19 900 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 272,
+     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Stimulate, 1 мл / А11.01.012",
+     "description": null,
+     "price": "19 900 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 253,
+     "name": "Введение искусственных имплантатов в мягкие ткани Novacutan Eye, 2,0 мл / A11.01.012",
+     "description": null,
+     "price": "21 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 252,
+     "name": "Введение искусственных имплантатов в мягкие ткани Novacutan Sbio, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 251,
+     "name": "Введение искусственных имплантатов в мягкие ткани Novacutan Ybio, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 243,
+     "name": "Введение искусственных имплантатов в мягкие ткани Plinest Fast, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "20 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 242,
+     "name": "Введение искусственных имплантатов в мягкие ткани Plinest, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "20 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 265,
+     "name": "Введение искусственных имплантатов в мягкие ткани Profhilo, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "22 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 273,
+     "name": "Введение искусственных имплантатов в мягкие ткани Reneall, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "16 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 274,
+     "name": "Введение искусственных имплантатов в мягкие ткани Repart 5, 2 мл / А11.01.012",
+     "description": null,
+     "price": "15 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 275,
+     "name": "Введение искусственных имплантатов в мягкие ткани Repart 7 Ultimate, 1 мл / А11.01.012",
+     "description": null,
+     "price": "8 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 264,
+     "name": "Введение искусственных имплантатов в мягкие ткани Revi Eye, 1,0 мл / А11.01.012",
+     "description": null,
+     "price": "16 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 263,
+     "name": "Введение искусственных имплантатов в мягкие ткани Revi Silk, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "20 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 261,
+     "name": "Введение искусственных имплантатов в мягкие ткани Revi Strong, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "21 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 262,
+     "name": "Введение искусственных имплантатов в мягкие ткани Revi Style, 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "16 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 255,
+     "name": "Введение искусственных имплантатов в мягкие ткани STYLAGE HYDRO MAX, 1,0 мл (гиалуроновая кислота 12,5 мг/мл с сорбитолом) / А11.01.012",
+     "description": null,
+     "price": "16 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 254,
+     "name": "Введение искусственных имплантатов в мягкие ткани STYLAGE HYDRO, 1,0 мл (гиалуроновая кислота 14 мг/мл с маннитолом) / А11.01.012",
+     "description": null,
+     "price": "14 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 244,
+     "name": "Введение искусственных имплантатов в мягкие ткани, Bellarti Hydrate 1,0 мл / А11.01.012",
+     "description": null,
+     "price": "13 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 249,
+     "name": "Введение искусственных имплантатов в мягкие ткани, Bellarti amino / Amino plus 2,0 мл / А11.01.012",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    },
+    {
+     "row_id": 246,
+     "name": "Введение искусственных имплантатов в мягкие ткани, Bellarti plus / extra plus 1,0 мл / А11.01.012",
+     "description": null,
+     "price": "15 000 руб.",
+     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+    }
+   ]
+  },
+  {
+   "clinic_id": "КЛН-angeliy.ru",
+   "clinic_title": "Ангелия Абсолюта",
+   "services": [
+    {
+     "row_id": 357,
+     "name": "Атравматичное очищение кожи лица и шеи",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 369,
+     "name": "Бедра",
+     "description": null,
+     "price": "6000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 370,
+     "name": "Бикини классическое",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 371,
+     "name": "Бикини тотальное",
+     "description": null,
+     "price": "5000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 328,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Balance 1,0 мл",
+     "description": null,
+     "price": "26 500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 329,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Intense 1,0 мл",
+     "description": null,
+     "price": "29 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 330,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Soft 1, 0 мл",
+     "description": null,
+     "price": "25 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 331,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Volume 1,0 мл",
+     "description": null,
+     "price": "29 500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 321,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: Bellarti ESTILLA PLLA 3,0 мл",
+     "description": null,
+     "price": "25 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 322,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: Bellarti Nucleo 0,75 % 2,0 мл",
+     "description": null,
+     "price": "20 500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 323,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: HYALUFORM Lips 1, 0 мл",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 332,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: HYALUFORM Soft 1, 0 мл",
+     "description": null,
+     "price": "15 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 333,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: JUVELINE Derm 1, 0 мл",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 334,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: JUVELINE Sculpt 1, 0 мл",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 335,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: RADIESS 1. 5 мл",
+     "description": null,
+     "price": "35 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 336,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: RADIESS 3. 0 мл",
+     "description": null,
+     "price": "60 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 337,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART Hard 1, 0 мл",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 338,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART Medium 1, 0 мл",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 324,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART PG 2,0 мл",
+     "description": null,
+     "price": "20 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 339,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART PLA",
+     "description": null,
+     "price": "41 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 340,
+     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART Soft 1, 0 мл",
+     "description": null,
+     "price": "15 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 344,
+     "name": "Введение имплантата в мягкие ткани: ADN Restart , NucleoSpire, Hydro Line",
+     "description": null,
+     "price": "10 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 345,
+     "name": "Введение имплантата в мягкие ткани: Bellarti (Hydrate, Lift, Plus, Extra Plus) 1,0 мл",
+     "description": null,
+     "price": "12 500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 341,
+     "name": "Введение имплантата в мягкие ткани: Hair X (волосистая часть головы)",
+     "description": null,
+     "price": "3 500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 346,
+     "name": "Введение имплантата в мягкие ткани: Hyalrepair 02, 04 1,5 мл",
+     "description": null,
+     "price": "18 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 347,
+     "name": "Введение имплантата в мягкие ткани: Hyalrepair deep 2,0 мл",
+     "description": null,
+     "price": "23 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 348,
+     "name": "Введение имплантата в мягкие ткани: Hyaluform 1% 1,5 мл",
+     "description": null,
+     "price": "10 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 349,
+     "name": "Введение имплантата в мягкие ткани: Hyaluform deep 2,5% 2,0 мл",
+     "description": null,
+     "price": "15 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 342,
+     "name": "Введение имплантата в мягкие ткани: Hydroline Extra (лицо, шея)",
+     "description": null,
+     "price": "9 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 343,
+     "name": "Введение имплантата в мягкие ткани: Hydroline, NucleoSpire DNA-RNA 1% , NucleoSpire DNA-RNA 2%, Hyalrepair-05, Hyalrepair-08 (лицо, шея, декольте)",
+     "description": null,
+     "price": "10 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 350,
+     "name": "Введение имплантата в мягкие ткани: Revi Silk 1,0 мл",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 351,
+     "name": "Введение имплантата в мягкие ткани: Revi Strong 1,0 мл",
+     "description": null,
+     "price": "19 500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 352,
+     "name": "Введение имплантата в мягкие ткани: Revi Style 1,0 мл",
+     "description": null,
+     "price": "13 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 353,
+     "name": "Введение имплантата в мягкие ткани: Коллост 7% 0,5 мл",
+     "description": null,
+     "price": "12 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 354,
+     "name": "Введение имплантата в мягкие ткани: Сферо Гель LIGHT",
+     "description": null,
+     "price": "17 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 355,
+     "name": "Введение имплантата в мягкие ткани: Сферо Гель MEDIUM",
+     "description": null,
+     "price": "23 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 372,
+     "name": "Верхняя губа",
+     "description": null,
+     "price": "1000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 326,
+     "name": "Внутримышечное введение ботулотоксина типа А: Диспорт (1 ед.)",
+     "description": null,
+     "price": "150 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 325,
+     "name": "Внутримышечное введение ботулотоксина типа А: Релатокс (1 ед.)",
+     "description": null,
+     "price": "350 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 319,
+     "name": "Воздействие токами ультравысокой частоты на кожу (Лицо) на аппарате Magic Polar",
+     "description": null,
+     "price": "6000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 320,
+     "name": "Воздействие токами ультравысокой частоты на кожу Средняя, нижняя треть лица и подчелюстная зона",
+     "description": null,
+     "price": "4500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 311,
+     "name": "Воздействие токами ультравысокой частоты на кожу инвазивное Лицо + Шея+Декольте на аппарате DeAge-EX DUAL",
+     "description": null,
+     "price": "35000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 312,
+     "name": "Воздействие токами ультравысокой частоты на кожу инвазивное Лицо на аппарате DeAge-EX DUAL",
+     "description": null,
+     "price": "22000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 314,
+     "name": "Воздействие токами ультравысокой частоты на кожу неинвазивное Лицо + Шея на аппарате DeAge-EX DUAL",
+     "description": null,
+     "price": "16500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 315,
+     "name": "Воздействие токами ультравысокой частоты на кожу неинвазивное Лицо +Шея + Декольте на аппарате DeAge-EX DUAL",
+     "description": null,
+     "price": "27500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 313,
+     "name": "Воздействие токами ультравысокой частоты на кожу неинвазивное Лицо на аппарате DeAge-EX DUAL",
+     "description": null,
+     "price": "11000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 309,
+     "name": "Высокоинтенсивное сфокусированное ультразвуковое воздействие (декольте) на аппарате UCOS",
+     "description": null,
+     "price": "26500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 310,
+     "name": "Высокоинтенсивное сфокусированное ультразвуковое воздействие тело (1 квадрат -5х6 кв. см.) на аппарате UCOS",
+     "description": null,
+     "price": "5500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 373,
+     "name": "Голени",
+     "description": null,
+     "price": "4000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 374,
+     "name": "Дополнительная обработка",
+     "description": null,
+     "price": "500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 375,
+     "name": "Живот (белая линия)",
+     "description": null,
+     "price": "1500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 381,
+     "name": "Инъекционное введение лекарственных препаратов в очаг поражения кожи ДИПРОСПАН",
+     "description": null,
+     "price": "4 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 298,
+     "name": "Лазерная шлифовка кожи (Удаление пигмента) 1 кв. см. на аппарате CAPELLO",
+     "description": null,
+     "price": "2000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 297,
+     "name": "Лазерная шлифовка кожи (рубец) 1 см. на аппарате VESTA",
+     "description": null,
+     "price": "2000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 302,
+     "name": "Лазерная шлифовка кожи: Лицо на аппарате CAPELLO",
+     "description": null,
+     "price": "5000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 303,
+     "name": "Лазерная шлифовка кожи: Лицо+ Шея на аппарате CAPELLO",
+     "description": null,
+     "price": "7000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 304,
+     "name": "Лазерная шлифовка кожи: Шея на аппарате CAPELLO",
+     "description": null,
+     "price": "3000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 287,
+     "name": "Лицо (лечение постакне) на аппарате VESTA",
+     "description": null,
+     "price": "18000 руб.",
+     "page_url": "https://angeliy.ru/services/apparatnaia-kosmetologiia/lazernaia-shlifovka-kozhi/"
+    },
+    {
+     "row_id": 288,
+     "name": "Лицо+Шея (омоложение) на аппарате VESTA",
+     "description": null,
+     "price": "30000 руб.",
+     "page_url": "https://angeliy.ru/services/apparatnaia-kosmetologiia/lazernaia-shlifovka-kozhi/"
+    },
+    {
+     "row_id": 289,
+     "name": "Лицо+Шея+Декольте (омоложение) на аппарате VESTA",
+     "description": null,
+     "price": "42000 руб.",
+     "page_url": "https://angeliy.ru/services/apparatnaia-kosmetologiia/lazernaia-shlifovka-kozhi/"
+    },
+    {
+     "row_id": 364,
+     "name": "Массаж косметический (лицо, шея, декольте)",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 318,
+     "name": "Микротоковое воздействие при заболеваниях кожи и подкожной клетчатки на аппарате ESMA 12.20",
+     "description": null,
+     "price": "4000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 376,
+     "name": "Ноги полностью",
+     "description": null,
+     "price": "8500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 296,
+     "name": "Осмотр кожи под увеличением (дерматоскопия)",
+     "description": null,
+     "price": "2500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 356,
+     "name": "Очищение кожи лица (комбинированное/врачебное)",
+     "description": null,
+     "price": "6500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 358,
+     "name": "Очищение кожи лица и шеи (комбинированное)",
+     "description": null,
+     "price": "5000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 365,
+     "name": "Перманентный макияж (татуаж): Коррекция",
+     "description": null,
+     "price": "4000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 366,
+     "name": "Перманентный макияж (татуаж): Татуаж бровей",
+     "description": null,
+     "price": "7000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 367,
+     "name": "Перманентный макияж (татуаж): Татуаж век",
+     "description": null,
+     "price": "7000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 368,
+     "name": "Перманентный макияж (татуаж): Татуаж губ",
+     "description": null,
+     "price": "8000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 360,
+     "name": "Пилинг азелаиновый с дополнительной активацией",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 361,
+     "name": "Пилинг гликолиево-гиалуроновый",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 362,
+     "name": "Пилинг пробиотический",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 363,
+     "name": "Пилинг салицилово-пептидный",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 377,
+     "name": "Подбородок",
+     "description": null,
+     "price": "1500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 327,
+     "name": "Подкожное введение ботулотоксина типа А: Гипергидроз",
+     "description": null,
+     "price": "25 000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 378,
+     "name": "Подмышки",
+     "description": null,
+     "price": "2000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 291,
+     "name": "Прием (осмотр, консультация) врача-дерматолога первичный",
+     "description": null,
+     "price": "3000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 292,
+     "name": "Прием (осмотр, консультация) врача-дерматолога повторный",
+     "description": null,
+     "price": "1500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 286,
+     "name": "Прием (осмотр, консультация) врача-косметолога первичный",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/services/apparatnaia-kosmetologiia/lazernaia-shlifovka-kozhi/"
+    },
+    {
+     "row_id": 293,
+     "name": "Прием (осмотр, консультация) врача-косметолога повторный",
+     "description": null,
+     "price": "1000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 294,
+     "name": "Прием (осмотр, консультация) врача-трихолога с трихоскопией первичный",
+     "description": null,
+     "price": "4000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 295,
+     "name": "Прием (осмотр, консультация) врача-трихолога с трихоскопией повторный",
+     "description": null,
+     "price": "3000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 359,
+     "name": "Ревитализирующий уход",
+     "description": null,
+     "price": "3500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 379,
+     "name": "Спина",
+     "description": null,
+     "price": "8000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 308,
+     "name": "Удаление доброкачественных новообразований кожи на аппарате VESTA",
+     "description": null,
+     "price": "2000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 380,
+     "name": "Удаление милиумов кожи (1 эл-т)",
+     "description": null,
+     "price": "300 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 306,
+     "name": "Удаление татуировки 1 кв. см. на аппарате CAPELLO",
      "description": null,
      "price": "800 руб.",
-     "page_url": "https://allergo-plus.ru/"
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 307,
+     "name": "Фотокоагуляция телеангиоэктазий (лицо) на аппарате CAPELLO",
+     "description": null,
+     "price": "7000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 299,
+     "name": "Фотолечение кожи (постакне 1 проход) Лицо на аппарате CAPELLO",
+     "description": null,
+     "price": "5000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 300,
+     "name": "Фотолечение пигментации (Лицо) на аппарате CAPELLO",
+     "description": null,
+     "price": "6500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 301,
+     "name": "Фотоомоложение кожи (лечение сосудов, пигмента) на аппарате CAPELLO",
+     "description": null,
+     "price": "15000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 305,
+     "name": "Фотоомоложение кожи комплексное (лечение сосудов, пигмента, термолифтинг) на аппарате CAPELLO",
+     "description": null,
+     "price": "17500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 316,
+     "name": "Фототерапия кожи низкоинтенсивная (декольте) на аппарате CAPELLO",
+     "description": null,
+     "price": "7000 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 317,
+     "name": "Фототерапия кожи низкоинтенсивная с космецевтикой (лицо) на аппарате CAPELLO",
+     "description": null,
+     "price": "7500 руб.",
+     "page_url": "https://angeliy.ru/prices"
+    },
+    {
+     "row_id": 290,
+     "name": "Щеки (лечение постакне) на аппарате VESTA",
+     "description": null,
+     "price": "12000 руб.",
+     "page_url": "https://angeliy.ru/services/apparatnaia-kosmetologiia/lazernaia-shlifovka-kozhi/"
     }
    ]
   }
