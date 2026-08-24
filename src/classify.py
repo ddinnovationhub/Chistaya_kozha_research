@@ -16,7 +16,8 @@ _CLASSIFIER = pathlib.Path("dictionaries/classifier.yaml")
 # flag_removal_outside_derm (синхронизировано с classifier.yaml, output_fields)
 _DERM_DIAG_TAGS = {
     "derm_consult", "derm_consult_child", "dermsurg_consult", "onco_consult",
-    "dermatoscopy", "mole_mapping", "histology_skin", "skin_biopsy", "std_consult_lab",
+    "dermatoscopy", "mole_mapping", "histology_skin", "skin_biopsy",
+    "std_consult", "std_lab",
 }
 
 

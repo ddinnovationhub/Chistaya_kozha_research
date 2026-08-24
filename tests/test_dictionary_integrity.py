@@ -39,7 +39,7 @@ class TestOneFormulationOneTag(unittest.TestCase):
     def test_consult_tags_have_no_icd(self):
         # правка заказчика 2026-08-25: у тегов-приёмов МКБ = «Не применимо»
         for tid in ("derm_consult", "derm_consult_child", "dermsurg_consult",
-                    "onco_consult", "cosm_consult", "trich_diag"):
+                    "onco_consult", "cosm_consult", "trich_consult", "std_consult"):
             tag = next(t for t in SV["tags"] if t["tag"] == tid)
             self.assertEqual(tag["icd10"], "Не применимо", tid)
 

@@ -1,41 +1,39 @@
-# Профиль клиента «Чистая Кожа» — фактические данные для регрессионного теста
-# классификатора (решение заказчика 2026-08-24: тест обязателен после КАЖДОГО
-# изменения classifier.yaml или services.yaml).
-#
-# Источник: output/ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx, лист 05_Справочник_услуг,
-# колонка «Оказывает ли клиент» = «Да» (36 позиций файла → теги services.yaml
-# по data/wave0_mapping.yaml). source_id: SRC-WAVE0-2026.
-# Подтверждено файлами проекта: эстетических маркеров ноль, несмежных нет.
-
 meta:
   source_id: SRC-WAVE0-2026
-  source: "output/ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx · 05_Справочник_услуг · «Оказывает ли клиент»"
-  date: "2026-08-24"
+  source: output/ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx · 05_Справочник_услуг · «Оказывает ли клиент»
+  date: '2026-08-24'
   expected:
-    type: "Тип 1"
+    type: Тип 1
     esthetic_markers_found: []
     nonadjacent_found: []
-
-tags:  # услуги клиента в тегах services.yaml
-  - derm_consult            # Приём дерматолога
-  - derm_consult_child      # Приём детского дерматолога
-  - dermsurg_consult        # Приём дерматохирурга
-  - onco_consult            # Приём онкодерматолога
-  - trich_diag              # Приём трихолога · Трихоскопия · Фототрихограмма
-  - trich_treatment         # Лечение алопеции · Лечение себореи · PRP-терапия
-  - mesotherapy_scalp       # Мезотерапия волос
-  - dermatoscopy            # Дерматоскопия
-  - mole_mapping            # Цифровая дерматоскопия · Онкодерматологический скрининг
-  - histology_skin          # Гистология
-  - acne_treatment          # Лечение акне
-  - psoriasis_treatment     # Лечение псориаза
-  - eczema_dermatitis_treatment  # Лечение экземы и дерматитов
-  - rosacea_treatment       # Лечение розацеа
-  - urticaria_treatment     # Лечение крапивницы
-  - herpes_treatment        # Лечение герпеса
-  - mycosis_treatment       # Лечение дерматомикозов
-  - laser_vascular          # Лечение сосудистых патологий (дерматология — решение 2026-08-24)
-  - neoplasm_removal        # Удаление невусов/папиллом/бородавок/кератом/кондилом/моллюска/атером/липом/фибром/гемангиом
-  - neoplasm_removal_cryo   # Криодеструкция
-  - neoplasm_removal_radio  # Радиоволновое удаление
-  - melanoma_excision       # Удаление базалиомы
+  note: 'обновлён 2026-08-25 после расщепления тегов: trich_diag → trich_consult+trich_diagnostics (Анализ волос у клиента
+    «Нет» — но trich_diagnostics остаётся: трихоскопия и фототрихограмма «Да»); neoplasm_removal → 5 групп (все удаления у
+    клиента «Да»); melanoma_excision → onco_excision. std_consult/std_lab НЕ включены: «Лечение ИППП» у клиента «Нет»'
+tags:
+- acne_treatment
+- derm_consult
+- derm_consult_child
+- dermatoscopy
+- dermsurg_consult
+- eczema_dermatitis_treatment
+- herpes_treatment
+- histology_skin
+- laser_vascular
+- mesotherapy_scalp
+- mole_mapping
+- mycosis_treatment
+- neoplasm_removal_cryo
+- neoplasm_removal_radio
+- onco_consult
+- onco_excision
+- psoriasis_treatment
+- removal_keratosis
+- removal_pigmented
+- removal_soft_tissue
+- removal_vascular
+- removal_viral
+- rosacea_treatment
+- trich_consult
+- trich_diagnostics
+- trich_treatment
+- urticaria_treatment

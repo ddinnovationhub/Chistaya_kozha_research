@@ -21,6 +21,7 @@ from src.api_client import dadata_find_raw, handle_api_response, yandex_search_r
 from src.budget import BudgetTracker
 from src.discovery import open_db, run_discovery
 from src.query_gen import city_code, generate_all
+from src.recall import compute_recall
 
 REQUIRED = {
     "YANDEX_API_KEY":    "Яндекс Search API — основной поиск",
@@ -123,6 +124,14 @@ def main() -> int:
                   f"/{summary['queries_total_api']} · ошибок: {summary['queries_errors']}")
             print(f" Уникальных кандидатов в очереди: {summary['candidates_unique']}")
             print(f" Насыщение: {summary['saturation']['reason']}")
+            recall = compute_recall(city, db)
+            checkpoint["recall"] = recall
+            if recall is None:
+                print(f" Recall-тест: файл data/recall_test_{city}.yaml НЕ НАЙДЕН — "
+                      f"полнота не проверена (запросить список известных клиник у заказчика)")
+            else:
+                print(f" Recall-тест (известные клиники): {recall['found']}/{recall['total']}"
+                      + (f" · не найдены: {', '.join(recall['missed'][:5])}" if recall['missed'] else ""))
             print(f" {summary['budget']}")
             print("─" * 72)
             print("Проверка сайтов (этап 6): промпт утверждён 2026-08-25, код в разработке — не запускается.")

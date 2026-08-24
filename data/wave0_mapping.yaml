@@ -1,7 +1,7 @@
 # Мэппинг волны 0: нормализованные теги ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx → теги services.yaml
-# Правила G4.1; source_id: SRC-WAVE0-2026 («ручной сбор проекта, 4 города, 2026»)
+# Правила G4.1; source_id: SRC-WAVE0-2026
 # ПРАВИЛО (заказчик 2026-08-25): после любого решения на уровне тега — перепроверять
-# этот файл на затронутые формулировки; тест: tests/test_dictionary_integrity.py
+# этот файл; тесты: test_dictionary_integrity.py, test_icd_ranges.py
 absorbed:
 - file_tag: Приём дерматолога
   formulation: Консультация дерматолога
@@ -14,7 +14,8 @@ absorbed:
   our_tag: onco_consult
 - file_tag: Приём трихолога
   formulation: Консультация трихолога
-  our_tag: trich_diag
+  our_tag: trich_consult
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Дерматоскопия
   formulation: Дерматоскопия
   our_tag: dermatoscopy
@@ -36,52 +37,68 @@ absorbed:
   note: 'перенесено проверкой «одна формулировка — один тег» 2026-08-25: забор материала ≠ исследование'
 - file_tag: Трихоскопия
   formulation: Трихоскопия
-  our_tag: trich_diag
+  our_tag: trich_diagnostics
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Фототрихограмма
   formulation: Фототрихограмма
-  our_tag: trich_diag
+  our_tag: trich_diagnostics
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Анализ волос
   formulation: Анализ волос на микроэлементы
-  our_tag: trich_diag
+  our_tag: trich_diagnostics
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление невусов
   formulation: Удаление родинок
-  our_tag: neoplasm_removal
+  our_tag: removal_pigmented
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление невусов
   formulation: Удаление невусов
-  our_tag: neoplasm_removal
+  our_tag: removal_pigmented
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление невусов
   formulation: Лазерное удаление родинок
-  our_tag: neoplasm_removal
+  our_tag: removal_pigmented
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление папиллом
   formulation: Удаление папиллом
-  our_tag: neoplasm_removal
+  our_tag: removal_viral
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление бородавок
   formulation: Удаление бородавок
-  our_tag: neoplasm_removal
+  our_tag: removal_viral
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление кератом
   formulation: Удаление кератом
-  our_tag: neoplasm_removal
+  our_tag: removal_keratosis
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление кондилом
   formulation: Удаление кондилом
-  our_tag: neoplasm_removal
+  our_tag: removal_viral
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление гемангиом
   formulation: Удаление гемангиом
-  our_tag: neoplasm_removal
+  our_tag: removal_vascular
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление атером
   formulation: Удаление атером
-  our_tag: neoplasm_removal
+  our_tag: removal_soft_tissue
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление фибром
   formulation: Удаление фибром
-  our_tag: neoplasm_removal
+  our_tag: removal_soft_tissue
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление липом
   formulation: Удаление липом
-  our_tag: neoplasm_removal
+  our_tag: removal_soft_tissue
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление контагиозного моллюска
   formulation: Удаление контагиозного моллюска
-  our_tag: neoplasm_removal
+  our_tag: removal_viral
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Удаление базалиомы
   formulation: Удаление базалиомы
-  our_tag: melanoma_excision
+  our_tag: onco_excision
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Криодеструкция
   formulation: Криодеструкция
   our_tag: neoplasm_removal_cryo
@@ -96,7 +113,8 @@ absorbed:
   our_tag: mole_mapping
 - file_tag: Лечение ИППП
   formulation: Лечение ИППП
-  our_tag: std_consult_lab
+  our_tag: std_consult
+  note: G4.1 | перенаправлено расщеплением тегов (заказчик 2026-08-25)
 - file_tag: Лечение алопеции
   formulation: Лечение выпадения волос
   our_tag: trich_treatment

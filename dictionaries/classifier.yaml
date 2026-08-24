@@ -119,7 +119,7 @@ output_fields:
   - name: flag_removal_outside_derm
     alias: "flag_removal_without_histology (название заказчика — тот же флаг)"
     type: "булев флаг «удаление новообразований вне дерматологического контура»"
-    rule: "есть ≥1 тег contour=dermsurg (neoplasm_removal*) И НЕТ ни одного диагностического/приёмного тега дерматологии (derm_consult, derm_consult_child, dermsurg_consult, onco_consult, dermatoscopy, mole_mapping, histology_skin, skin_biopsy, std_consult_lab)"
+    rule: "есть ≥1 тег contour=dermsurg (removal_* или методы) И НЕТ ни одного диагностического/приёмного тега дерматологии (derm_consult, derm_consult_child, dermsurg_consult, onco_consult, dermatoscopy, mole_mapping, histology_skin, skin_biopsy, std_consult, std_lab)"
     purpose: "решение заказчика 2026-08-24: такая клиника — одновременно конкурент по конкретной услуге и аргумент позиционирования клиента (удаление без гистологии). Терять эти случаи нельзя"
     note: "флаг НЕ зависит от присвоенного типа: по механике правил dermsurg входит в medical_derm, поэтому «эстетика + удаление без дерматолога» получает Тип 2 по R2 — флаг выделяет её из общей массы Типа 2"
 
