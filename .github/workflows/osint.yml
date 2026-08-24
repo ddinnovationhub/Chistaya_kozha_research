@@ -1,0 +1,83 @@
+# Боевой прогон разведки по городу.
+# Модель исполнения (решение заказчика 2026-08-24):
+#   Claude Code на вебе = разработка/отладка (боевых ключей нет);
+#   GitHub Actions = боевой прогон (ключи в Secrets работают штатно).
+name: osint-run
+
+on:
+  workflow_dispatch:
+    inputs:
+      city:
+        description: "Город прогона (обязательно), например: Казань"
+        required: true
+        type: string
+      limit:
+        description: "Лимит запросов (0 — остановка по критерию насыщения)"
+        required: false
+        default: "0"
+        type: string
+
+permissions:
+  contents: write
+
+# Один город — один прогон одновременно; параллельные города не мешают друг другу
+concurrency:
+  group: osint-${{ github.event.inputs.city }}
+  cancel-in-progress: false
+
+jobs:
+  osint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350   # разведка города-миллионника — часы работы
+    env:
+      YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+      YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+      DADATA_API_KEY: ${{ secrets.DADATA_API_KEY }}
+      DADATA_SECRET_KEY: ${{ secrets.DADATA_SECRET_KEY }}
+      CITY: ${{ github.event.inputs.city }}
+      QUERY_LIMIT: ${{ github.event.inputs.limit }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: pip install -r requirements.txt
+
+      - name: Быстрые проверки (обработчик API, валидаторы)
+        run: python -m pytest tests/ -q
+
+      - name: Прогон по городу
+        run: python -m src.run_city
+
+      # Чекпойнт сохраняется ВСЕГДА, даже при падении прогона —
+      # при обрыве не теряем уже собранное (требование заказчика)
+      - name: Чекпойнт как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkpoint-${{ github.event.inputs.city }}-${{ github.run_id }}
+          path: |
+            data/
+            output/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Коммит результатов в репозиторий
+        if: success()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/ data/ PROGRESS.md
+          if git diff --cached --quiet; then
+            echo "Изменений нет — коммит не нужен"
+          else
+            git commit -m "osint: ${CITY} $(date +%F) — прогон Actions (run ${{ github.run_id }})"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
