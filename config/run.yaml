@@ -4,3 +4,12 @@ city: null            # из os.environ["CITY"]
 budget_rub: 5000
 max_parallel_site_checkers: 8   # 8–12 через hyperresearch
 domain_request_delay_sec: 3     # ограничение частоты обращений к одному домену
+
+# Инструменты (флаг заказчика 2026-08-24): hyperresearch живёт в выделенном venv.
+# Контейнер эфемерный — при новой сессии проверить наличие бинаря и при
+# отсутствии переустановить: python3 -m venv /opt/hyperresearch-venv &&
+# /opt/hyperresearch-venv/bin/pip install hyperresearch && /opt/hyperresearch-venv/bin/hyperresearch install
+hyperresearch_bin: /opt/hyperresearch-venv/bin/hyperresearch
+
+# Вордстат: только ручные выгрузки заказчика (решение 2026-08-24)
+wordstat_dir: data/wordstat/
