@@ -28,12 +28,12 @@ import re
 import sqlite3
 import time
 
-import httpx
 import yaml
 
 from src.classify import classify, load_contours
 from src.dedup import normalize_domain
 from src.extract_site import extract_pages
+from src.fetch_cascade import ensure_fetch_tables, fetch_cascade
 from src.mapper import build_formulation_index, map_tier1
 from src.validators import validate_inn, validate_ogrn
 
@@ -42,25 +42,6 @@ MAX_PAGES_PER_SITE = 8
 
 TYPE_STATUS_PRELIM = "предварительный (ступень 1, до разметки)"
 TYPE_STATUS_FINAL = "финальный (после разметки)"
-
-
-def fetch_page(url: str, timeout: float = 60.0) -> str | None:
-    """Jina Reader → прямой GET. Playwright — отдельным фолбэком в crawl_site."""
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/126.0"}
-    try:
-        r = httpx.get(f"https://r.jina.ai/{url}", timeout=timeout,
-                      headers=headers, follow_redirects=True)
-        if r.status_code == 200 and len(r.text) > 300:
-            return r.text
-    except Exception:  # noqa: BLE001
-        pass
-    try:
-        r = httpx.get(url, timeout=30, headers=headers, follow_redirects=True)
-        if r.status_code == 200:
-            return r.text
-    except Exception:  # noqa: BLE001
-        return None
-    return None
 
 
 def _find_section_links(home_text: str, base_url: str) -> list[str]:
@@ -84,26 +65,32 @@ def _find_section_links(home_text: str, base_url: str) -> list[str]:
     return out[:MAX_PAGES_PER_SITE - 1]
 
 
-def crawl_site(url: str, city: str) -> dict[str, str]:
-    """Один обход домена: главная + профильные разделы. Возвращает {url: text}."""
+def crawl_site(url: str, city: str, form_index: dict, db=None,
+               min_bytes: int = 3000) -> tuple[dict[str, str], dict]:
+    """Один обход домена через КАСКАД (заказчик 2026-08-26): главная +
+    профильные разделы. Возвращает ({url: text}, meta каскада главной).
+    Уровень клиники = уровень, взявший главную; разделы стартуют с этого
+    уровня как максимума (телеметрия каждой попытки — в fetch_attempts)."""
     pages = {}
-    home = fetch_page(url)
+    dom = normalize_domain(url) or "unknown"
+    home, meta = fetch_cascade(url, dom, form_index, db=db, min_bytes=min_bytes)
     if home is None:
-        return pages
+        return pages, meta
     pages[url] = home
     for link in _find_section_links(home, url):
         time.sleep(RATE_DELAY_SEC)
-        text = fetch_page(link)
+        # разделам достаточно уровня главной: сайт уже показал, чем он берётся
+        text, _ = fetch_cascade(link, dom, form_index, db=db, min_bytes=min_bytes,
+                                max_level=max(meta["level"], 2))
         if text:
             pages[link] = text
     # доказательная база: gzip в raw/{city}/{date}/
     day = datetime.date.today().isoformat()
     raw_dir = pathlib.Path("raw") / city / day
     raw_dir.mkdir(parents=True, exist_ok=True)
-    dom = normalize_domain(url) or "unknown"
     for i, (u, txt) in enumerate(pages.items()):
         (raw_dir / f"{dom}_{i}.md.gz").write_bytes(gzip.compress(txt.encode("utf-8")))
-    return pages
+    return pages, meta
 
 
 def ensure_stage6_tables(db: sqlite3.Connection):
@@ -113,6 +100,7 @@ def ensure_stage6_tables(db: sqlite3.Connection):
         gate TEXT, gate_reason TEXT, type TEXT, type_status TEXT, rule TEXT,
         grade TEXT, esthetic_markers TEXT, nonadjacent TEXT,
         flag_single_nonadjacent INTEGER, flag_removal_outside_derm INTEGER,
+        flag_site_unreachable INTEGER, unreachable_note TEXT, fetch_level INTEGER,
         has_packages INTEGER, specialists_count INTEGER,
         inn TEXT, inn_status TEXT, legal_name TEXT,
         sections_found TEXT, checked_at TEXT);
@@ -126,31 +114,43 @@ def ensure_stage6_tables(db: sqlite3.Connection):
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         clinic_id TEXT, kind TEXT, detail TEXT, quote TEXT, url TEXT);
     """)
-    try:  # миграция таблицы, созданной кодом до 2026-08-26 (без type_status)
-        db.execute("ALTER TABLE clinics ADD COLUMN type_status TEXT")
-    except sqlite3.OperationalError:
-        pass
+    # миграция таблиц, созданных кодом до 2026-08-26
+    for col, typ in (("type_status", "TEXT"), ("flag_site_unreachable", "INTEGER"),
+                     ("unreachable_note", "TEXT"), ("fetch_level", "INTEGER")):
+        try:
+            db.execute(f"ALTER TABLE clinics ADD COLUMN {col} {typ}")
+        except sqlite3.OperationalError:
+            pass
+    ensure_fetch_tables(db)
     db.commit()
 
 
 def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
-                   form_index: dict, client_tags: set, city: str) -> dict:
+                   form_index: dict, client_tags: set, city: str,
+                   min_bytes: int = 3000) -> dict:
     dom = cand["domain"]
     clinic_id = f"КЛН-{dom}"
     url = cand["url"] if cand["url"].startswith("http") else f"https://{dom}"
-    pages = crawl_site(url, city)
+    pages, fetch_meta = crawl_site(url, city, form_index, db=db, min_bytes=min_bytes)
     now = datetime.datetime.now().isoformat(timespec="seconds")
 
     if not pages:
+        # Не взял ни один уровень каскада (п.4, 2026-08-26): строка НЕ прячется —
+        # название/домен из discovery, услуги «Сайт недоступен», грейд C, флаг
+        note = (f"robots.txt запрещает обход" if fetch_meta["blocked_by_robots"]
+                else f"последний уровень: {fetch_meta['last_level']}, "
+                     f"ответ: {fetch_meta['last_status']}") + f", {now[:10]}"
         db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, domain, url, "
-                   "gate, gate_reason, type, type_status, rule, grade, inn_status, "
-                   "checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                   "gate, gate_reason, type, type_status, rule, grade, "
+                   "flag_site_unreachable, unreachable_note, fetch_level, inn_status, "
+                   "checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                    (clinic_id, cand["title"], dom, url, "Требует проверки",
-                    "Сайт не найден на дату проверки", "Не классифицировано", None,
-                    None, "C", "Не найдено", now))
+                    "Сайт недоступен", "Не классифицировано", None,
+                    None, "C", 1, note, None, "Сайт недоступен", now))
         db.commit()
         return {"clinic_id": clinic_id, "gate": "Требует проверки", "grade": "C",
-                "services": 0, "tier1_mapped": 0, "to_markup": 0}
+                "services": 0, "tier1_mapped": 0, "to_markup": 0,
+                "fetch_level": None, "unreachable": True, "domain": dom}
 
     data = extract_pages(pages, form_index)
 
@@ -204,13 +204,15 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, domain, url, gate, "
                "gate_reason, type, type_status, rule, grade, esthetic_markers, "
                "nonadjacent, flag_single_nonadjacent, flag_removal_outside_derm, "
+               "flag_site_unreachable, unreachable_note, fetch_level, "
                "has_packages, specialists_count, inn, inn_status, legal_name, "
-               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                (clinic_id, cand["title"], dom, url, gate, reason,
                 cls["type"], type_status, cls.get("rule"), grade,
                 "; ".join(cls["esthetic_markers_found"]) or None,
                 "; ".join(nonadj) or None,
                 int(cls["flag_single_nonadjacent"]), int(cls["flag_removal_outside_derm"]),
+                0, None, fetch_meta["level"],
                 int(data["has_packages"]), data["specialists_count"],
                 inn, inn_status, data["requisites"]["legal_name"],
                 "; ".join(sorted(seen_sections)) or None, now))
@@ -250,7 +252,8 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     return {"clinic_id": clinic_id, "gate": gate, "type": cls["type"],
             "type_status": type_status, "grade": grade,
             "services": len(mapped) + len(to_markup),
-            "tier1_mapped": len(mapped), "to_markup": len(to_markup)}
+            "tier1_mapped": len(mapped), "to_markup": len(to_markup),
+            "fetch_level": fetch_meta["level"], "unreachable": False, "domain": dom}
 
 
 def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict:
@@ -262,6 +265,9 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
     form_index = build_formulation_index()
     client_tags = set(yaml.safe_load(
         pathlib.Path("data/client_profile.yaml").read_text(encoding="utf-8"))["tags"])
+    cfg = yaml.safe_load(pathlib.Path("config/thresholds.yaml").read_text(encoding="utf-8"))
+    min_bytes = int(cfg.get("cascade", {}).get("content_min_bytes", 3000))
+    unreachable_stop = float(cfg.get("cascade", {}).get("unreachable_share_stop", 0.15))
 
     done_domains = {row[0] for row in db.execute("SELECT domain FROM clinics")}
     cands = [dict(zip(("title", "url", "domain"), row)) for row in db.execute(
@@ -276,7 +282,8 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
             continue  # домен обрабатывается ровно один раз за прогон
         done_domains.add(cand["domain"])
         try:
-            r = process_clinic(cand, db, contours, form_index, client_tags, city)
+            r = process_clinic(cand, db, contours, form_index, client_tags, city,
+                               min_bytes=min_bytes)
         except Exception as exc:  # noqa: BLE001 — клиника не роняет пачку
             db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, domain, url, "
                        "gate, gate_reason, grade, checked_at) VALUES (?,?,?,?,?,?,?,?)",
@@ -285,7 +292,8 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
                         "C", datetime.datetime.now().isoformat(timespec="seconds")))
             db.commit()
             r = {"clinic_id": f"КЛН-{cand['domain']}", "gate": "Требует ручной проверки",
-                 "services": 0, "tier1_mapped": 0, "to_markup": 0}
+                 "services": 0, "tier1_mapped": 0, "to_markup": 0,
+                 "fetch_level": None, "unreachable": False, "domain": cand["domain"]}
         results.append(r)
         processed += 1
         time.sleep(RATE_DELAY_SEC)
@@ -295,9 +303,27 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
     tier1 = sum(r["tier1_mapped"] for r in results)
     markup = sum(r["to_markup"] for r in results)
     with_markup = [r for r in results if r["to_markup"] > 0]
+
+    # ── Отчётность по каскаду (п.5 второго промпта исправления) ──
+    taken_by_level = {lv: sum(1 for r in results if r.get("fetch_level") == lv)
+                      for lv in (1, 2, 3, 4)}
+    unreachable = sorted(r["domain"] for r in results if r.get("unreachable"))
+    unreachable_share = len(unreachable) / processed if processed else 0.0
+    if unreachable:
+        out = pathlib.Path("output") / f"{city}_недоступные_{datetime.date.today().isoformat()}.txt"
+        out.write_text("\n".join(unreachable) + "\n", encoding="utf-8")
+    cascade_alert = None
+    if processed and unreachable_share > unreachable_stop:
+        cascade_alert = (f"⛔ ОСТАНОВКА: недоступных {len(unreachable)}/{processed} "
+                         f"({unreachable_share:.0%}) > {unreachable_stop:.0%} — проблема "
+                         f"системная, а не в отдельных сайтах. Доклад заказчику обязателен.")
+
     return {"processed": processed, "results": results,
             "services_total": total, "tier1_mapped": tier1, "to_markup": markup,
             "avg_markup_batch": round(markup / len(with_markup), 1) if with_markup else 0,
+            "taken_by_level": taken_by_level, "unreachable_domains": unreachable,
+            "unreachable_share": round(unreachable_share, 3),
+            "cascade_alert": cascade_alert,
             "stopped_reason": f"обязательная остановка после {max_clinics} клиник — "
                               f"промежуточная выгрузка + файл «на разметку», "
                               f"ждём разметки заказчика"}

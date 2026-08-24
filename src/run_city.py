@@ -167,6 +167,16 @@ def main() -> int:
                   f"закрыто ступенью 1 кодом: {s6['tier1_mapped']} · "
                   f"на ручную разметку: {s6['to_markup']} · "
                   f"средний батч на клинику: {s6['avg_markup_batch']}")
+            tb = s6["taken_by_level"]
+            print(f" Каскад: ур.1 (Jina): {tb[1]} · ур.2 (HTTP): {tb[2]} · "
+                  f"ур.3 (headless): {tb[3]} · ур.4 (эмуляция): {tb[4]} · "
+                  f"недоступно: {len(s6['unreachable_domains'])} "
+                  f"({s6['unreachable_share']:.0%})")
+            if s6["unreachable_domains"]:
+                print(f"   недоступные домены (все): {'; '.join(s6['unreachable_domains'])}")
+                print(f"   список для ручного обхода: output/{city}_недоступные_*.txt")
+            if s6["cascade_alert"]:
+                print(s6["cascade_alert"])
             print(f"Промежуточная выгрузка: {out}")
             print(f"Файл «на разметку»: {markup or 'размечать нечего — ступень 1 закрыла всё'}")
             print(f" {budget.report()}")

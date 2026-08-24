@@ -103,14 +103,42 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
                ["ИД", "Клиника", "Домен", "Ворота", "Причина", "Тип", "Статус типа",
                 "Правило", "Грейд", "Эстетические маркеры", "Несмежные",
                 "Флаг: единств. несмежное", "Флаг: удаление вне дерм-контура",
+                "Флаг: сайт недоступен", "Примечание доступности", "Уровень каскада",
                 "Пакеты", "ИНН", "Статус ИНН", "Разделы"],
-               [14, 26, 20, 14, 24, 14, 22, 10, 8, 24, 24, 12, 14, 8, 14, 24, 26])
+               [14, 26, 20, 14, 24, 14, 22, 10, 8, 24, 24, 12, 14, 12, 30, 10, 8, 14, 24, 26])
     for row in db.execute(
             "SELECT clinic_id, title, domain, gate, gate_reason, type, type_status, "
             "rule, grade, esthetic_markers, nonadjacent, flag_single_nonadjacent, "
-            "flag_removal_outside_derm, has_packages, inn, inn_status, sections_found "
+            "flag_removal_outside_derm, flag_site_unreachable, unreachable_note, "
+            "fetch_level, has_packages, inn, inn_status, sections_found "
             "FROM clinics ORDER BY clinic_id"):
         _put(ws, r, list(row)); r += 1
+
+    ws = wb.create_sheet("07_Качество")
+    r = _sheet(ws, "Каскад доступа к сайтам (заказчик, 2026-08-26): кто каким уровнем взят, "
+                   "кто не взят ничем. Телеметрия попыток — таблица fetch_attempts в osint.db.",
+               ["Показатель", "Значение"], [56, 60])
+    q = lambda sql: db.execute(sql).fetchone()[0]  # noqa: E731
+    total_clinics = q("SELECT COUNT(*) FROM clinics")
+    unreachable = [row[0] for row in db.execute(
+        "SELECT domain FROM clinics WHERE flag_site_unreachable=1 ORDER BY domain")]
+    rows = [("Клиник обработано", total_clinics)]
+    for lv, label in ((1, "Jina Reader"), (2, "прямой HTTP"),
+                      (3, "Playwright headless"), (4, "Playwright эмуляция")):
+        rows.append((f"Взято уровнем {lv} ({label})",
+                     q(f"SELECT COUNT(*) FROM clinics WHERE fetch_level={lv}")))
+    rows += [
+        ("Не взято ни одним уровнем (Сайт недоступен)", len(unreachable)),
+        ("Доля недоступных", f"{len(unreachable) / total_clinics:.0%}" if total_clinics else "—"),
+        ("Домены недоступных", "; ".join(unreachable) or "—"),
+        ("Страниц-попыток всего (fetch_attempts)", q("SELECT COUNT(*) FROM fetch_attempts")),
+        ("Попыток «suspicious_zero страницы» (200 без контента)",
+         q("SELECT COUNT(*) FROM fetch_attempts WHERE note LIKE 'suspicious_zero%'")),
+        ("Заблокировано robots.txt (обход запрещён)",
+         q("SELECT COUNT(*) FROM fetch_attempts WHERE status='robots_disallow'")),
+    ]
+    for k, v in rows:
+        _put(ws, r, [k, v]); r += 1
 
     ws = wb.create_sheet("03_Доказательства")
     r = _sheet(ws, "Каждый факт вне списка услуг — с цитатой и URL (лицензия, несмежные "
