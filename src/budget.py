@@ -26,6 +26,7 @@ class BudgetTracker:
     def __init__(self, thresholds_path: pathlib.Path = _THRESHOLDS,
                  state_path: pathlib.Path = _STATE):
         cfg = yaml.safe_load(thresholds_path.read_text(encoding="utf-8"))
+        self.anthropic_cfg = cfg.get("anthropic", {})
         self.ceiling_rub = float(cfg["budget_rub"])
         self.warn_share = float(cfg["budget_warn_share"])
         self.cost_per_request = {k: float(v) for k, v in cfg["cost_per_request_rub"].items()}
@@ -63,6 +64,26 @@ class BudgetTracker:
             self._warned = True
             print(f"⚠ ПРЕДУПРЕЖДЕНИЕ: израсходовано {projected:.0f} ₽ из "
                   f"{self.ceiling_rub:.0f} ₽ ({projected / self.ceiling_rub:.0%})")
+
+    def charge_tokens(self, service: str, input_tokens: int, output_tokens: int):
+        """Списание по токенам (Anthropic): стоимость из config/thresholds.yaml,
+        отдельной строкой рядом с Яндексом и DaData."""
+        cost = (input_tokens * float(self.anthropic_cfg.get("cost_per_1m_input_rub", 0)) +
+                output_tokens * float(self.anthropic_cfg.get("cost_per_1m_output_rub", 0))) / 1_000_000
+        projected = self.spent + cost
+        if projected > self.ceiling_rub:
+            self._save()
+            raise BudgetExceededError(
+                f"⛔ БЮДЖЕТ ИСЧЕРПАН: {projected:.0f} ₽ из {self.ceiling_rub:.0f} ₽ "
+                f"(токены {service}). Всё собранное сохранено.")
+        self.state["spent_rub"] = projected
+        tk = self.state.setdefault("tokens", {}).setdefault(service, {"input": 0, "output": 0})
+        tk["input"] += input_tokens
+        tk["output"] += output_tokens
+        self._save()
+        if not self._warned and projected >= self.ceiling_rub * self.warn_share:
+            self._warned = True
+            print(f"⚠ ПРЕДУПРЕЖДЕНИЕ: израсходовано {projected:.0f} ₽ из {self.ceiling_rub:.0f} ₽")
 
     def report(self) -> str:
         reqs = ", ".join(f"{k}: {v}" for k, v in sorted(self.state["requests"].items())) or "—"

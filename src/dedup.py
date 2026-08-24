@@ -31,9 +31,19 @@ def normalize_name(name: str) -> str:
 
 
 def normalize_domain(url_or_domain: str) -> str | None:
+    """IDNA-канонизация (баг заказчика 2026-08-26): кириллический домен
+    (плазмасибирь.рф) и его punycode (xn--...) обязаны давать ОДИН ключ.
+    Канон — punycode ASCII: так домен приходит из выдачи и HTTP."""
     if not url_or_domain:
         return None
     d = url_or_domain.lower().strip()
     d = re.sub(r"^https?://", "", d)
     d = d.split("/")[0].split(":")[0]
-    return d.removeprefix("www.") or None
+    d = d.removeprefix("www.")
+    if not d:
+        return None
+    try:
+        d = d.encode("idna").decode("ascii")   # кириллица → punycode; ascii остаётся как есть
+    except (UnicodeError, UnicodeDecodeError):
+        pass  # кривой ярлык — оставляем как есть, ключ всё равно детерминирован
+    return d or None

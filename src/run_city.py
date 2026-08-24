@@ -152,7 +152,20 @@ def main() -> int:
                           + "; ".join(recall["missed"]))
             print(f" {summary['budget']}")
             print("─" * 72)
-            print("Проверка сайтов (этап 6): промпт утверждён 2026-08-25, код в разработке — не запускается.")
+            # ── Этап 6: первые 10 клиник и ОБЯЗАТЕЛЬНАЯ ОСТАНОВКА (п.8) ──
+            if os.environ.get("ANTHROPIC_API_KEY"):
+                from src.export_stage6 import export_intermediate
+                from src.site_checker import run_stage6
+                s6 = run_stage6(city, budget=budget, db=db, max_clinics=10)
+                checkpoint["stage6"] = s6
+                checkpoint["stage"] = "stage6_intermediate_stop"
+                out = export_intermediate(city, db)
+                print(f"ЭТАП 6: обработано клиник: {s6['processed']} · {s6['stopped_reason']}")
+                print(f"Промежуточная выгрузка: {out}")
+                print(f" {budget.report()}")
+            else:
+                print("Этап 6 пропущен: ANTHROPIC_API_KEY отсутствует в окружении — "
+                      "добавь ключ в Secrets и переменную в воркфлоу.")
         except Exception as exc:  # noqa: BLE001 — чекпойнт при любом исходе
             checkpoint["stage"] = "discovery_failed"
             checkpoint["discovery_error"] = f"{type(exc).__name__}: {exc}"

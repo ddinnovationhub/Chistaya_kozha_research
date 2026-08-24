@@ -107,15 +107,37 @@ def _freq_order(items: list[dict]) -> list[dict]:
     ))
 
 
+_BAD_SEARCH_CHARS = set("/();№«»")
+
+
+def make_search_phrase(phrase: str) -> str | None:
+    """Правило заказчика (п.2.6, 2026-08-26): в поисковую фразу не попадают
+    названия длиннее 5 слов и со спецсимволами / ( ) ; — длинные прайсовые
+    формулировки остаются в справочнике для РАСПОЗНАВАНИЯ, но в поиск не идут.
+    Скобочные/слэшевые хвосты детерминированно отсекаются перед проверкой."""
+    s = phrase.split("(")[0].split("/")[0].strip(" ,·-")
+    if not s or any(ch in _BAD_SEARCH_CHARS for ch in s):
+        return None
+    words = len(s.split())
+    if words > 5:
+        return None
+    if words == 1 and s != phrase.strip():
+        return None   # обрубок после обрезки («Гистологическое /...» → «Гистологическое»)
+    return s
+
+
 def generate_l2(city: str, services: dict) -> list[dict]:
     out = []
     for tag in services["tags"]:
         seen_texts = set()
         for phrase in [tag["name_ru"], *tag.get("formulations_site", [])]:
-            text = f"{phrase} {city}"
-            if text in seen_texts:
+            sp = make_search_phrase(phrase)
+            if sp is None:
                 continue
-            seen_texts.add(text)
+            text = f"{sp} {city}"
+            if text.lower() in seen_texts:   # хэш id регистронезависимый — дедуп тоже
+                continue
+            seen_texts.add(text.lower())
             out.append(_q(2, f"svc-{tag['tag']}", city, text,
                           "services.yaml", tag.get("wordstat_freq")))
     return _freq_order(out)

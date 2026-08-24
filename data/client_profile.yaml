@@ -1,39 +1,109 @@
 meta:
-  source_id: SRC-WAVE0-2026
-  source: output/ЧК_ОСИНТ_ОБРАЗЕЦ.xlsx · 05_Справочник_услуг · «Оказывает ли клиент»
-  date: '2026-08-24'
+  sources:
+  - source_id: SRC-PRICE-CK-NN-2026
+    role: 'первичный (решение заказчика 2026-08-26: прайс точнее сайта)'
+    tags: 32
+  - source_id: SRC-WAVE0-2026
+    role: 'дополняющий: «Оказывает ли клиент = Да» там, где прайс молчит (отсутствие позиции в прайсе ≠ не оказывает: нозологическое
+      лечение входит в консультацию)'
+    tags: 12
+  date: '2026-08-26'
   expected:
     type: Тип 1
     esthetic_markers_found: []
     nonadjacent_found: []
-  note: 'обновлён 2026-08-25 после расщепления тегов: trich_diag → trich_consult+trich_diagnostics (Анализ волос у клиента
-    «Нет» — но trich_diagnostics остаётся: трихоскопия и фототрихограмма «Да»); neoplasm_removal → 5 групп (все удаления у
-    клиента «Да»); melanoma_excision → onco_excision. std_consult/std_lab НЕ включены: «Лечение ИППП» у клиента «Нет»'
+  note: 'пересобран по прайсу (п.2.5 промпта этапа 6). Прайсовые нозологии удалений сформулированы «элементами» без нозологий
+    — removal_pigmented/viral/keratosis подтверждены сайтом. carboxytherapy_face НЕ включена: прайсовая «CarboxyPen 1 зона»
+    без локализации — открытый вопрос заказчику'
 tags:
 - acne_treatment
+- carboxytherapy_scalp
+- cytology_puncture
 - derm_consult
 - derm_consult_child
 - dermatoscopy
 - dermsurg_consult
 - eczema_dermatitis_treatment
+- excision_reconstructive
+- excisional_biopsy
 - herpes_treatment
 - histology_skin
+- ihc_study
+- keloid_treatment
 - laser_vascular
 - mesotherapy_scalp
+- milia_removal
 - mole_mapping
+- myco_lab
 - mycosis_treatment
 - neoplasm_removal_cryo
+- neoplasm_removal_electro
+- neoplasm_removal_laser
 - neoplasm_removal_radio
+- neoplasm_removal_surgical
 - onco_consult
 - onco_excision
 - psoriasis_treatment
+- punch_biopsy
+- removal_complex_site
 - removal_keratosis
 - removal_pigmented
 - removal_soft_tissue
 - removal_vascular
 - removal_viral
 - rosacea_treatment
+- skin_biopsy
+- tick_removal
 - trich_consult
 - trich_diagnostics
 - trich_treatment
 - urticaria_treatment
+- wood_lamp_exam
+- xanthelasma_removal
+tags_by_source:
+  price:
+  - acne_treatment
+  - carboxytherapy_scalp
+  - cytology_puncture
+  - derm_consult
+  - derm_consult_child
+  - dermatoscopy
+  - dermsurg_consult
+  - excision_reconstructive
+  - excisional_biopsy
+  - histology_skin
+  - ihc_study
+  - keloid_treatment
+  - laser_vascular
+  - mesotherapy_scalp
+  - milia_removal
+  - mole_mapping
+  - myco_lab
+  - neoplasm_removal_cryo
+  - neoplasm_removal_electro
+  - neoplasm_removal_laser
+  - neoplasm_removal_surgical
+  - onco_consult
+  - punch_biopsy
+  - removal_complex_site
+  - removal_soft_tissue
+  - removal_vascular
+  - tick_removal
+  - trich_consult
+  - trich_diagnostics
+  - trich_treatment
+  - wood_lamp_exam
+  - xanthelasma_removal
+  site_only:
+  - eczema_dermatitis_treatment
+  - herpes_treatment
+  - mycosis_treatment
+  - neoplasm_removal_radio
+  - onco_excision
+  - psoriasis_treatment
+  - removal_keratosis
+  - removal_pigmented
+  - removal_viral
+  - rosacea_treatment
+  - skin_biopsy
+  - urticaria_treatment

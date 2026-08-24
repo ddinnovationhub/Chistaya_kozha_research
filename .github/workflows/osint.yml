@@ -34,6 +34,7 @@ jobs:
       YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
       DADATA_API_KEY: ${{ secrets.DADATA_API_KEY }}
       DADATA_SECRET_KEY: ${{ secrets.DADATA_SECRET_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       CITY: ${{ github.event.inputs.city }}
       QUERY_LIMIT: ${{ github.event.inputs.limit }}
     steps:
@@ -70,6 +71,7 @@ jobs:
           path: |
             data/
             output/
+            raw/
           if-no-files-found: warn
           retention-days: 30
 
