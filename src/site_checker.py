@@ -324,8 +324,10 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         if m1 is None and CONSUMABLE_RE.search(name):
             rows_to_write.append({**s, "row_type": "расходник"})
             continue
-        if m1 is None and (is_zone_or_junk_name(name)
-                           or DESCRIPTIVE_TEXT_RE.search(name)):
+        if m1 is None and not PACKAGE_RE.search(name) \
+                and (is_zone_or_junk_name(name)
+                     or DESCRIPTIVE_TEXT_RE.search(name)):
+            # пакеты («Чек-ап базовый») — услуги с флагом, не служебные (такт 3)
             rows_to_write.append({**s, "row_type": "служебное"})
             continue
         # счётчик ворот: профильная позиция = словарный дерм-тег ИЛИ якорь.
@@ -391,14 +393,31 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         gate, reason = "Исключён", "салон красоты / нет медицинской деятельности"
     elif not g2:
         fact = ", ".join(data["doctor_specialties"][:4])
-        gate = "Исключён"
-        if derm_rows_n or esth_units:
-            reason = (f"нет релевантного профиля (профильных позиций {derm_rows_n} "
-                      f"из {routed_total}, {derm_share:.0%} — ниже порога"
-                      + (f"; фактический: {fact}" if fact else "") + ")")
+        derm_specialties = {"дерматолог", "дерматовенеролог", "онкодерматолог",
+                            "трихолог", "дерматохирург"} \
+            & set(data["doctor_specialties"])
+        if derm_specialties and derm_rows_n == 0 and routed_total < 15:
+            # такт 3 (кейс naedine-n): профильная специальность на сайте
+            # заявлена, а профильных позиций в собранном прайсе ноль при
+            # МАЛОМ числе собранных позиций — вероятен недобор прайса
+            # (дерм-раздел не попал в обойденные страницы). «Исключён» тут —
+            # ложная уверенность; честный статус — ручная проверка.
+            # Аллерго+ (37 позиций, 0 профильных) сюда не попадает: прайс
+            # собран полно, профиля действительно нет.
+            gate = "Требует проверки"
+            reason = (f"профильная специальность заявлена "
+                      f"({', '.join(sorted(derm_specialties))}), но профильных "
+                      f"позиций в собранном прайсе нет (собрано всего "
+                      f"{routed_total} — вероятен недобор прайса)")
         else:
-            reason = ("нет релевантного профиля"
-                      + (f" (фактический: {fact})" if fact else ""))
+            gate = "Исключён"
+            if derm_rows_n or esth_units:
+                reason = (f"нет релевантного профиля (профильных позиций {derm_rows_n} "
+                          f"из {routed_total}, {derm_share:.0%} — ниже порога"
+                          + (f"; фактический: {fact}" if fact else "") + ")")
+            else:
+                reason = ("нет релевантного профиля"
+                          + (f" (фактический: {fact})" if fact else ""))
     elif not rows_to_write:
         gate, reason = "Требует проверки", "профильные слова есть, услуг на страницах не найдено"
     else:
