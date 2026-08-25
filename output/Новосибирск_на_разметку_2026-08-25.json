@@ -9,340 +9,431 @@
    "clinic_title": "Альфа клиника",
    "services": [
     {
-     "row_id": 3271,
+     "row_id": 5313,
      "name": "PRP терапия",
      "description": null,
      "price": "7000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3260,
-     "name": "Гистеросальпингография, ГССГ ультразвуковой метод",
+     "row_id": 5356,
+     "name": "PRP-терапия (плазма, обогащенная тромбоцитами)",
      "description": null,
      "price": "7000 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
     },
     {
-     "row_id": 3255,
-     "name": "Кольпоскопия без выдачи фото",
+     "row_id": 5341,
+     "name": "Внутривенное введение лекарственных препаратов",
+     "description": null,
+     "price": "500 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5336,
+     "name": "Выезд врача на дом (Правый берег)",
+     "description": null,
+     "price": "5000 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5337,
+     "name": "Выезд медсестры на дом по городу",
+     "description": null,
+     "price": "1500 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5338,
+     "name": "Выезд медсестры на дом рядом с мед центром",
+     "description": null,
+     "price": "1000 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5339,
+     "name": "Выезд отдаленные районы (Родники, левый берег)",
+     "description": null,
+     "price": "3000 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5340,
+     "name": "Выезд очень отдаленные районы (Краснообск, Искитим, Бердск, Академгородок, Кольцово)",
+     "description": null,
+     "price": "4000 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5358,
+     "name": "Диспорт 1 единица для коррекции гипергидроза",
+     "description": null,
+     "price": "80 руб",
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
+    },
+    {
+     "row_id": 5342,
+     "name": "Забор крови из вены",
+     "description": null,
+     "price": "250 руб",
+     "page_url": "https://alfa-clinic.com/services/vyezdnaya-sluzhba"
+    },
+    {
+     "row_id": 5344,
+     "name": "Измерение глюкозы глюкометром из пальца",
+     "description": null,
+     "price": "350 руб",
+     "page_url": "https://alfa-clinic.com/services/terapiya-i-gerantologiya"
+    },
+    {
+     "row_id": 5361,
+     "name": "Иммуноглобулин против клещевого энцефалита (1 мл.)",
+     "description": null,
+     "price": "1950 руб",
+     "page_url": "https://alfa-clinic.com/services/klech"
+    },
+    {
+     "row_id": 5349,
+     "name": "Краткий прием врача-инфекциониста",
+     "description": null,
+     "price": "1500 руб",
+     "page_url": "https://alfa-clinic.com/services/vich-gepatit-gerpes"
+    },
+    {
+     "row_id": 5334,
+     "name": "Краткий прием генетика",
      "description": null,
      "price": "2000 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "page_url": "https://alfa-clinic.com/services/detskoe-otdelenie"
     },
     {
-     "row_id": 3275,
+     "row_id": 5365,
+     "name": "Криодеструкция и удаление новообразований",
+     "description": null,
+     "price": "960 руб",
+     "page_url": "https://alfa-clinic.com/doctors/olga-valerevna-shestakova"
+    },
+    {
+     "row_id": 5314,
      "name": "Лазерное Удаление гемангеом 1 степени сложности (1 элемент)",
      "description": null,
      "price": "1100 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3276,
-     "name": "Лазерное Удаление гемангеом 2 степени сложности (1 элемент)",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
-    },
-    {
-     "row_id": 3277,
-     "name": "Лазерное Удаление гемангеом 3 степени сложности (1 элемент)",
-     "description": null,
-     "price": "6000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
-    },
-    {
-     "row_id": 3278,
+     "row_id": 5315,
      "name": "Лазерное Удаление кератом 1 степени сложности (1 элемент)",
      "description": null,
      "price": "2000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3279,
-     "name": "Лазерное Удаление кератом 2 степени сложности (1 элемент)",
-     "description": null,
-     "price": "4000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
-    },
-    {
-     "row_id": 3280,
-     "name": "Лазерное Удаление кератом 3 степени сложности (1 элемент)",
-     "description": null,
-     "price": "5000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
-    },
-    {
-     "row_id": 3281,
+     "row_id": 5316,
      "name": "Лазерное Удаление ксантом (1 элемент)",
      "description": null,
      "price": "4000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3282,
+     "row_id": 5317,
      "name": "Лазерное Удаление невуса 1 категория — от 5 мм (1 ед.)",
      "description": null,
      "price": "2500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3283,
+     "row_id": 5318,
      "name": "Лазерное Удаление невуса 2 категория — от 5 мм (1 ед.)",
      "description": null,
      "price": "5000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3284,
+     "row_id": 5319,
      "name": "Лазерное Удаление невуса на лице (1 ед.)",
      "description": null,
      "price": "3700 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3288,
+     "row_id": 5323,
      "name": "Лазерное Удаление папилломы (1 элемент)",
      "description": null,
      "price": "1000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3289,
+     "row_id": 5324,
      "name": "Лазерное Удаление просяного угря (1 элемент)",
      "description": null,
      "price": "350 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3285,
+     "row_id": 5320,
      "name": "Лазерное удаление новообразований кожи вирусная бородавчатая папиллома (за 1 единицу) 1 категория сложности",
      "description": null,
      "price": "2500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3286,
+     "row_id": 5321,
      "name": "Лазерное удаление новообразований кожи вирусная бородавчатая папиллома (за 1 единицу) 2 категория сложности",
      "description": null,
      "price": "3500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3287,
+     "row_id": 5322,
      "name": "Лазерное удаление новообразований кожи вирусная бородавчатая папиллома (за 1 единицу) 3 категория сложности",
      "description": null,
      "price": "6000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3248,
-     "name": "Массаж простаты",
+     "row_id": 5366,
+     "name": "Мезотерапия кожи головы",
      "description": null,
-     "price": "2000 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "price": "6500 руб",
+     "page_url": "https://alfa-clinic.com/doctors/tatiana-sergeevna-vitman"
     },
     {
-     "row_id": 3269,
+     "row_id": 5311,
      "name": "Мезотерапия кожи головы Hair X",
      "description": null,
      "price": "6500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3270,
+     "row_id": 5312,
      "name": "Мезотерапия кожи головы Tricholax",
      "description": null,
      "price": "3900 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3261,
+     "row_id": 5308,
      "name": "Мезотерапия кожи головы препаратом Hair X",
      "description": null,
      "price": "6500 руб",
      "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/mezoterapiya-volos"
     },
     {
-     "row_id": 3262,
+     "row_id": 5309,
      "name": "Мезотерапия кожи головы препаратом Tricholax",
      "description": null,
      "price": "3900 руб",
      "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/mezoterapiya-volos"
     },
     {
-     "row_id": 3294,
+     "row_id": 5329,
      "name": "Механическая экстракция (удаление) моллюска 1шт",
      "description": null,
      "price": "600 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3293,
+     "row_id": 5328,
      "name": "Обработка бородавки/стержневой мозоли",
      "description": null,
      "price": "1500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3251,
-     "name": "Пайпель-биопсия (забор)",
+     "row_id": 5343,
+     "name": "Он-лайн консультация",
+     "description": null,
+     "price": "2500 руб",
+     "page_url": "https://alfa-clinic.com/services/terapiya-i-gerantologiya"
+    },
+    {
+     "row_id": 5348,
+     "name": "Онлайн консультация фтизиатра",
+     "description": null,
+     "price": "2500 руб",
+     "page_url": "https://alfa-clinic.com/services/ftiziatriya"
+    },
+    {
+     "row_id": 5345,
+     "name": "Осмотр перед постановкой иммуноглобулина",
+     "description": null,
+     "price": "1000 руб",
+     "page_url": "https://alfa-clinic.com/services/terapiya-i-gerantologiya"
+    },
+    {
+     "row_id": 5359,
+     "name": "Первичный прием врача-инфекциониста",
      "description": null,
      "price": "3500 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "page_url": "https://alfa-clinic.com/services/klech"
     },
     {
-     "row_id": 3249,
-     "name": "Плазмотерапия",
-     "description": null,
-     "price": "3800 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
-    },
-    {
-     "row_id": 3263,
-     "name": "Прием дерматовенеролога первичный",
-     "description": null,
-     "price": "4000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
-    },
-    {
-     "row_id": 3264,
-     "name": "Прием дерматовенеролога повторный",
+     "row_id": 5368,
+     "name": "Первичный приём врача инфекциониста",
      "description": null,
      "price": "3500 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/doctors/nataliya-pyrba-dorjievna-plotnikova"
     },
     {
-     "row_id": 3265,
-     "name": "Прием детского дерматолога",
+     "row_id": 5331,
+     "name": "Прием (осмотр, консультация) инфекциониста первичный",
+     "description": null,
+     "price": "3500 руб",
+     "page_url": "https://alfa-clinic.com/services/detskoe-otdelenie"
+    },
+    {
+     "row_id": 5332,
+     "name": "Прием (осмотр, консультация) фтизиатра первичный (Детский)",
+     "description": null,
+     "price": "3000 руб",
+     "page_url": "https://alfa-clinic.com/services/detskoe-otdelenie"
+    },
+    {
+     "row_id": 5364,
+     "name": "Прием врача по беременности",
      "description": null,
      "price": "4000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/doctors/irada-sardarovna-allahverdieva"
     },
     {
-     "row_id": 3268,
+     "row_id": 5333,
+     "name": "Прием генетика",
+     "description": null,
+     "price": "4500 руб",
+     "page_url": "https://alfa-clinic.com/services/detskoe-otdelenie"
+    },
+    {
+     "row_id": 5335,
+     "name": "Прием нефролога",
+     "description": null,
+     "price": "3500 руб",
+     "page_url": "https://alfa-clinic.com/services/detskoe-otdelenie"
+    },
+    {
+     "row_id": 5310,
      "name": "Прием перед удалением врача-дерматовенеролога",
      "description": null,
      "price": "4000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3266,
-     "name": "Прием трихолога первичный",
+     "row_id": 5351,
+     "name": "Приём врача инфекциониста по результатам анализа клеща",
+     "description": null,
+     "price": "2200 руб",
+     "page_url": "https://alfa-clinic.com/services/vich-gepatit-gerpes"
+    },
+    {
+     "row_id": 5350,
+     "name": "Приём детского инфекциониста первичный",
      "description": null,
      "price": "4000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/vich-gepatit-gerpes"
     },
     {
-     "row_id": 3267,
-     "name": "Прием трихолога повторный",
+     "row_id": 5347,
+     "name": "Пункционная биопсия опухолей (взятие)",
      "description": null,
      "price": "3000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/puncionnaya-biopsiya-i-onkologiya"
     },
     {
-     "row_id": 3250,
-     "name": "Радиоволновое лечение шейки матки",
-     "description": null,
-     "price": "4500 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
-    },
-    {
-     "row_id": 3256,
-     "name": "УЗИ обзорное малого таза (трансвагинально/трансректально)",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
-    },
-    {
-     "row_id": 3252,
-     "name": "Удаление вагинального контрацептива",
+     "row_id": 5346,
+     "name": "Расшифровка анализов",
      "description": null,
      "price": "1500 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "page_url": "https://alfa-clinic.com/services/terapiya-i-gerantologiya"
     },
     {
-     "row_id": 3253,
-     "name": "Удаление инородного предмета из влагалища",
+     "row_id": 5357,
+     "name": "Трихологическая инъекция (Кеналог)",
      "description": null,
-     "price": "1500 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "price": "2000 руб",
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
     },
     {
-     "row_id": 3292,
+     "row_id": 5360,
+     "name": "Удаление клеща",
+     "description": null,
+     "price": "300 руб",
+     "page_url": "https://alfa-clinic.com/services/klech"
+    },
+    {
+     "row_id": 5327,
      "name": "Удаление милиумов (1 ед.)",
      "description": null,
      "price": "450 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3258,
-     "name": "Удаление новообразований вульвы и влагалища (радиоволновая хирургия)нии процесса на влагалище",
+     "row_id": 5367,
+     "name": "Удаление новообразований",
      "description": null,
-     "price": "3000 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
+     "price": "960 руб",
+     "page_url": "https://alfa-clinic.com/doctors/tatiana-sergeevna-vitman"
     },
     {
-     "row_id": 3290,
+     "row_id": 5325,
      "name": "Удаление радиоволновым аппаратом 1ед. 0,5-2см",
      "description": null,
      "price": "1200 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3291,
+     "row_id": 5326,
      "name": "Удаление радиоволновым аппаратом 1ед. более 2 см",
      "description": null,
      "price": "1700 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3254,
-     "name": "Удаление спирали",
-     "description": null,
-     "price": "2000 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
-    },
-    {
-     "row_id": 3259,
-     "name": "Установка спирали Мирена (установка+ спираль)",
-     "description": null,
-     "price": "22300 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
-    },
-    {
-     "row_id": 3257,
-     "name": "Фолликулометрия с краткой консультацией врача",
-     "description": null,
-     "price": "2300 руб",
-     "page_url": "https://alfa-clinic.com/services/ginekologiya"
-    },
-    {
-     "row_id": 3295,
+     "row_id": 5330,
      "name": "Химическое удаление бородавок",
      "description": null,
      "price": "1800 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya"
     },
     {
-     "row_id": 3272,
-     "name": "Хирургическое удаление новообразования 1 степени сложности",
+     "row_id": 5353,
+     "name": "Чистка кожи лица «экспресс», механическая (выполняет врач-косметолог)",
      "description": null,
-     "price": "12000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "price": "2500 руб",
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
     },
     {
-     "row_id": 3273,
-     "name": "Хирургическое удаление новообразования 2 степени сложности",
+     "row_id": 5352,
+     "name": "Чистка кожи лица, Экспресс",
      "description": null,
-     "price": "16000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "price": "2000 руб",
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
     },
     {
-     "row_id": 3274,
-     "name": "Хирургическое удаление новообразования 3 степени сложности",
+     "row_id": 5354,
+     "name": "Чистка кожи лица, механическая (выполняет врач-косметолог)",
      "description": null,
-     "price": "24000 руб",
-     "page_url": "https://alfa-clinic.com/services/dermatologiya-i-trihologiya/"
+     "price": "6000 руб",
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
+    },
+    {
+     "row_id": 5355,
+     "name": "Чистка кожи спины, механическая, по назначению врача (выполняет косметолог-эстетист)",
+     "description": null,
+     "price": "4000 руб",
+     "page_url": "https://alfa-clinic.com/services/kosmetologiya"
+    },
+    {
+     "row_id": 5362,
+     "name": "Эластометрия печени датчик M, XL (степерь фиброза)",
+     "description": null,
+     "price": "2800 руб",
+     "page_url": "https://alfa-clinic.com/doctors/elena-viktorovna-fast"
+    },
+    {
+     "row_id": 5363,
+     "name": "Эластометрия печени со степенью стеотоза датчик M, XL",
+     "description": null,
+     "price": "3200 руб",
+     "page_url": "https://alfa-clinic.com/doctors/elena-viktorovna-fast"
     }
    ]
   },
@@ -351,18 +442,249 @@
    "clinic_title": "Альфа Технологии",
    "services": [
     {
-     "row_id": 3300,
-     "name": "A17.30.010.001 Вакуумное воздействие с фототерапией (ЛОД-терапия)",
+     "row_id": 5382,
+     "name": "A11.01.002 Подкожное введение лекарственных препаратов (углекислого газа) (1 сустав или 1 отдел позвоночника)",
      "description": null,
-     "price": "890 руб",
-     "page_url": "https://alfaclinic-nsk.ru/services/Urology/vosstanovleniepotencii"
+     "price": "990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/lecheniyepozvonochnika"
     },
     {
-     "row_id": 3299,
-     "name": "A22.30.015.001 Ударно-волновая терапия эректильной дисфункции на аппарате Renova",
+     "row_id": 5383,
+     "name": "A11.01.002.002 Подкожное введение лекарственных препаратов (углекислого газа) (весь позвоночник)",
      "description": null,
-     "price": "14990 руб",
-     "page_url": "https://alfaclinic-nsk.ru/services/Urology/udarno_volnovaya_terapiya_v_urologii"
+     "price": "1790 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/lecheniyepozvonochnika"
+    },
+    {
+     "row_id": 5384,
+     "name": "A11.01.002.003 Подкожное введение лекарственных препаратов (углекислого газа) для коррекции фигуры (живот/ягодицы/руки)",
+     "description": null,
+     "price": "1390 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/lecheniecellyulita"
+    },
+    {
+     "row_id": 5385,
+     "name": "A11.01.002.004 Подкожное введение лекарственных препаратов (углекислого газа) для коррекции фигуры (бедра спереди/бедра сзади)",
+     "description": null,
+     "price": "1890 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/lecheniecellyulita"
+    },
+    {
+     "row_id": 5386,
+     "name": "A11.01.002.005 Подкожное введение лекарственных препаратов (углекислого газа) для коррекции фигуры (бедра полностью)",
+     "description": null,
+     "price": "2390 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/lecheniecellyulita"
+    },
+    {
+     "row_id": 5395,
+     "name": "A11.04.004.001/A11.04.006.001 Внутри/околосуставное введение лекарственных препаратов (Дексаметазон, Лидокаин)",
+     "description": null,
+     "price": "1990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/Inekcionnoe_lechenie_sustavov"
+    },
+    {
+     "row_id": 5396,
+     "name": "A11.04.004.003/A11.04.006.003 Внутри/околосуставное введение лекарственных препаратов (Дипроспан/Бетаспан Депо)",
+     "description": null,
+     "price": "3090 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/Inekcionnoe_lechenie_sustavov"
+    },
+    {
+     "row_id": 5398,
+     "name": "A11.04.004.004/A11.04.006.007 Внутри/околосуставное введение лекарственых препаратов (плазмы)",
+     "description": null,
+     "price": "3490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/PRP_terapiya"
+    },
+    {
+     "row_id": 5400,
+     "name": "A11.04.004.009/A11.04.006.004 Внутри/околосуставное введение лекарственых препаратов (PRP терапия Ycellbio-Kit (1 пробирка))",
+     "description": null,
+     "price": "8490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/PRP_terapiya"
+    },
+    {
+     "row_id": 5399,
+     "name": "A11.04.004.010/A11.04.006.005 Внутри/околосуставное введение лекарственых препаратов (PRP терапия Ycellbio-Kit (2 пробирки))",
+     "description": null,
+     "price": "15490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/PRP_terapiya"
+    },
+    {
+     "row_id": 5401,
+     "name": "A11.04.004.011/A11.04.006.006 Внутри/околосуставное введение лекарственых препаратов (PRP терапия Ycellbio-Kit без стоимости пробирки)",
+     "description": null,
+     "price": "2190 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/PRP_terapiya"
+    },
+    {
+     "row_id": 5394,
+     "name": "A11.04.005 Пункция синовиальной сумки сустава",
+     "description": null,
+     "price": "1590 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/Inekcionnoe_lechenie_sustavov"
+    },
+    {
+     "row_id": 5397,
+     "name": "A16.04.051 Внутрисуставное введение заменителей (протезов) синовиальной жидкости",
+     "description": null,
+     "price": "1990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/Inekcionnoe_lechenie_sustavov"
+    },
+    {
+     "row_id": 5374,
+     "name": "A22.30.015.003 Ударно-волновая терапия при лечении заболеваний стопы (1 зона) (радиальная)",
+     "description": null,
+     "price": "1490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5372,
+     "name": "A22.30.015.004 Ударно-волновая терапия при лечении заболеваний опорно- двигательного аппарата (кроме стопы) (радиальная)",
+     "description": null,
+     "price": "1690 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5376,
+     "name": "A22.30.015.005 Ударно-волновая терапия (лечение позвоночника)",
+     "description": null,
+     "price": "2590 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5377,
+     "name": "A22.30.015.006 Ударно-волновая терапия (устранение растяжек в области плеч/живота/ягодиц/ передней или задней поверхности бедер) (1 зона)",
+     "description": null,
+     "price": "1490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5378,
+     "name": "A22.30.015.007 Ударно-волновая терапия ( корекция фигуры) (живот/ягодицы/руки) (1 зона)",
+     "description": null,
+     "price": "1790 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5379,
+     "name": "A22.30.015.008 Ударно-волновая терапия (коррекция фигуры) (бока)",
+     "description": null,
+     "price": "1490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5380,
+     "name": "A22.30.015.009 Ударно-волновая терапия (коррекция фигуры) (передняя или задняя сторона бедер)",
+     "description": null,
+     "price": "1990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5381,
+     "name": "A22.30.015.010 Ударно-волновая терапия (коррекция фигуры) (бедра полностью)",
+     "description": null,
+     "price": "3090 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5373,
+     "name": "A22.30.015.012 Ударно-волновая терапия при лечении заболеваний опорно- двигательного аппарата (кроме стопы) (фокусированная)",
+     "description": null,
+     "price": "2590 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5375,
+     "name": "A22.30.015.012 Ударно-волновая терапия при лечении заболеваний стопы (1 зона) (фокусированная)",
+     "description": null,
+     "price": "2190 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/udarno_volnovaya_terapiya_v_ortopedii"
+    },
+    {
+     "row_id": 5392,
+     "name": "B01.050.001 Прием (осмотр, консультация) врача-травматолога-ортопеда первичный",
+     "description": null,
+     "price": "2990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/Inekcionnoe_lechenie_sustavov"
+    },
+    {
+     "row_id": 5393,
+     "name": "B01.050.002 Прием (осмотр, консультация) врача-травматолога-ортопеда повторный",
+     "description": null,
+     "price": "2590 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/Inekcionnoe_lechenie_sustavov"
+    },
+    {
+     "row_id": 5387,
+     "name": "B04.050.002.002 Профилактический прием (осмотр, консультация) врача-травматолога-ортопеда с подбором ортопедических стелек",
+     "description": null,
+     "price": "550 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/izgotovlenie_individualnykh_ortopedicheskikh_stelek"
+    },
+    {
+     "row_id": 5388,
+     "name": "B04.050.002.003 Изготовление стелек для взрослых Formthotics",
+     "description": null,
+     "price": "10490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/izgotovlenie_individualnykh_ortopedicheskikh_stelek"
+    },
+    {
+     "row_id": 5390,
+     "name": "B04.050.002.004 Изготовление стелек для взрослых RootFoot",
+     "description": null,
+     "price": "6990 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/izgotovlenie_individualnykh_ortopedicheskikh_stelek"
+    },
+    {
+     "row_id": 5389,
+     "name": "B04.050.002.006 Изготовление стелек для взрослых Footmaster",
+     "description": null,
+     "price": "5490 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/izgotovlenie_individualnykh_ortopedicheskikh_stelek"
+    },
+    {
+     "row_id": 5391,
+     "name": "B04.050.002.010 Профилактический прием (осмотр, консультация) врача-травматолога-ортопеда с корректировкой ортопедических стелек",
+     "description": null,
+     "price": "1690 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/izgotovlenie_individualnykh_ortopedicheskikh_stelek"
+    },
+    {
+     "row_id": 5402,
+     "name": "B04.050.002.011 Ортопедические стельки ORTO Comfort",
+     "description": null,
+     "price": "1790 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/universalnye_ortopedicheskie_stelki_orto"
+    },
+    {
+     "row_id": 5403,
+     "name": "B04.050.002.012 Ортопедические стельки ORTO Elegance",
+     "description": null,
+     "price": "2090 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/universalnye_ortopedicheskie_stelki_orto"
+    },
+    {
+     "row_id": 5404,
+     "name": "B04.050.002.013 Ортопедические стельки ORTO Soft Tech",
+     "description": null,
+     "price": "2790 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/universalnye_ortopedicheskie_stelki_orto"
+    },
+    {
+     "row_id": 5405,
+     "name": "B04.050.002.014 Ортопедические стельки ORTO Concept",
+     "description": null,
+     "price": "2690 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/universalnye_ortopedicheskie_stelki_orto"
+    },
+    {
+     "row_id": 5406,
+     "name": "B04.050.002.017 Ортопедические стельки ORTO POWER",
+     "description": null,
+     "price": "2790 руб",
+     "page_url": "https://alfaclinic-nsk.ru/services/ortopediya/universalnye_ortopedicheskie_stelki_orto"
     }
    ]
   },
@@ -371,7 +693,14 @@
    "clinic_title": "Медицинский центр АллергоСити, Новосибирск",
    "services": [
     {
-     "row_id": 3304,
+     "row_id": 3989,
+     "name": "Диагностика ФВД с пробой с бронхолитиком (расшифровка без рекомендаций)",
+     "description": null,
+     "price": "2000 руб",
+     "page_url": "https://allergocity.ru/services/pulmonology/pulmonolog"
+    },
+    {
+     "row_id": 3988,
      "name": "Пройти мониторирование по Холтеру",
      "description": null,
      "price": "3000 руб.",
@@ -384,84 +713,252 @@
    "clinic_title": "Аллея красоты",
    "services": [
     {
-     "row_id": 3317,
+     "row_id": 4030,
+     "name": "3D диагностика кожи на аппарате 3D Life Viz",
+     "description": null,
+     "price": "4 000 руб",
+     "page_url": "https://alleya-nsk.ru/ceny"
+    },
+    {
+     "row_id": 4014,
+     "name": "Golden Yellow peel (Испания) зона лица",
+     "description": null,
+     "price": "4 500 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/esteticheskaya-kosmetologiya/pilingi"
+    },
+    {
+     "row_id": 4013,
+     "name": "Medic control peel зона лица",
+     "description": null,
+     "price": "3 100 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/esteticheskaya-kosmetologiya/pilingi"
+    },
+    {
+     "row_id": 4004,
      "name": "PDRN + RF lifting мощный осенний протокол",
      "description": null,
      "price": "9 200 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3310,
+     "row_id": 3997,
      "name": "Атравматичный уход от Natinuel (Италия)",
      "description": null,
      "price": "6 500 руб",
      "page_url": "https://alleya-nsk.ru"
     },
     {
-     "row_id": 3319,
+     "row_id": 4011,
+     "name": "В составе с комбинированной чисткой",
+     "description": null,
+     "price": "6 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/esteticheskaya-kosmetologiya"
+    },
+    {
+     "row_id": 4020,
+     "name": "Врач-дерматолог: прием + удаление папиллом 1-2мм до 3 шт",
+     "description": null,
+     "price": "3 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4022,
+     "name": "Гипертрофированные сальные железы (кисты сальных желез) 1-2 мм до 10шт",
+     "description": null,
+     "price": "1 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4023,
+     "name": "Гипертрофированные сальные железы (кисты сальных желез) 1-2мм 10-20шт",
+     "description": null,
+     "price": "120 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4024,
+     "name": "Гипертрофированные сальные железы (кисты сальных желез) 1-2мм 20-30шт",
+     "description": null,
+     "price": "100 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4026,
+     "name": "Гипертрофированные сальные железы (кисты сальных желез) 3-5мм 11-20шт",
+     "description": null,
+     "price": "300 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4025,
+     "name": "Гипертрофированные сальные железы (кисты сальных желез) 3-5мм 6-10шт",
+     "description": null,
+     "price": "400 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4027,
+     "name": "Гистологическое исследование удаленного материала",
+     "description": null,
+     "price": "2 500 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4007,
      "name": "Диспорт при гипергидрозе Великобритания",
      "description": null,
      "price": "100 руб.",
-     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya/botylinotherapy/"
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya"
     },
     {
-     "row_id": 3311,
+     "row_id": 4010,
+     "name": "Коллагенотерапия",
+     "description": null,
+     "price": "16 500 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya/collagenoterapiya"
+    },
+    {
+     "row_id": 3998,
      "name": "Комбинированная процедура: тело 40 мин + лицо 20 мин. (1 визит)",
      "description": null,
      "price": "5 200 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3312,
+     "row_id": 3999,
      "name": "Комбинированная процедура: тело 60 мин + лицо 20 мин. (1 визит)",
      "description": null,
      "price": "6 000 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3318,
+     "row_id": 4016,
+     "name": "Консультация ведущего врача-дерматолога, косметолога",
+     "description": null,
+     "price": "5 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/konsultacziya-kosmetologa"
+    },
+    {
+     "row_id": 4018,
+     "name": "Консультация врача-дерматолога, косметолога",
+     "description": null,
+     "price": "3 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/konsultacziya-kosmetologa"
+    },
+    {
+     "row_id": 4017,
+     "name": "Консультация врача-дерматолога, косметолога экспертного уровня",
+     "description": null,
+     "price": "4 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/konsultacziya-kosmetologa"
+    },
+    {
+     "row_id": 4005,
      "name": "Контролируемая глубина воздействия на ткани позволяет максимально безопасно получить выраженный эстетический эффект",
      "description": null,
      "price": "5 000 ₽",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya/lazernaya-shlifovka-koji"
     },
     {
-     "row_id": 3316,
+     "row_id": 4003,
      "name": "Костюм icoone LASER MED",
      "description": null,
      "price": "3 000 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3313,
+     "row_id": 4028,
+     "name": "Лазерное удаление шипиц (бородавок) до 5 мм 1-3 шт",
+     "description": null,
+     "price": "3 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4029,
+     "name": "Лазерное удаление шипиц (бородавок) до 5 мм 4-10 шт",
+     "description": null,
+     "price": "500 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4008,
+     "name": "Мезотерапия",
+     "description": null,
+     "price": "4 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya"
+    },
+    {
+     "row_id": 4015,
+     "name": "Мы используем только сертифицированные и безопасные методы, а наши косметологи следуют последним тенденциям в косметологии",
+     "description": null,
+     "price": "4 000 ₽",
+     "page_url": "https://alleya-nsk.ru/uslugi/konsultacziya-kosmetologa"
+    },
+    {
+     "row_id": 4021,
+     "name": "Папилломы 3-5мм до 11 шт",
+     "description": null,
+     "price": "600 руб.",
+     "page_url": "https://alleya-nsk.ru/uslugi/dermatologija"
+    },
+    {
+     "row_id": 4009,
+     "name": "Плазмотерапия",
+     "description": null,
+     "price": "5 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/inekcionnaya-kosmetologiya"
+    },
+    {
+     "row_id": 4019,
+     "name": "Повторный прием врача-косметолога",
+     "description": null,
+     "price": "2 000 руб",
+     "page_url": "https://alleya-nsk.ru/uslugi/konsultacziya-kosmetologa"
+    },
+    {
+     "row_id": 4000,
      "name": "Процедура на лицо, 20 мин. (1 визит)",
      "description": null,
      "price": "2 000 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3314,
+     "row_id": 4001,
      "name": "Процедура на тело, 40 мин. (1 визит)",
      "description": null,
      "price": "3 600 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3315,
+     "row_id": 4002,
      "name": "Процедура на тело, 60 мин. (1 визит)",
      "description": null,
      "price": "4 500 руб",
      "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya"
     },
     {
-     "row_id": 3308,
+     "row_id": 4006,
+     "name": "Процедура проводится на аппарате Deka Synchro FT (Италия)",
+     "description": null,
+     "price": "3 000 ₽",
+     "page_url": "https://alleya-nsk.ru/uslugi/apparatnaya-kosmetologiya/fotolechenie-ipl-terapiya"
+    },
+    {
+     "row_id": 4012,
+     "name": "Специалисты клиники \"Аллея красоты\" проведут осмотр состояния вашей кожи и подберут индивидуальную методику для достижения желаемого результат",
+     "description": null,
+     "price": "2 900 ₽",
+     "page_url": "https://alleya-nsk.ru/uslugi/esteticheskaya-kosmetologiya/pilingi"
+    },
+    {
+     "row_id": 3995,
      "name": "Удаление сосудов до 1 кв. см",
      "description": null,
      "price": "2 000 руб",
      "page_url": "https://alleya-nsk.ru"
     },
     {
-     "row_id": 3309,
+     "row_id": 3996,
      "name": "Удаление телеангиоэктазий до 1 кв. см",
      "description": null,
      "price": "1 000 руб",
@@ -474,263 +971,144 @@
    "clinic_title": "БьютиСервис",
    "services": [
     {
-     "row_id": 3326,
-     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Double Shine (Bellarti Lift 1,0 мл + Bellarti Hydrate 1,0 мл) / А11.01.012",
+     "row_id": 5417,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Бодрое утро\" / A11.12.003",
      "description": null,
-     "price": "21 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "2 800 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3324,
-     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Lift 1,0 мл / А11.01.012",
+     "row_id": 5414,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Гармония\" / A11.12.003",
      "description": null,
-     "price": "13 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "2 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3329,
-     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Nucleo 20 2% - 2,0 мл",
+     "row_id": 5428,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Детокс VIP\", курс из 9ти процедур / A11.12.003",
      "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "18 000 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3327,
-     "name": "Введение искусственных имплантатов в мягкие ткани Bellarti Vita Plus, 2,0 мл, / А11.01.012",
-     "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3337,
-     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair Deep Booster 2,5%, 2,0 мл / А11.01.012",
-     "description": null,
-     "price": "12 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3336,
-     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair Deep, 2,0 мл / А11.01.012",
-     "description": null,
-     "price": "15 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3335,
-     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair-02, 1,5 мл / А11.01.012",
-     "description": null,
-     "price": "13 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3338,
-     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair-04, 1,5 мл / А11.01.012",
-     "description": null,
-     "price": "13 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3339,
-     "name": "Введение искусственных имплантатов в мягкие ткани Hyalrepair-08, 1,5 мл / А11.01.012",
-     "description": null,
-     "price": "13 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3357,
-     "name": "Введение искусственных имплантатов в мягкие ткани Hyon Soft Line, 3 мл / А11.01.012",
+     "row_id": 5427,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Детокс стандарт\", курс из 5ти процедур / A11.12.003",
      "description": null,
      "price": "9 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3355,
-     "name": "Введение искусственных имплантатов в мягкие ткани JALUPRO HMW, 2,5 мл / А11.01.012",
+     "row_id": 5423,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Железное здоровье\" / A11.12.003",
      "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "4 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3356,
-     "name": "Введение искусственных имплантатов в мягкие ткани JALUPRO, 3,0 мл / А11.01.012",
+     "row_id": 5415,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Здоровая печень Standart\" / A11.12.003",
      "description": null,
-     "price": "19 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "3 000 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3345,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Hydro Deluxe, 2,5 мл / А11.01.012",
+     "row_id": 5416,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Здоровая печень VIP\" / A11.12.003",
      "description": null,
-     "price": "18 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "4 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3346,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense Flux, 1 мл / А11.01.012",
+     "row_id": 5424,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Здоровое сердце\" / A11.12.003",
      "description": null,
-     "price": "19 900 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "1 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3348,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense LV, 1 мл / А11.01.012",
+     "row_id": 5425,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Здоровые сосуды\" / A11.12.003",
      "description": null,
-     "price": "19 900 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "2 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3347,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense Lips, 1 мл / А11.01.012",
+     "row_id": 5413,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Золушка\" / A11.12.003",
      "description": null,
-     "price": "19 900 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "3 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3349,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense MAN, 1 мл / А11.01.012",
+     "row_id": 5422,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Крепкий иммунитет\" / A11.12.003",
      "description": null,
-     "price": "19 900 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "3 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3350,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Intense, 1 мл / А11.01.012",
+     "row_id": 5429,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Перед операцией\", курс из 3х процедур / A11.12.003",
      "description": null,
-     "price": "19 900 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "7 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3351,
-     "name": "Введение искусственных имплантатов в мягкие ткани Neauvia Stimulate, 1 мл / А11.01.012",
+     "row_id": 5420,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Сила ума VIP\" / A11.12.003",
      "description": null,
-     "price": "19 900 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "2 100 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3332,
-     "name": "Введение искусственных имплантатов в мягкие ткани Novacutan Eye, 2,0 мл / A11.01.012",
+     "row_id": 5419,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Сила ума медиум\" / A11.12.003",
      "description": null,
-     "price": "21 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "1 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3331,
-     "name": "Введение искусственных имплантатов в мягкие ткани Novacutan Sbio, 2,0 мл / А11.01.012",
+     "row_id": 5418,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Сила ума стандарт\" / A11.12.003",
      "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "1 200 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3330,
-     "name": "Введение искусственных имплантатов в мягкие ткани Novacutan Ybio, 2,0 мл / А11.01.012",
+     "row_id": 5421,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Спорт актив\" / A11.12.003",
      "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "2 500 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3322,
-     "name": "Введение искусственных имплантатов в мягкие ткани Plinest Fast, 2,0 мл / А11.01.012",
+     "row_id": 5426,
+     "name": "Внутривенное введение лекарственных препаратов Коктейль \"Спорт экстрим\", курс из 4х процедур / A11.12.003",
      "description": null,
-     "price": "20 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "17 100 руб",
+     "page_url": "https://altika-clinic.ru/services/kapelnitsy/infuzionnaya-terapiya"
     },
     {
-     "row_id": 3321,
-     "name": "Введение искусственных имплантатов в мягкие ткани Plinest, 2,0 мл / А11.01.012",
+     "row_id": 5411,
+     "name": "Иглорефлексотерапия",
      "description": null,
-     "price": "20 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "3 500 руб",
+     "page_url": "https://altika-clinic.ru/services/refleksoterapiya/Iglorefleksoterapiya"
     },
     {
-     "row_id": 3344,
-     "name": "Введение искусственных имплантатов в мягкие ткани Profhilo, 2,0 мл / А11.01.012",
+     "row_id": 5412,
+     "name": "Краткая консультация без манипуляций",
      "description": null,
-     "price": "22 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "3 000 руб",
+     "page_url": "https://altika-clinic.ru/services/refleksoterapiya/Iglorefleksoterapiya"
     },
     {
-     "row_id": 3352,
-     "name": "Введение искусственных имплантатов в мягкие ткани Reneall, 2,0 мл / А11.01.012",
+     "row_id": 5410,
+     "name": "Первичная консультация (сбор анамнеза, проведение диагностики, составление плана лечения, манипуляции)",
      "description": null,
-     "price": "16 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3353,
-     "name": "Введение искусственных имплантатов в мягкие ткани Repart 5, 2 мл / А11.01.012",
-     "description": null,
-     "price": "15 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3354,
-     "name": "Введение искусственных имплантатов в мягкие ткани Repart 7 Ultimate, 1 мл / А11.01.012",
-     "description": null,
-     "price": "8 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3343,
-     "name": "Введение искусственных имплантатов в мягкие ткани Revi Eye, 1,0 мл / А11.01.012",
-     "description": null,
-     "price": "16 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3342,
-     "name": "Введение искусственных имплантатов в мягкие ткани Revi Silk, 2,0 мл / А11.01.012",
-     "description": null,
-     "price": "20 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3340,
-     "name": "Введение искусственных имплантатов в мягкие ткани Revi Strong, 2,0 мл / А11.01.012",
-     "description": null,
-     "price": "21 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3341,
-     "name": "Введение искусственных имплантатов в мягкие ткани Revi Style, 2,0 мл / А11.01.012",
-     "description": null,
-     "price": "16 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3334,
-     "name": "Введение искусственных имплантатов в мягкие ткани STYLAGE HYDRO MAX, 1,0 мл (гиалуроновая кислота 12,5 мг/мл с сорбитолом) / А11.01.012",
-     "description": null,
-     "price": "16 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3333,
-     "name": "Введение искусственных имплантатов в мягкие ткани STYLAGE HYDRO, 1,0 мл (гиалуроновая кислота 14 мг/мл с маннитолом) / А11.01.012",
-     "description": null,
-     "price": "14 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3323,
-     "name": "Введение искусственных имплантатов в мягкие ткани, Bellarti Hydrate 1,0 мл / А11.01.012",
-     "description": null,
-     "price": "13 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3328,
-     "name": "Введение искусственных имплантатов в мягкие ткани, Bellarti amino / Amino plus 2,0 мл / А11.01.012",
-     "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
-    },
-    {
-     "row_id": 3325,
-     "name": "Введение искусственных имплантатов в мягкие ткани, Bellarti plus / extra plus 1,0 мл / А11.01.012",
-     "description": null,
-     "price": "15 000 руб",
-     "page_url": "https://altika-clinic.ru/services/kosmetologiya/esteticheskaya-kosmetologiya/biorevitalizatsiya-litsa/"
+     "price": "5 000 руб",
+     "page_url": "https://altika-clinic.ru/services/refleksoterapiya/Iglorefleksoterapiya"
     }
    ]
   },
@@ -739,504 +1117,301 @@
    "clinic_title": "Ангелия Абсолюта",
    "services": [
     {
-     "row_id": 3421,
+     "row_id": 4108,
      "name": "Атравматичное очищение кожи лица и шеи",
      "description": null,
      "price": "3500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3392,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Balance 1,0 мл",
-     "description": null,
-     "price": "26 500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3393,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Intense 1,0 мл",
-     "description": null,
-     "price": "29 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3394,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Soft 1, 0 мл",
-     "description": null,
-     "price": "25 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3395,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: BELOTERO Volume 1,0 мл",
-     "description": null,
-     "price": "29 500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3385,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: Bellarti ESTILLA PLLA 3,0 мл",
-     "description": null,
-     "price": "25 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3386,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: Bellarti Nucleo 0,75 % 2,0 мл",
-     "description": null,
-     "price": "20 500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3387,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: HYALUFORM Lips 1, 0 мл",
-     "description": null,
-     "price": "17 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3396,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: HYALUFORM Soft 1, 0 мл",
-     "description": null,
-     "price": "15 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3397,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: JUVELINE Derm 1, 0 мл",
-     "description": null,
-     "price": "17 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3398,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: JUVELINE Sculpt 1, 0 мл",
-     "description": null,
-     "price": "17 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3399,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: RADIESS 1. 5 мл",
-     "description": null,
-     "price": "35 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3400,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: RADIESS 3. 0 мл",
-     "description": null,
-     "price": "60 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3401,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART Hard 1, 0 мл",
-     "description": null,
-     "price": "17 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3402,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART Medium 1, 0 мл",
-     "description": null,
-     "price": "17 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3388,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART PG 2,0 мл",
-     "description": null,
-     "price": "20 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3403,
+     "row_id": 4099,
      "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART PLA",
      "description": null,
      "price": "41 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3404,
-     "name": "Введение имплантата в мягкие ткани с целью коррекции формы: REPART Soft 1, 0 мл",
-     "description": null,
-     "price": "15 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3408,
+     "row_id": 4103,
      "name": "Введение имплантата в мягкие ткани: ADN Restart , NucleoSpire, Hydro Line",
      "description": null,
      "price": "10 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3409,
-     "name": "Введение имплантата в мягкие ткани: Bellarti (Hydrate, Lift, Plus, Extra Plus) 1,0 мл",
-     "description": null,
-     "price": "12 500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3405,
+     "row_id": 4100,
      "name": "Введение имплантата в мягкие ткани: Hair X (волосистая часть головы)",
      "description": null,
      "price": "3 500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3410,
-     "name": "Введение имплантата в мягкие ткани: Hyalrepair 02, 04 1,5 мл",
-     "description": null,
-     "price": "18 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3411,
-     "name": "Введение имплантата в мягкие ткани: Hyalrepair deep 2,0 мл",
-     "description": null,
-     "price": "23 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3412,
-     "name": "Введение имплантата в мягкие ткани: Hyaluform 1% 1,5 мл",
-     "description": null,
-     "price": "10 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3413,
-     "name": "Введение имплантата в мягкие ткани: Hyaluform deep 2,5% 2,0 мл",
-     "description": null,
-     "price": "15 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3406,
+     "row_id": 4101,
      "name": "Введение имплантата в мягкие ткани: Hydroline Extra (лицо, шея)",
      "description": null,
      "price": "9 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3407,
+     "row_id": 4102,
      "name": "Введение имплантата в мягкие ткани: Hydroline, NucleoSpire DNA-RNA 1% , NucleoSpire DNA-RNA 2%, Hyalrepair-05, Hyalrepair-08 (лицо, шея, декольте)",
      "description": null,
      "price": "10 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3414,
-     "name": "Введение имплантата в мягкие ткани: Revi Silk 1,0 мл",
-     "description": null,
-     "price": "17 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3415,
-     "name": "Введение имплантата в мягкие ткани: Revi Strong 1,0 мл",
-     "description": null,
-     "price": "19 500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3416,
-     "name": "Введение имплантата в мягкие ткани: Revi Style 1,0 мл",
-     "description": null,
-     "price": "13 000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3417,
+     "row_id": 4104,
      "name": "Введение имплантата в мягкие ткани: Коллост 7% 0,5 мл",
      "description": null,
      "price": "12 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3418,
+     "row_id": 4105,
      "name": "Введение имплантата в мягкие ткани: Сферо Гель LIGHT",
      "description": null,
      "price": "17 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3419,
+     "row_id": 4106,
      "name": "Введение имплантата в мягкие ткани: Сферо Гель MEDIUM",
      "description": null,
      "price": "23 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3390,
+     "row_id": 4097,
      "name": "Внутримышечное введение ботулотоксина типа А: Диспорт (1 ед.)",
      "description": null,
      "price": "150 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3389,
+     "row_id": 4096,
      "name": "Внутримышечное введение ботулотоксина типа А: Релатокс (1 ед.)",
      "description": null,
      "price": "350 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3383,
+     "row_id": 4094,
      "name": "Воздействие токами ультравысокой частоты на кожу (Лицо) на аппарате Magic Polar",
      "description": null,
      "price": "6000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3384,
+     "row_id": 4095,
      "name": "Воздействие токами ультравысокой частоты на кожу Средняя, нижняя треть лица и подчелюстная зона",
      "description": null,
      "price": "4500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3375,
+     "row_id": 4086,
      "name": "Воздействие токами ультравысокой частоты на кожу инвазивное Лицо + Шея+Декольте на аппарате DeAge-EX DUAL",
      "description": null,
      "price": "35000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3376,
+     "row_id": 4087,
      "name": "Воздействие токами ультравысокой частоты на кожу инвазивное Лицо на аппарате DeAge-EX DUAL",
      "description": null,
      "price": "22000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3378,
+     "row_id": 4089,
      "name": "Воздействие токами ультравысокой частоты на кожу неинвазивное Лицо + Шея на аппарате DeAge-EX DUAL",
      "description": null,
      "price": "16500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3379,
+     "row_id": 4090,
      "name": "Воздействие токами ультравысокой частоты на кожу неинвазивное Лицо +Шея + Декольте на аппарате DeAge-EX DUAL",
      "description": null,
      "price": "27500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3377,
+     "row_id": 4088,
      "name": "Воздействие токами ультравысокой частоты на кожу неинвазивное Лицо на аппарате DeAge-EX DUAL",
      "description": null,
      "price": "11000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3371,
+     "row_id": 4082,
      "name": "Высокоинтенсивное сфокусированное ультразвуковое воздействие (декольте) на аппарате UCOS",
      "description": null,
      "price": "26500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3372,
+     "row_id": 4083,
      "name": "Высокоинтенсивное сфокусированное ультразвуковое воздействие тело (1 квадрат -5х6 кв. см.) на аппарате UCOS",
      "description": null,
      "price": "5500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3428,
+     "row_id": 4115,
      "name": "Дополнительная обработка",
      "description": null,
      "price": "500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3430,
+     "row_id": 4117,
      "name": "Инъекционное введение лекарственных препаратов в очаг поражения кожи ДИПРОСПАН",
      "description": null,
      "price": "4 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3373,
+     "row_id": 4084,
      "name": "Лицо (лечение постакне) на аппарате VESTA",
      "description": null,
      "price": "18000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3423,
+     "row_id": 4110,
      "name": "Массаж косметический (лицо, шея, декольте)",
      "description": null,
      "price": "3500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3382,
+     "row_id": 4093,
      "name": "Микротоковое воздействие при заболеваниях кожи и подкожной клетчатки на аппарате ESMA 12.20",
      "description": null,
      "price": "4000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3365,
+     "row_id": 4076,
      "name": "Осмотр кожи под увеличением (дерматоскопия)",
      "description": null,
      "price": "2500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3420,
+     "row_id": 4107,
      "name": "Очищение кожи лица (комбинированное/врачебное)",
      "description": null,
      "price": "6500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3422,
+     "row_id": 4109,
      "name": "Очищение кожи лица и шеи (комбинированное)",
      "description": null,
      "price": "5000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3424,
+     "row_id": 4111,
      "name": "Перманентный макияж (татуаж): Коррекция",
      "description": null,
      "price": "4000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3425,
+     "row_id": 4112,
      "name": "Перманентный макияж (татуаж): Татуаж бровей",
      "description": null,
      "price": "7000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3426,
+     "row_id": 4113,
      "name": "Перманентный макияж (татуаж): Татуаж век",
      "description": null,
      "price": "7000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3427,
+     "row_id": 4114,
      "name": "Перманентный макияж (татуаж): Татуаж губ",
      "description": null,
      "price": "8000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3391,
+     "row_id": 4098,
      "name": "Подкожное введение ботулотоксина типа А: Гипергидроз",
      "description": null,
      "price": "25 000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3359,
-     "name": "Прием (осмотр, консультация) врача-дерматолога первичный",
-     "description": null,
-     "price": "3000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3360,
-     "name": "Прием (осмотр, консультация) врача-дерматолога повторный",
-     "description": null,
-     "price": "1500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3361,
-     "name": "Прием (осмотр, консультация) врача-косметолога первичный",
-     "description": null,
-     "price": "3500 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3362,
-     "name": "Прием (осмотр, консультация) врача-косметолога повторный",
-     "description": null,
-     "price": "1000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3363,
+     "row_id": 4075,
      "name": "Прием (осмотр, консультация) врача-трихолога с трихоскопией первичный",
      "description": null,
      "price": "4000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3364,
-     "name": "Прием (осмотр, консультация) врача-трихолога с трихоскопией повторный",
-     "description": null,
-     "price": "3000 руб",
-     "page_url": "https://angeliy.ru/prices"
-    },
-    {
-     "row_id": 3370,
+     "row_id": 4081,
      "name": "Удаление доброкачественных новообразований кожи на аппарате VESTA",
      "description": null,
      "price": "2000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3429,
+     "row_id": 4116,
      "name": "Удаление милиумов кожи (1 эл-т)",
      "description": null,
      "price": "300 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3368,
+     "row_id": 4079,
      "name": "Удаление татуировки 1 кв. см. на аппарате CAPELLO",
      "description": null,
      "price": "800 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3369,
+     "row_id": 4080,
      "name": "Фотокоагуляция телеангиоэктазий (лицо) на аппарате CAPELLO",
      "description": null,
      "price": "7000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3366,
+     "row_id": 4077,
      "name": "Фотолечение кожи (постакне 1 проход) Лицо на аппарате CAPELLO",
      "description": null,
      "price": "5000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3367,
+     "row_id": 4078,
      "name": "Фотолечение пигментации (Лицо) на аппарате CAPELLO",
      "description": null,
      "price": "6500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3380,
+     "row_id": 4091,
      "name": "Фототерапия кожи низкоинтенсивная (декольте) на аппарате CAPELLO",
      "description": null,
      "price": "7000 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3381,
+     "row_id": 4092,
      "name": "Фототерапия кожи низкоинтенсивная с космецевтикой (лицо) на аппарате CAPELLO",
      "description": null,
      "price": "7500 руб",
      "page_url": "https://angeliy.ru/prices"
     },
     {
-     "row_id": 3374,
+     "row_id": 4085,
      "name": "Щеки (лечение постакне) на аппарате VESTA",
      "description": null,
      "price": "12000 руб",
@@ -1245,11 +1420,38 @@
    ]
   },
   {
+   "clinic_id": "КЛН-avismed-nsk.ru",
+   "clinic_title": "Лечебно-диагностический центр «АвисМед»",
+   "services": [
+    {
+     "row_id": 4127,
+     "name": "Консультация врача-специалиста на дому. Зона 1 на карте",
+     "description": null,
+     "price": "4 500 ₽",
+     "page_url": "https://avismed-nsk.ru/napravleniya/vyzov-vracha-na-dom"
+    },
+    {
+     "row_id": 4128,
+     "name": "Консультация врача-специалиста на дому. Зона 2 на карте",
+     "description": null,
+     "price": "5 800 ₽",
+     "page_url": "https://avismed-nsk.ru/napravleniya/vyzov-vracha-na-dom"
+    },
+    {
+     "row_id": 4129,
+     "name": "Консультация врача-специалиста на дому. Зона 3 на карте",
+     "description": null,
+     "price": "7 800 ₽",
+     "page_url": "https://avismed-nsk.ru/napravleniya/vyzov-vracha-na-dom"
+    }
+   ]
+  },
+  {
    "clinic_id": "КЛН-kosmeta-novosibirsk.ru",
    "clinic_title": "Федеральная сеть клиник по лечению акне...",
    "services": [
     {
-     "row_id": 3502,
+     "row_id": 4132,
      "name": "Консультация по лечению акне БЕСПЛАТНО вместо 3",
      "description": null,
      "price": "000 руб",
@@ -1262,11 +1464,11 @@
    "clinic_title": "Наедине-Н",
    "services": [
     {
-     "row_id": 3773,
-     "name": "Микроскопическое исследование проб кожи и ногтей на присутствие клеток грибов",
+     "row_id": 5439,
+     "name": "Местное лечение",
      "description": null,
-     "price": "920",
-     "page_url": "https://naedine-n.ru/services/analizy-i-laboratornaja-diagnostika/mikozy-kozhi-i-nogtej/"
+     "price": "200,00 руб",
+     "page_url": "https://naedine-n.ru/services/procedurnyj-kabinet"
     }
    ]
   },
@@ -1275,1414 +1477,1344 @@
    "clinic_title": "Стоимость медицинских услуг",
    "services": [
     {
-     "row_id": 3616,
+     "row_id": 5156,
      "name": "Антинуклеарный фактор, HEp-2 субстрат (антинуклеарные антитела методом непрямой иммунофлюоресценции на препаратах Hep-2-клеток) в крови",
      "description": null,
      "price": "1400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3693,
+     "row_id": 5231,
      "name": "Аппаратная гигиеническая обработка кожи стоп (без осложнений)",
      "description": null,
      "price": "3000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3694,
+     "row_id": 5232,
      "name": "Аппаратная гигиеническая обработка кожи стоп и ногтевых пластин (без осложнений)",
      "description": null,
      "price": "4000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3695,
+     "row_id": 5233,
      "name": "Аппаратная обработка ногтей и ногтевых валиков (без осложнений)",
      "description": null,
      "price": "1500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3698,
+     "row_id": 5236,
      "name": "Аппаратная обработка очага гиперкератоза (1 Ед)",
      "description": null,
      "price": "1300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3668,
+     "row_id": 5206,
      "name": "Аппликационная анестезия (крем «Акриол про» 2,5%, 5 г)",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3550,
+     "row_id": 5090,
      "name": "Бактериоскопическое исследование клинического материала (1 очаг)",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3551,
+     "row_id": 5091,
      "name": "Бактериоскопическое исследование клинического материала (1 очаг) cito",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3571,
+     "row_id": 5111,
      "name": "Боррелиоз (Borrelia burgdorferi), антитела класса IgG в крови",
      "description": null,
      "price": "630 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3572,
+     "row_id": 5112,
      "name": "Боррелиоз (Borrelia burgdorferi), антитела класса IgМ в крови",
      "description": null,
      "price": "650 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3660,
-     "name": "Введение искусственных наполнителей в мягкие ткани с целью коррекции формы (Juvederm ultra 4, 0.8 мл)",
-     "description": null,
-     "price": "17000 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3671,
+     "row_id": 5209,
      "name": "Введение искуственных имплантатов в мягкие ткани (NCTF135 3 мл - 0,0025% ГК) в кожу волосистой части головы",
      "description": null,
      "price": "6500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3672,
+     "row_id": 5210,
      "name": "Введение искуственных имплантатов в мягкие ткани (NCTF135 3 мл - 0,0025% ГК) в кожу волосистой части головы: курс 3 процедуры",
      "description": null,
      "price": "17500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3661,
-     "name": "Введение искуственных имплантатов в мягкие ткани (Restylane Vital 1 мл)",
-     "description": null,
-     "price": "14000 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3673,
+     "row_id": 5211,
      "name": "Введение искуственных имплантатов в мягкие ткани (имплантат гиалуроновый с витаминами для внутрикожного введения Hair X DNA Peptide): курс 3 процедуры",
      "description": null,
      "price": "18000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3519,
+     "row_id": 5059,
      "name": "Взятие крови из пальца",
      "description": null,
      "price": "200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3518,
+     "row_id": 5058,
      "name": "Взятие крови из периферической вены",
      "description": null,
      "price": "200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3681,
+     "row_id": 5219,
      "name": "Видеодерматоскопическое исследование единичного новообразования кожи с целью дальнейшего динамического наблюдения",
      "description": null,
      "price": "1500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3525,
+     "row_id": 5065,
      "name": "Внутривенное введение лекарственных препаратов: Кальция глюконат 100 мг/мл - 10 мл",
      "description": null,
      "price": "340 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3526,
+     "row_id": 5066,
      "name": "Внутривенное введение лекарственных препаратов: Натрия тиосульфат 300 мг/мл - 10 мл",
      "description": null,
      "price": "330 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3674,
+     "row_id": 5212,
      "name": "Внутрикожное введение лекарственных препаратов (обогащенной тромбоцитами аутологичной плазмы крови в кожу волосистой части головы. Набор для забора крови ТМ Cortexil -1 пробирка)",
      "description": null,
      "price": "6000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3675,
+     "row_id": 5213,
      "name": "Внутрикожное введение лекарственных препаратов (обогащенной тромбоцитами аутологичной плазмы крови. Набор для забора крови ТМ Cortexil -1 пробирка): курс 3 процедуры",
      "description": null,
      "price": "16200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3670,
+     "row_id": 5208,
      "name": "Внутрикожное введение лекарственных средств в волосистую часть головы (сосудистые препараты, витамины)",
      "description": null,
      "price": "2000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3523,
+     "row_id": 5063,
      "name": "Внутримышечное введение лекарственных препаратов: Бензатина бензилпенициллин+Бензилпенициллин прокаина 1,5 млн. ЕД порошок д/р-ра для инъекций 1г + Новокаин 0,5% - 5 мл №5",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3530,
+     "row_id": 5070,
      "name": "Внутримышечное введение лекарственных препаратов: Бетаметазон 1,0 мл (Дипроспан, Дипромета)",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3533,
+     "row_id": 5073,
      "name": "Внутримышечное введение лекарственных препаратов: Бовгиалуронидаза азоксимер (Лонгидаза) лиоф. д/р-ра для инъекций 3000 ЕД, 20мг + Лидокаин 20 мг/мл - 2 мл",
      "description": null,
      "price": "1250 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3531,
+     "row_id": 5071,
      "name": "Внутримышечное введение лекарственных препаратов: Дексаметазон 4 мг/мл -1 мл",
      "description": null,
      "price": "300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3535,
+     "row_id": 5075,
      "name": "Внутримышечное введение лекарственных препаратов: Метотрексат (Эбеве) 10 мг/мл - 5 мл (10 мг /15 мг /20 мг)",
      "description": null,
      "price": "1000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3532,
+     "row_id": 5072,
      "name": "Внутримышечное введение лекарственных препаратов: Хлоропирамин 20 мг/мл - 1,0 мл (Супрастин)",
      "description": null,
      "price": "320 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3534,
+     "row_id": 5074,
      "name": "Внутримышечное введение лекарственных препаратов: Цефтриаксон порошок д/р-ра для инъекций 1г + Лидокаин 20 мг/мл - 2 мл",
      "description": null,
      "price": "340 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3524,
+     "row_id": 5064,
      "name": "Внутрисуставное введение лекарственных препаратов: Бетаметазон 1,0 мл (Дипроспан, Дипромета)",
      "description": null,
      "price": "2200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3517,
+     "row_id": 5057,
      "name": "Деструкция патологических образований слизистой оболочки шейки матки",
      "description": null,
      "price": "1700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3682,
+     "row_id": 5220,
      "name": "Динамическое наблюдение за единичным новообразованием методом видеодерматоскопии",
      "description": null,
      "price": "1000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3659,
+     "row_id": 5199,
      "name": "Дополнительное применение канюли 22G/50 mm при введении искусственных наполнителей в мягкие ткани",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3658,
+     "row_id": 5198,
      "name": "Дополнительное применение канюли 25G/40 mm при введении искусственных наполнителей в мягкие ткани",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3657,
+     "row_id": 5197,
      "name": "Дополнительное применение канюли 27G/37 mm при введении искусственных наполнителей в мягкие ткани",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3520,
+     "row_id": 5060,
      "name": "Забор биоптата (шейв-биопсия)",
      "description": null,
      "price": "1200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3615,
+     "row_id": 5155,
      "name": "Иммуноблот антинуклеарных антител ANA (Sm, RNP/Sm, SS-A, Ro-52, (RNP 70,-A-C), SS-B, Scl-70, PM-Scl, PCNA, CENP-B, dsDNA, Histone, Nucleosome, Rib P, AMA-M2, Jo-1 антигенам) в крови",
      "description": null,
      "price": "3600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3669,
+     "row_id": 5207,
      "name": "Инфильтрационная анестезия (раствор «Лидокаин» 2%, 1 мл)",
      "description": null,
      "price": "250 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3536,
+     "row_id": 5076,
      "name": "Инъекционное введение лекарственных средств в очаг поражения кожи: Бетаметазон 1,0 мл (Дипроспан, Дипромета)",
      "description": null,
      "price": "1700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3537,
+     "row_id": 5077,
      "name": "Инъекционное введение лекарственных средств в очаг поражения кожи: Бовгиалуронидаза азоксимер (Лонгидаза) лиоф. д/р-ра для инъекций 3000 ЕД, 20мг + Лидокаин 20 мг/мл - 2 мл",
      "description": null,
      "price": "4800 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3522,
+     "row_id": 5062,
      "name": "Инъекционное введение лекарственных средств в очаг поражения кожи: рекомбинантный интерферон альфа-2b 3 млн. ME - 1,0 мл",
      "description": null,
      "price": "1300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3545,
+     "row_id": 5085,
      "name": "Исследование времени кровотечения",
      "description": null,
      "price": "220 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3544,
+     "row_id": 5084,
      "name": "Исследование времени свертывания нестабилизированной крови или рекальцификации плазмы неактивированное",
      "description": null,
      "price": "220 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3547,
+     "row_id": 5087,
      "name": "Исследование мочи методом Зимницкого",
      "description": null,
      "price": "330 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3546,
+     "row_id": 5086,
      "name": "Исследование мочи методом Нечипоренко",
      "description": null,
      "price": "330 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3598,
+     "row_id": 5138,
      "name": "Исследование общей железосвязывающей способности сыворотки",
      "description": null,
      "price": "200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3595,
+     "row_id": 5135,
      "name": "Исследование уровня C-реактивного белка в сыворотке крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3589,
+     "row_id": 5129,
      "name": "Исследование уровня альбумина в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3609,
+     "row_id": 5149,
      "name": "Исследование уровня витамина D (25-гидроксикальциферол) в крови",
      "description": null,
      "price": "1600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3607,
+     "row_id": 5147,
      "name": "Исследование уровня витамина В12 в крови",
      "description": null,
      "price": "800 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3610,
+     "row_id": 5150,
      "name": "Исследование уровня витамина Е (токоферол) в крови",
      "description": null,
      "price": "2100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3586,
+     "row_id": 5126,
      "name": "Исследование уровня гликированного гемоглобина в крови",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3585,
+     "row_id": 5125,
      "name": "Исследование уровня глюкозы в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3597,
+     "row_id": 5137,
      "name": "Исследование уровня железа сыворотки крови",
      "description": null,
      "price": "200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3612,
+     "row_id": 5152,
      "name": "Исследование уровня иммуноглобулинов (IgА, IgМ, IgG) в крови",
      "description": null,
      "price": "550 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3600,
+     "row_id": 5140,
      "name": "Исследование уровня калия в крови",
      "description": null,
      "price": "300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3584,
+     "row_id": 5124,
      "name": "Исследование уровня креатинина в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3603,
+     "row_id": 5143,
      "name": "Исследование уровня магния в крови",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3602,
+     "row_id": 5142,
      "name": "Исследование уровня меди в крови",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3583,
+     "row_id": 5123,
      "name": "Исследование уровня мочевины в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3587,
+     "row_id": 5127,
      "name": "Исследование уровня мочевой кислоты в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3606,
+     "row_id": 5146,
      "name": "Исследование уровня натрия в крови",
      "description": null,
      "price": "200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3588,
+     "row_id": 5128,
      "name": "Исследование уровня общего белка в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3582,
+     "row_id": 5122,
      "name": "Исследование уровня общего билирубина в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3613,
+     "row_id": 5153,
      "name": "Исследование уровня общего иммуноглобулина Е (IgE) в крови",
      "description": null,
      "price": "550 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3601,
+     "row_id": 5141,
      "name": "Исследование уровня общего кальция в крови",
      "description": null,
      "price": "300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3632,
+     "row_id": 5172,
      "name": "Исследование уровня общего тестостерона в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3625,
+     "row_id": 5165,
      "name": "Исследование уровня общего тироксина (Т4) сыворотки крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3627,
+     "row_id": 5167,
      "name": "Исследование уровня общего трийодтиронина (Т3) в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3591,
+     "row_id": 5131,
      "name": "Исследование уровня общего холестерина в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3636,
+     "row_id": 5176,
      "name": "Исследование уровня пролактина в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3635,
+     "row_id": 5175,
      "name": "Исследование уровня простатспецифического антигена общего в крови",
      "description": null,
      "price": "550 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3634,
+     "row_id": 5174,
      "name": "Исследование уровня простатспецифического антигена свободного в крови",
      "description": null,
      "price": "900 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3604,
+     "row_id": 5144,
      "name": "Исследование уровня прямого билирубина в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3633,
+     "row_id": 5173,
      "name": "Исследование уровня свободного тестостерона в крови",
      "description": null,
      "price": "900 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3626,
+     "row_id": 5166,
      "name": "Исследование уровня свободного тироксина (СТ4) сыворотки крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3628,
+     "row_id": 5168,
      "name": "Исследование уровня свободного трийодтиронина (СТ3) в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3629,
+     "row_id": 5169,
      "name": "Исследование уровня тиреоглобулина в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3590,
+     "row_id": 5130,
      "name": "Исследование уровня триглицеридов в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3624,
+     "row_id": 5164,
      "name": "Исследование уровня ферритина в крови",
      "description": null,
      "price": "420 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3608,
+     "row_id": 5148,
      "name": "Исследование уровня фолиевой кислоты в крови",
      "description": null,
      "price": "900 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3592,
+     "row_id": 5132,
      "name": "Исследование уровня холестерина липопротеинов высокой плотности в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3599,
+     "row_id": 5139,
      "name": "Исследование уровня цинка в крови",
      "description": null,
      "price": "420 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3692,
+     "row_id": 5230,
      "name": "Коррекция длины ногтевых пластин (стопы/кисти)",
      "description": null,
      "price": "1000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3656,
+     "row_id": 5196,
      "name": "Коррекция сосудов области вокруг глаз",
      "description": null,
      "price": "12000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3611,
+     "row_id": 5151,
      "name": "Креатинкиназа общая (КФК) в крови",
      "description": null,
      "price": "300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3662,
+     "row_id": 5200,
      "name": "Криомассаж кожи (область спины)",
      "description": null,
      "price": "1500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3663,
+     "row_id": 5201,
      "name": "Криомассаж кожи (область спины): курс 5 процедур",
      "description": null,
      "price": "7000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3688,
+     "row_id": 5226,
      "name": "Лекарственный электрофорез (1 поле - 1 процедура)",
      "description": null,
      "price": "340 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3651,
+     "row_id": 5191,
      "name": "Лечение гонококковой инфекции",
      "description": null,
      "price": "3290 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3676,
+     "row_id": 5214,
      "name": "Лечение заболеваний волос с применением фракционного лазера (1 процедура)",
      "description": null,
      "price": "6000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3653,
+     "row_id": 5193,
      "name": "Лечение сосудистых дефектов с использованием IPL/OPL технологий: зона 5х5 см",
      "description": null,
      "price": "5000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3554,
+     "row_id": 5094,
      "name": "Микробиологическое (культуральное )исследование отделяемого женских половых органов/уретры на гонококк (Neisseria gonorrhoeae)",
      "description": null,
      "price": "900 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3576,
+     "row_id": 5116,
      "name": "Микробиологическое (культуральное) исследование соскоба с кожи и ногтевых пластинок на грибы дерматофиты (Dermatophytes)",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3553,
+     "row_id": 5093,
      "name": "Микроскопическое исследование отделяемого женских половых органов на трихомонады Trichomonas vaginalis",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3548,
+     "row_id": 5088,
      "name": "Микроскопическое исследование отпечатков с поверхности кожи перианальных складок на яйца остриц (Enterobius vermicularis)",
      "description": null,
      "price": "430 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3575,
+     "row_id": 5115,
      "name": "Микроскопическое исследование соскоба на грибы (дрожжевые, плесневые, дерматомицеты) с кожи/ногтевой пластины/волос (один очаг поражения)",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3543,
+     "row_id": 5083,
      "name": "Микроскопическое исследование соскоба с кожи на клещей (на наличие чесоточного клеща Sarcoptes scabiei)",
      "description": null,
      "price": "480 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3552,
+     "row_id": 5092,
      "name": "Микроскопическое исследование специфических элементов на бледную трепонему Treponema pallidum",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3541,
+     "row_id": 5081,
      "name": "Микроскопия крови на обнаружение LE клеток",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3568,
+     "row_id": 5108,
      "name": "Молекулярно-биологическое исследование влагалищного отделяемого/отделяемого из уретры на грибы рода кандида (Candida spp.) с уточнением вида",
      "description": null,
      "price": "700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3645,
+     "row_id": 5185,
      "name": "Мочевого пузыря и предстательной железы",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3646,
+     "row_id": 5186,
      "name": "Мочевого пузыря, предстательной железы и органов мошонки",
      "description": null,
      "price": "1700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3529,
+     "row_id": 5069,
      "name": "Непрерывное внутривенное введение лекарственных препаратов: Дексаметазон 4 мг/мл -1 мл + Натрия хлорид 9 мг/мл - 200 мл",
      "description": null,
      "price": "460 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3527,
+     "row_id": 5067,
      "name": "Непрерывное внутривенное введение лекарственных препаратов: Кальция хлорид 100 мг/мл - 20 мл + Натрия хлорид 9 мг/мл - 200 мл",
      "description": null,
      "price": "460 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3528,
+     "row_id": 5068,
      "name": "Непрерывное внутривенное введение лекарственных препаратов: Меглюмина натрия сукцинат (Реамберин) 1,5% - 250 мл",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3707,
+     "row_id": 5245,
      "name": "Обработка врастающего угла ногтевой пластины",
      "description": null,
      "price": "1500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3702,
+     "row_id": 5240,
      "name": "Обработка деформированной ногтевой пластины (1 Ед)",
      "description": null,
      "price": "1600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3696,
+     "row_id": 5234,
      "name": "Обработка околоногтевого гиперкератоза и подногтевого гиперкератоза (1 Ед)",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3697,
+     "row_id": 5235,
      "name": "Обработка трещин стоп (одна стопа)",
      "description": null,
      "price": "1200 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3538,
+     "row_id": 5078,
      "name": "Общий (клинический) анализ мочи",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3539,
+     "row_id": 5079,
      "name": "Общий (клинический) анализ мочи cito (исследование и выдача результата в течение 2-х часов)",
      "description": null,
      "price": "350 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3622,
+     "row_id": 5162,
      "name": "Определение Антител класса IgG к тканевой трансглютаминазе (anti-tissue transglutaminase IgG, tTG IgG)",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3623,
+     "row_id": 5163,
      "name": "Определение Антител класса IgА к тканевой трансглютаминазе (anti- tissue transglutaminase IgА, tTG)",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3567,
+     "row_id": 5107,
      "name": "Определение ДНК Gardnerella vaginalis, Atopobium vaginae, Lactobacillus spp. и общего количества бактерий во влагалищном отделяемом методом ПЦР, количественное исследование",
      "description": null,
      "price": "700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3561,
+     "row_id": 5101,
      "name": "Определение ДНК бледной трепонемы (Treponema pallidum) в отделяемом (серозного экссудата) эрозивно-язвенных элементов кожи и слизистых оболочек методом ПЦР",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3564,
+     "row_id": 5104,
      "name": "Определение ДНК вируса простого герпеса 1 и 2 типов (Herpes simplex virus types 1, 2) в отделяемом слизистых оболочек женских половых органов/в отделяемом из уретры методом ПЦР",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3566,
+     "row_id": 5106,
      "name": "Определение ДНК вирусов папилломы человека (Papilloma virus) 6 и 11 типов в отделяемом (соскобе) из цервикального канала/в отделяемом из уретрыметодом ПЦР",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3565,
+     "row_id": 5105,
      "name": "Определение ДНК вирусов папилломы человека (Papilloma virus) высокого канцерогенного риска в отделяемом (соскобе) из цервикального канала/в отделяемом из уретрыметодом ПЦР, количественное исследование",
      "description": null,
      "price": "1400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3562,
+     "row_id": 5102,
      "name": "Определение ДНК гонококка (Neiseria gonorrhoeae) в отделяемом слизистых оболочек женских половых органов/в отделяемом из уретры методом ПЦР",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3577,
+     "row_id": 5117,
      "name": "Определение ДНК грибов дерматофитов (Dermatophytes) в соскобах кожи и ногтевых пластинок методом ПЦР. (\"АмплиПрайм Дерматофиты (Trichophyton, Epidermophyton, Microsporum)\")",
      "description": null,
      "price": "1500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3563,
+     "row_id": 5103,
      "name": "Определение ДНК трихомонас вагиналис (Trichomonas vaginalis) в отделяемом слизистых оболочек женских половых органов/в отделяемом из уретры методом ПЦР",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3578,
+     "row_id": 5118,
      "name": "Определение активности аланинаминотрансферазы в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3593,
+     "row_id": 5133,
      "name": "Определение активности амилазы в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3579,
+     "row_id": 5119,
      "name": "Определение активности аспартатаминотрансферазы в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3580,
+     "row_id": 5120,
      "name": "Определение активности гамма-глютамилтрансферазы в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3594,
+     "row_id": 5134,
      "name": "Определение активности лактатдегидрогеназы в крови",
      "description": null,
      "price": "220 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3581,
+     "row_id": 5121,
      "name": "Определение активности щелочной фосфатазы в крови",
      "description": null,
      "price": "280 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3569,
+     "row_id": 5109,
      "name": "Определение антигена (HBsAg) вируса гепатита B (Hepatitis B virus) в крови, качественное исследование",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3621,
+     "row_id": 5161,
      "name": "Определение антител IgG к антигену ВР180-NC16A-4X базальной мембраны эпителия",
      "description": null,
      "price": "2600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3620,
+     "row_id": 5160,
      "name": "Определение антител IgG к антигену ВР230-СF базальной мембраны эпителия",
      "description": null,
      "price": "2600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3618,
+     "row_id": 5158,
      "name": "Определение антител IgG к десмоглеину 1",
      "description": null,
      "price": "2600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3619,
+     "row_id": 5159,
      "name": "Определение антител IgG к десмоглеину 3",
      "description": null,
      "price": "2600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3555,
+     "row_id": 5095,
      "name": "Определение антител к бледной трепонеме (Treponema pallidum) в нетрепонемных тестах (RPR, РМП) (качественное и полуколичественное исследование) в сыворотке крови",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3557,
+     "row_id": 5097,
      "name": "Определение антител к бледной трепонеме (Treponema pallidum) в реакции пассивной гемагглютинации (РПГА) (качественное и полуколичественное исследование) в сыворотке крови",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3556,
+     "row_id": 5096,
      "name": "Определение антител к бледной трепонеме (Treponema pallidum) в сыворотке крови реакцией иммунофлюоресценции (РИФ)",
      "description": null,
      "price": "820 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3558,
+     "row_id": 5098,
      "name": "Определение антител к бледной трепонеме (Treponema pallidum) иммуноферментным методом (ИФА) в крови. Иммуноглобулины класса G",
      "description": null,
      "price": "550 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3559,
+     "row_id": 5099,
      "name": "Определение антител к бледной трепонеме (Treponema pallidum) иммуноферментным методом (ИФА) в крови. Иммуноглобулины класса М",
      "description": null,
      "price": "550 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3560,
+     "row_id": 5100,
      "name": "Определение антител к бледной трепонеме (Treponema pallidum) иммуноферментным методом (ИФА) в крови: суммарные антитела lgG, lgM, lgА",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3570,
+     "row_id": 5110,
      "name": "Определение антител к вирусу гепатиту C (Hepatitis C virus) в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3617,
+     "row_id": 5157,
      "name": "Определение антител класса IgG к двуспиральной ДНК (нативной, anti-dsDNA IgG)",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3574,
+     "row_id": 5114,
      "name": "Определение антител классов M, G (IgM, IgG) к вирусу иммунодефицита человека ВИЧ-1 (Human immunodeficiency virus HIV 1) и ВИЧ-2 (Human immunodeficiency virus HIV 2) в крови",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3614,
+     "row_id": 5154,
      "name": "Определение содержания антинуклеарных антител к Sm-антигену",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3631,
+     "row_id": 5171,
      "name": "Определение содержания антител к тиреопероксидазе в крови (анти-ТПО)",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3630,
+     "row_id": 5170,
      "name": "Определение содержания антител к тироглобулину в сыворотке крови (анти-ТГ)",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3596,
+     "row_id": 5136,
      "name": "Определение содержания ревматоидного фактора в крови",
      "description": null,
      "price": "220 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3605,
+     "row_id": 5145,
      "name": "Определение уровня трансферрина в крови",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3640,
+     "row_id": 5180,
      "name": "Патолого-анатомическое исследование биопсийного (операционного) материала кожи (подготовка материала к исследованию, окраска гематоксилин-эозином)",
      "description": null,
      "price": "2700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3637,
+     "row_id": 5177,
      "name": "Патолого-анатомическое исследование биопсийного (операционного) материала кожи с применением гистохимических методов (дополнительные гистохимические окраски препаратов): окраска Суданом 3",
      "description": null,
      "price": "1100 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3639,
+     "row_id": 5179,
      "name": "Патолого-анатомическое исследование биопсийного (операционного) материала кожи с применением иммуногистохимических методов (9 моноклональных антител и более )",
      "description": null,
      "price": "20000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3704,
+     "row_id": 5242,
      "name": "Переустановка коррекционной системы (1 Ед)",
      "description": null,
      "price": "3500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3516,
+     "row_id": 5056,
      "name": "Получение соскоба из уретры",
      "description": null,
      "price": "250 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3508,
-     "name": "Прием (осмотр, консультация) врача-дерматовенеролога первичный",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3506,
+     "row_id": 5054,
      "name": "Прием (осмотр, консультация) врача-дерматовенеролога первичный - кандидата медицинских наук, врача высшей категории",
      "description": null,
      "price": "3000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3509,
-     "name": "Прием (осмотр, консультация) врача-дерматовенеролога повторный",
-     "description": null,
-     "price": "2200 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3507,
-     "name": "Прием (осмотр, консультация) врача-дерматовенеролога повторный - кандидата медицинских наук, врача высшей категории",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3510,
-     "name": "Прием (осмотр, консультация) врача-косметолога первичный",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3514,
+     "row_id": 5055,
      "name": "Прием (осмотр, консультация) врача-косметолога первичный - кандидата медицинский наук",
      "description": null,
      "price": "3000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3511,
-     "name": "Прием (осмотр, консультация) врача-косметолога повторный",
-     "description": null,
-     "price": "2200 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3515,
-     "name": "Прием (осмотр, консультация) врача-косметолога повторный - кандидата медицинский наук",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3512,
-     "name": "Прием (осмотр, консультация) врача-онколога первичный, кандидата медицинских наук",
-     "description": null,
-     "price": "3000 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3513,
-     "name": "Прием (осмотр, консультация) врача-онколога повторный, кандидата медицинских наук",
-     "description": null,
-     "price": "2500 руб",
-     "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
-    },
-    {
-     "row_id": 3638,
+     "row_id": 5178,
      "name": "Просмотр гистологического препарата (за 1 препарат)",
      "description": null,
      "price": "2700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3701,
+     "row_id": 5239,
      "name": "Протезирование ногтевой пластины (1 Ед)",
      "description": null,
      "price": "1400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3655,
+     "row_id": 5195,
      "name": "Процедуры на лазерной системе Nd:YAG-лазер (длина волны - 1064 нм, 1 импульс): от 1 до 10 импульсов",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3699,
+     "row_id": 5237,
      "name": "Снятие толщины деформированной ногтевых пластин с I-го пальца (ониходистрофия, онихогрифоз) (1 Ед)",
      "description": null,
      "price": "1300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3700,
+     "row_id": 5238,
      "name": "Снятие толщины деформированных ногтевых пластин с II-го по V пальцев (ониходистрофия, онихогрифоз) (1 Ед)",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3521,
+     "row_id": 5061,
      "name": "Соскоб кожи (1 очаг)",
      "description": null,
      "price": "150 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3691,
+     "row_id": 5229,
      "name": "Схема и индивидуальный подбор при подологических проблемах",
      "description": null,
      "price": "1000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3573,
+     "row_id": 5113,
      "name": "ТБ-ферон - исследование уровня интерферона-гамма на антигены Mycobacterium tuberculosis complex в крови (IGRA-тест)",
      "description": null,
      "price": "5500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3706,
+     "row_id": 5244,
      "name": "Тейпирование более 10 см (1 Ед)",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3705,
+     "row_id": 5243,
      "name": "Тейпирование до 10 см (1 Ед)",
      "description": null,
      "price": "400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3665,
+     "row_id": 5203,
      "name": "Удаление доброкачественных новообразований кожи (единичное образование размером не более 0,5 см)",
      "description": null,
      "price": "1600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3664,
+     "row_id": 5202,
      "name": "Удаление доброкачественных новообразований кожи 1-2 мм в диаметре (1 элемент)",
      "description": null,
      "price": "800 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3666,
+     "row_id": 5204,
      "name": "Удаление доброкачественных новообразований кожи 1-2 мм в диаметре: от 2 до 5 элементов (1 процедура)",
      "description": null,
      "price": "2000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3667,
+     "row_id": 5205,
      "name": "Удаление доброкачественных новообразований кожи 1-2 мм в диаметре: от 5 до10 элементов (1 процедура)",
      "description": null,
      "price": "3400 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3652,
+     "row_id": 5192,
      "name": "Удаление пигментаций и сосудистых дефектов (1 импульс)",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3654,
+     "row_id": 5194,
      "name": "Удаление расширенных сосудов на коже нижних конечностей (1 импульс)",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3648,
+     "row_id": 5188,
      "name": "Ультразвуковое исследование лимфатических узлов (одна анатомическая зона)",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3650,
+     "row_id": 5190,
      "name": "Ультразвуковое исследование молочных желез",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3644,
+     "row_id": 5184,
      "name": "Ультразвуковое исследование мочевого пузыря",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3649,
+     "row_id": 5189,
      "name": "Ультразвуковое исследование мягких тканей (одна анатомическая зона)",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3643,
+     "row_id": 5183,
      "name": "Ультразвуковое исследование органов мошонки",
      "description": null,
      "price": "850 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3647,
+     "row_id": 5187,
      "name": "Ультразвуковое исследование почек и надпочечников",
      "description": null,
      "price": "730 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3642,
+     "row_id": 5182,
      "name": "Ультразвуковое исследование предстательной железы",
      "description": null,
      "price": "750 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3641,
+     "row_id": 5181,
      "name": "Ультразвуковое исследование предстательной железы трансректальное",
      "description": null,
      "price": "850 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3685,
+     "row_id": 5223,
      "name": "Ультрафиолетовое облучение кожи. Локальная узкополосная средневолновая ультрафиолетовая терапия (локальное облучение кистей)",
      "description": null,
      "price": "170 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3684,
+     "row_id": 5222,
      "name": "Ультрафиолетовое облучение кожи. Общая узкополосная средневолновая ультрафиолетовая терапия (УФВ-311н.м.): 1 процедура",
      "description": null,
      "price": "600 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3687,
+     "row_id": 5225,
      "name": "Ультрафиолетовое облучение кожи. Общая ультрафиолетовая терапия дальнего длинноволнового диапазона (УФА-1 терапия): 1 процедура",
      "description": null,
      "price": "450 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3686,
+     "row_id": 5224,
      "name": "Ультрафиолетовое облучение кожи. Фотохимиотерапия с внутренним применением фотосенсибилизаторов (ПУВА): 1 процедура",
      "description": null,
      "price": "700 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3690,
+     "row_id": 5228,
      "name": "Ультрафиолетовое облучение кожи. Фотохимиотерапия с наружным применением фотосенсибилизаторов (ПУВА - расческа)",
      "description": null,
      "price": "300 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3689,
+     "row_id": 5227,
      "name": "Ультрафонофорез лекарственный кожи (1 поле)",
      "description": null,
      "price": "250 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3703,
+     "row_id": 5241,
      "name": "Установка коррекционной системы на ногтевую пластину (1 Ед)",
      "description": null,
      "price": "4000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3683,
+     "row_id": 5221,
      "name": "Фотокартирование кожи до 10 элементов",
      "description": null,
      "price": "4500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3677,
+     "row_id": 5215,
      "name": "Фотокартирование кожи свыше 10 элементов: 11-30 элементов",
      "description": null,
      "price": "8500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3680,
+     "row_id": 5218,
      "name": "Фотокартирование кожи свыше 100 элементов: более 100 элементов",
      "description": null,
      "price": "30000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3678,
+     "row_id": 5216,
      "name": "Фотокартирование кожи свыше 30 элементов: 31-50 элементов",
      "description": null,
      "price": "15000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3679,
+     "row_id": 5217,
      "name": "Фотокартирование кожи свыше 50 элементов: 51-100 элементов",
      "description": null,
      "price": "20000 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3549,
+     "row_id": 5089,
      "name": "Цитологическое исследование микропрепарата шейки матки",
      "description": null,
      "price": "500 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3540,
+     "row_id": 5080,
      "name": "Цитологическое исследование на акантолитические клетки со дна эрозий слизистых оболочек и/или кожи",
      "description": null,
      "price": "550 руб",
      "page_url": "https://ngf.cnikvi.ru/stoimost-med-uslug"
     },
     {
-     "row_id": 3542,
+     "row_id": 5082,
      "name": "Цитологическое исследование пузырной жидкости на эозинофилы",
      "description": null,
      "price": "550 руб",
@@ -2695,445 +2827,339 @@
    "clinic_title": "Контурная пластика лица в Новосибирске - цены, фото до/после",
    "services": [
     {
-     "row_id": 3758,
+     "row_id": 5279,
      "name": "1 сеанс LPG лица",
      "description": null,
      "price": "1 350 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3756,
+     "row_id": 5277,
      "name": "1 сеанс на аппарате LPG",
      "description": null,
      "price": "1 700 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3727,
-     "name": "Belotero Intense 1 мл",
-     "description": null,
-     "price": "23 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3725,
-     "name": "Belotero Soft 1 мл",
-     "description": null,
-     "price": "19 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3726,
-     "name": "Belotero Volume 1 мл",
-     "description": null,
-     "price": "22 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3728,
-     "name": "Belotero lips contotour 0,6 мл",
-     "description": null,
-     "price": "16 500 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3729,
-     "name": "Belotero lips shape 0,6мл",
-     "description": null,
-     "price": "16 500 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3755,
-     "name": "Filorga Мезотерапия NCTF 135 HA 5 ГК (1,5 мл)",
-     "description": null,
-     "price": "6 700 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3713,
+     "row_id": 5252,
      "name": "Hair X мезотерапия волос 2,0 мл",
      "description": null,
      "price": "5 900 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3718,
-     "name": "Hydro Line Extra флакон 4 мл",
-     "description": null,
-     "price": "7 200 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3717,
-     "name": "Hydro Line флакон 4мл",
-     "description": null,
-     "price": "6 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3740,
-     "name": "IAL-System DUO 1,0мл (Италия)",
-     "description": null,
-     "price": "18 050 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3732,
+     "row_id": 5260,
      "name": "Juvederm Ultra 3 (Ювидерм Ультра)",
      "description": null,
      "price": "25 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3733,
+     "row_id": 5261,
      "name": "Juvederm Ultra 4 (Ювидерм Ультра)",
      "description": null,
      "price": "26 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3731,
+     "row_id": 5259,
      "name": "Juvederm Ultra Smile (Ювидерм Ультра Смайл)",
      "description": null,
      "price": "18 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3715,
-     "name": "Meso-Wharton P199 1,5 ml (биореструктуризация)",
-     "description": null,
-     "price": "19 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3714,
-     "name": "Meso-Xanthin F199 1,5 ml (биореструктуризация)",
-     "description": null,
-     "price": "19 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3730,
-     "name": "Princess Volume 1 мл (Принцесс волюм)",
-     "description": null,
-     "price": "16 600 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3716,
-     "name": "Revi Silk 1,2% 1мл",
-     "description": null,
-     "price": "18 550 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3735,
-     "name": "Stylage L 1 мл",
-     "description": null,
-     "price": "23 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3734,
-     "name": "Stylage M 1 мл (Стилаж М)",
-     "description": null,
-     "price": "21 200 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3737,
-     "name": "XSPURT BREEZE 1 упаковка 1.0 мл",
-     "description": null,
-     "price": "17 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3738,
-     "name": "XSPURT CLIMAX 1 упаковка 1.0 мл",
-     "description": null,
-     "price": "17 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3739,
-     "name": "XSPURT FINALE 1 упаковка 1.0 мл",
-     "description": null,
-     "price": "17 000 ₽",
-     "page_url": "https://plastic-avismed.ru/cosmetic-price"
-    },
-    {
-     "row_id": 3723,
+     "row_id": 5257,
      "name": "Диспорт 1 ед. (Франция)",
      "description": null,
      "price": "140 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3724,
+     "row_id": 5258,
      "name": "Диспорт. Лечение гипергидроза 1 ед",
      "description": null,
      "price": "110 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3770,
+     "row_id": 5291,
      "name": "Канюля стерильная для микроинъекций",
      "description": null,
      "price": "1 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3711,
+     "row_id": 5250,
      "name": "Консультация врача-косметолога по акне",
      "description": null,
      "price": "7 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3712,
+     "row_id": 5251,
      "name": "Криотерапия рубцов",
      "description": null,
      "price": "2 500 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3722,
+     "row_id": 5256,
      "name": "Ксеомин 1 ед. (Германия)",
      "description": null,
      "price": "340 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3719,
+     "row_id": 5253,
      "name": "Курасен 1 ампула - 2мл",
      "description": null,
      "price": "7 950 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3720,
+     "row_id": 5254,
      "name": "Лаеннек 1 ампула - 2мл",
      "description": null,
      "price": "4 750 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3721,
+     "row_id": 5255,
      "name": "Лаеннек 2 ампула - 4мл",
      "description": null,
      "price": "7 950 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3769,
+     "row_id": 5290,
      "name": "Местная анестезия кремом Акриол 5гр",
      "description": null,
      "price": "800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3764,
+     "row_id": 5285,
      "name": "Микротоковая терапия вокруг глаз",
      "description": null,
      "price": "2 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3765,
+     "row_id": 5286,
      "name": "Микротоковая терапия живота",
      "description": null,
      "price": "4 200 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3763,
+     "row_id": 5284,
      "name": "Микротоковая терапия лица",
      "description": null,
      "price": "2 800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3762,
+     "row_id": 5283,
      "name": "Микротоковая терапия лицо",
      "description": null,
      "price": "2 800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3709,
+     "row_id": 5248,
      "name": "Первичная консультация врача-косметолога с выдачей плана лечения",
      "description": null,
      "price": "3 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3710,
+     "row_id": 5292,
+     "name": "Первичная консультация онколога",
+     "description": null,
+     "price": "4 250 ₽",
+     "page_url": "https://plastic-avismed.ru/kokorina"
+    },
+    {
+     "row_id": 5249,
      "name": "Повторная консультация врача-косметолога",
      "description": null,
      "price": "1 800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3741,
+     "row_id": 5263,
      "name": "Подкожное введение лекарственных препаратов, PRP – терапия (Meaplasma), 1 пробирка",
      "description": null,
      "price": "5 600 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3742,
+     "row_id": 5264,
      "name": "Подкожное введение лекарственных препаратов, PRP – терапия (Meaplasma), 2 пробирки, 1 процедура",
      "description": null,
      "price": "9 900 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3743,
+     "row_id": 5265,
      "name": "Подкожное введение лекарственных препаратов, PRP – терапия (Meaplasma), 3 пробирки, 1 процедура",
      "description": null,
      "price": "12 200 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3744,
+     "row_id": 5266,
      "name": "Подкожное введение лекарственных препаратов, PRP – терапия (Meaplasma), 4 пробирки, 1 процедура",
      "description": null,
      "price": "15 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3771,
+     "row_id": 5293,
      "name": "При необходимости дополнительно оплачивается анестезирующий крем (крем Акриол)",
      "description": null,
      "price": "500 руб",
      "page_url": "https://plastic-avismed.ru/konturnaya-plastika"
     },
     {
-     "row_id": 3761,
+     "row_id": 5282,
      "name": "Программа. Курс 10 сеансов LPG для тела + 10 для лица",
      "description": null,
      "price": "23 400 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3760,
+     "row_id": 5281,
      "name": "Программа. Курс 10 сеансов LPG для тела + 5 для лица",
      "description": null,
      "price": "19 800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3759,
+     "row_id": 5280,
      "name": "Программа. Курс из 10 сеансов LPG лица",
      "description": null,
      "price": "12 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3757,
+     "row_id": 5278,
      "name": "Программа. Курс из 10 сеансов LPG тела",
      "description": null,
      "price": "15 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3766,
+     "row_id": 5287,
      "name": "Сферогель лайт 0.5 мл",
      "description": null,
      "price": "7 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3768,
+     "row_id": 5289,
      "name": "Сферогель лонг 0.5 мл",
      "description": null,
      "price": "12 650 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3767,
+     "row_id": 5288,
      "name": "Сферогель медиум 0.5 мл",
      "description": null,
      "price": "9 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3745,
+     "row_id": 5267,
      "name": "Удаление единичного мелкого новообразования кожи",
      "description": null,
      "price": "800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3746,
+     "row_id": 5268,
      "name": "Удаление мелкого образования на коже век (папиллома) 1-ой единицы",
      "description": null,
      "price": "1 200 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3754,
+     "row_id": 5276,
      "name": "Удаление новообразований 60 и выше",
      "description": null,
      "price": "18 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3752,
+     "row_id": 5274,
      "name": "Удаление остроконечных кондилом, до 10 шт",
      "description": null,
      "price": "5 200 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3751,
+     "row_id": 5273,
      "name": "Удаление подошвенных бородавок, за 1 шт",
      "description": null,
      "price": "2 300 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3736,
+     "row_id": 5262,
      "name": "Эстеофил Интим, 1 ml",
      "description": null,
      "price": "16 650 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3747,
+     "row_id": 5269,
      "name": "гиперплазия сальной железы, плоские бородавки), от 2 до 5 элементов",
      "description": null,
      "price": "2 800 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3753,
+     "row_id": 5275,
      "name": "гиперплазия сальной железы, плоские бородавки), от 60 элементов и выше",
      "description": null,
      "price": "18 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3749,
+     "row_id": 5271,
      "name": "кератоакантомы, кожный рог, кератомы, вирусные бородавки) за 1 элемент",
      "description": null,
      "price": "2 550 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3750,
+     "row_id": 5272,
      "name": "от 2-х штук за каждый элемент",
      "description": null,
      "price": "2 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
     },
     {
-     "row_id": 3748,
+     "row_id": 5270,
      "name": "плоские бородавки), от 11 до 20 элементов",
      "description": null,
      "price": "6 000 ₽",
      "page_url": "https://plastic-avismed.ru/cosmetic-price"
+    }
+   ]
+  },
+  {
+   "clinic_id": "КЛН-simvol-krasoty.ru",
+   "clinic_title": "Лечение купероза на лице в Новосибирске: цены | Символ Красоты",
+   "services": [
+    {
+     "row_id": 5296,
+     "name": "Первичная консультация",
+     "description": null,
+     "price": "3200₽",
+     "page_url": "https://simvol-krasoty.ru/consultation"
     }
    ]
   }
