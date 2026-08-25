@@ -234,7 +234,8 @@ def _level4_emulation(url: str) -> tuple[str | None, str, int, bool]:
 def fetch_cascade(url: str, domain: str, form_index: dict,
                   db: sqlite3.Connection | None = None,
                   min_bytes: int = CONTENT_MIN_BYTES,
-                  max_level: int = 4) -> tuple[str | None, dict]:
+                  max_level: int = 4,
+                  page_budget_sec: float = 240) -> tuple[str | None, dict]:
     """Одна страница через каскад. Возвращает (текст|None, итог попыток):
     {'level': взявший уровень|None, 'last_level', 'last_status', 'blocked_by_robots'}.
     """
@@ -250,8 +251,16 @@ def fetch_cascade(url: str, domain: str, form_index: dict,
                (2, lambda: (*_level2_direct(url), None)),
                (3, lambda: _level3_headless(url)),
                (4, lambda: _level4_emulation(url))]
+    t0 = time.monotonic()
     for level, run in runners:
         if level > max_level:
+            break
+        if time.monotonic() - t0 > page_budget_sec:
+            # таймаут страницы (разбор 2026-08-26): прерываем и логируем, не ждём
+            _log(db, domain, url, level, "page_budget_exceeded", 0, None, False,
+                 f"бюджет страницы {page_budget_sec:.0f}с исчерпан — уровни "
+                 f"{level}+ не выполнялись")
+            meta.update(last_level=level, last_status="page_budget_exceeded")
             break
         if level > 1:
             time.sleep(RATE_DELAY_SEC)

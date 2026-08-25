@@ -93,6 +93,9 @@ class CandidateQueue:
 def open_db(path: pathlib.Path = pathlib.Path("data/osint.db")) -> sqlite3.Connection:
     path.parent.mkdir(exist_ok=True)
     db = sqlite3.connect(path)
+    # страховка от SQLITE_BUSY при случайной параллельной записи
+    # (разбор зависания 2026-08-26, вопрос 4; штатно порции последовательны)
+    db.execute("PRAGMA busy_timeout = 15000")
     db.executescript("""
     CREATE TABLE IF NOT EXISTS queries (
         query_id TEXT PRIMARY KEY, layer INTEGER, template_id TEXT, city TEXT,

@@ -94,3 +94,43 @@ def test_vocab_has_site_unreachable_status():
     assert "Сайт недоступен" in vocab["field_status"]
     assert "Не найдено" in vocab["field_status"]
     assert "Сайт недоступен" in vocab["service_presence"]
+
+
+def test_page_budget_interrupts_cascade(monkeypatch):
+    """Разбор зависания 2026-08-26: исчерпанный бюджет страницы прерывает
+    каскад с логом page_budget_exceeded, а не ждёт следующие уровни."""
+    import time as _time
+    db = sqlite3.connect(":memory:")
+    ensure_fetch_tables(db)
+    monkeypatch.setattr(fc, "robots_allows", lambda url: True)
+    monkeypatch.setattr(fc, "RATE_DELAY_SEC", 0)
+    slow_calls = []
+    def slow_l1(url):
+        slow_calls.append(1)
+        return (None, "403", 0)
+    monkeypatch.setattr(fc, "_level1_jina", slow_l1)
+    monkeypatch.setattr(fc, "_level2_direct", lambda url: (None, "403", 0))
+    # бюджет 0 секунд: после уровня 1 время уже вышло → уровень 2 не зовётся
+    text, meta = fetch_cascade("https://x.ru", "x.ru", FORM_INDEX, db=db,
+                               max_level=2, page_budget_sec=0)
+    assert text is None
+    assert meta["last_status"] == "page_budget_exceeded"
+    statuses = [r[0] for r in db.execute("SELECT status FROM fetch_attempts")]
+    assert "page_budget_exceeded" in statuses
+
+
+def test_clinic_budget_interrupts_crawl(monkeypatch):
+    """Бюджет клиники: обход прерывается, собранное остаётся, timeout_hit=True."""
+    import src.site_checker as sc
+    home = ("<html><body>" + "".join(
+        f'<a href="/uslugi/p{i}">Услуги {i}</a>' for i in range(10))
+        + "<p>Дерматоскопия — 1 200 ₽</p></body></html>")
+    monkeypatch.setattr(sc, "fetch_cascade",
+                        lambda url, dom, fi, **kw: (home, {"level": 2, "last_level": 2,
+                                                           "last_status": "200",
+                                                           "blocked_by_robots": False}))
+    monkeypatch.setattr(sc, "RATE_DELAY_SEC", 0)
+    pages, meta = sc.crawl_site("https://y.test", "Тест", FORM_INDEX,
+                                clinic_budget_sec=0)
+    assert meta["timeout_hit"] is True
+    assert len(pages) == 1   # главная взята, обход разделов прерван

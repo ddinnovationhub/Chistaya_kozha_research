@@ -85,7 +85,9 @@ def _page_links(page_text: str, base_url: str) -> list[tuple[str, str]]:
 
 def crawl_site(url: str, city: str, form_index: dict, db=None,
                min_bytes: int = 3000,
-               max_pages: int = MAX_PAGES_PER_SITE) -> tuple[dict[str, str], dict]:
+               max_pages: int = MAX_PAGES_PER_SITE,
+               page_budget_sec: float = 240,
+               clinic_budget_sec: float = 600) -> tuple[dict[str, str], dict]:
     """АДАПТИВНЫЙ обход домена через каскад (заказчик 2026-08-26, п.5):
     обходятся ВСЕ страницы, похожие на прайс/каталог услуг, в порядке
     приоритета (прайс → направления/специалисты → прочее), плюс второй
@@ -97,8 +99,10 @@ def crawl_site(url: str, city: str, form_index: dict, db=None,
     pages = {}
     dom = normalize_domain(url) or "unknown"
     base = url.rstrip("/")
-    home, meta = fetch_cascade(url, dom, form_index, db=db, min_bytes=min_bytes)
-    meta.update(pages_found=0, pages_fetched=0, cap_hit=False)
+    t0 = time.monotonic()
+    home, meta = fetch_cascade(url, dom, form_index, db=db, min_bytes=min_bytes,
+                               page_budget_sec=page_budget_sec)
+    meta.update(pages_found=0, pages_fetched=0, cap_hit=False, timeout_hit=False)
     if home is None:
         return pages, meta
     pages[url] = home
@@ -128,10 +132,15 @@ def crawl_site(url: str, city: str, form_index: dict, db=None,
 
     enqueue(_page_links(home, base), from_service_page=False, service_root=None)
     while heap and len(pages) < max_pages:
+        if time.monotonic() - t0 > clinic_budget_sec:
+            # таймаут клиники (разбор 2026-08-26): прерываем, собранное остаётся
+            meta["timeout_hit"] = True
+            break
         prio, _, link = heapq.heappop(heap)
         time.sleep(RATE_DELAY_SEC)
         text, _m = fetch_cascade(link, dom, form_index, db=db,
-                                 min_bytes=min_bytes, max_level=page_level)
+                                 min_bytes=min_bytes, max_level=page_level,
+                                 page_budget_sec=page_budget_sec)
         if not text:
             continue
         pages[link] = text
@@ -201,8 +210,12 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # sharmnsk.ru была запрещена robots, и запрет ошибочно закрывал весь сайт;
     # плюс og:site_name и шапка живут на главной)
     url = f"https://{dom}"
-    pages, fetch_meta = crawl_site(url, city, form_index, db=db,
-                                   min_bytes=min_bytes, max_pages=max_pages)
+    _casc = yaml.safe_load(pathlib.Path("config/thresholds.yaml")
+                           .read_text(encoding="utf-8")).get("cascade", {})
+    pages, fetch_meta = crawl_site(
+        url, city, form_index, db=db, min_bytes=min_bytes, max_pages=max_pages,
+        page_budget_sec=float(_casc.get("page_budget_sec", 240)),
+        clinic_budget_sec=float(_casc.get("clinic_budget_sec", 600)))
     disc_url = cand.get("url") or ""
     if pages and disc_url.startswith("http") \
             and normalize_domain(disc_url) == dom \
@@ -593,9 +606,19 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
     run_cfg = yaml.safe_load(pathlib.Path("config/run.yaml").read_text(encoding="utf-8"))
     random.Random(int(run_cfg.get("stage6_sample_seed", 42))).shuffle(cands)
 
+    stage_budget_sec = float(cfg.get("cascade", {}).get("stage6_budget_min", 150)) * 60
+    stage_t0 = time.monotonic()
     processed, results = 0, []
+    stage_timeout_hit = False
     for cand in cands:
         if processed >= max_clinics:
+            break
+        if time.monotonic() - stage_t0 > stage_budget_sec:
+            # потолок этапа целиком (разбор 2026-08-26): чекпойнт сохранён,
+            # прерывание логируется — не ждём
+            stage_timeout_hit = True
+            print(f"⛔ потолок этапа 6: {stage_budget_sec/60:.0f} мин исчерпаны "
+                  f"после {processed} клиник — прерывание, собранное сохранено")
             break
         if cand["domain"] in done_domains:
             continue  # домен обрабатывается ровно один раз за прогон
@@ -649,6 +672,7 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
                          f"системная, а не в отдельных сайтах. Доклад заказчику обязателен.")
 
     return {"processed": processed, "results": results,
+            "stage_timeout_hit": stage_timeout_hit,
             "services_total": total, "tier1_mapped": tier1, "to_markup": markup,
             "avg_markup_batch": round(markup / len(with_markup), 1) if with_markup else 0,
             "taken_by_level": taken_by_level, "unreachable_domains": unreachable,
