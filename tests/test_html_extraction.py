@@ -192,11 +192,57 @@ def test_nonprofile_services_not_collected():
 
 
 def test_esthetic_collected_as_aggregate_not_rows():
-    """Эстетика — агрегатом (маркер для Типа 2), не позициями."""
+    """Эстетика — ОДНОЙ агрегатной строкой на клинику (мера 2, заказчик
+    2026-08-26: свернуть, не выбросить), не построчно."""
     page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
     <p>Ботулинотерапия — 4 500 ₽</p><p>Биоревитализация — 5 000 ₽</p>
     <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
     r, rows = _gate_for(page)
     assert r["gate"] == "Включён"
     assert r["skipped_esthetic"] >= 2
-    assert rows == 2   # дерматологические строки; эстетика — маркером
+    assert rows == 3   # 2 дерматологические + 1 агрегат эстетики
+
+
+def test_filler_brands_collapse_to_one_row():
+    """Мера 2: бренды латиницей с мл → одна строка-агрегат с перечнем и
+    диапазоном цен; данные не теряются."""
+    page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Juvederm Ultra 3 1 мл — 18 000 ₽</p>
+    <p>Stylage M 1 мл — 15 000 ₽</p>
+    <p>Belotero Balance 1 мл — 16 500 ₽</p></body></html>"""
+    from src.site_checker import ensure_stage6_tables  # noqa: F401
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Включён"
+    assert rows == 2   # приём + агрегат брендов
+    db_check_done = False
+    # содержимое агрегата проверяем через повторный прогон с доступом к БД
+    import src.site_checker as sc
+    from src.classify import load_contours
+    db = sqlite3.connect(":memory:")
+    sc.ensure_stage6_tables(db)
+    orig = sc.crawl_site
+    sc.crawl_site = lambda *a, **k: ({"https://f.test/": page},
+                                     {"level": 2, "last_level": 2, "last_status": "200",
+                                      "blocked_by_robots": False})
+    try:
+        sc.process_clinic({"title": "F", "url": "https://f.test", "domain": "f.test"},
+                          db, load_contours(), FORM_INDEX, set(), "Тест")
+    finally:
+        sc.crawl_site = orig
+    row = db.execute("SELECT name_raw, description_raw, price, tag FROM services_found "
+                     "WHERE name_raw LIKE 'Инъекционная эстетика%'").fetchone()
+    assert row is not None
+    assert "3 позиций" in row[0]
+    assert "Juvederm" in row[1] and "Stylage" in row[1]
+    assert "от" in row[2] and "до" in row[2]
+    assert row[3] == "contour_filler"
+
+
+def test_fuzzy_092_maps_close_but_not_antonyms():
+    """Мера 3: порог 0.92; добро/злокачественные не сближаются никогда."""
+    from src.mapper import map_tier1
+    m = map_tier1("Приём детского дерматолога.", FORM_INDEX, fuzzy_cutoff=0.92)
+    assert m and m["tag"] == "derm_consult_child"
+    m2 = map_tier1("Удаление доброкачественных новообразований кожи",
+                   FORM_INDEX, fuzzy_cutoff=0.92)
+    assert m2 is None or "злокачествен" not in str(m2)

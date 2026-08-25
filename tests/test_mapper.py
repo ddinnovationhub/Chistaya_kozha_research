@@ -21,8 +21,23 @@ class TestNormalization(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_parens_removed(self):
+        # мера 1 (заказчик 2026-08-26): приём/консультация/осмотр — одна
+        # приставка, модификаторы «первичный/повторный» отсекаются
         self.assertEqual(normalize_service_name("Консультация врача дерматолога (первичная)"),
-                         "консультация врача дерматолога")
+                         "прием дерматолога")
+
+    def test_measure1_visit_variants_unify(self):
+        variants = ["Прием (осмотр, консультация) врача-дерматолога первичный",
+                    "Приём врача-дерматолога повторный",
+                    "Консультация дерматолога",
+                    "Осмотр врача дерматолога, кандидата медицинских наук"]
+        keys = {normalize_service_name(v) for v in variants}
+        self.assertEqual(keys, {"прием дерматолога"})
+
+    def test_measure1_does_not_merge_specialties(self):
+        a = normalize_service_name("Приём дерматолога")
+        b = normalize_service_name("Приём трихолога")
+        self.assertNotEqual(a, b)
 
 
 class TestTier1(unittest.TestCase):

@@ -138,6 +138,11 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
          q("SELECT COUNT(*) FROM fetch_attempts WHERE status='robots_disallow'")),
         ("Непрофильных строк отбито при сборе (вакцинация, ЭКГ, несмежные и т.п.)",
          q("SELECT COALESCE(SUM(nonprofile_excluded),0) FROM clinics")),
+        ("Обход: страниц найдено / обойдено (адаптивный, потолок 40)",
+         f"{q('SELECT COALESCE(SUM(crawl_pages_found),0) FROM clinics')}"
+         f" / {q('SELECT COALESCE(SUM(crawl_pages_fetched),0) FROM clinics')}"),
+        ("Клиник, упёршихся в потолок страниц",
+         q("SELECT COUNT(*) FROM clinics WHERE crawl_cap_hit=1")),
         ("Слой L1 (каталоги)", "выполняется отдельно с локальной машины "
                                "(python -m src.run_l1; решение заказчика 2026-08-26)"),
     ]

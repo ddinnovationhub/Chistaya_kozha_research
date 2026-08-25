@@ -8,6 +8,7 @@ output/{город}_на_разметку_{дата}.json, размечаетс�
 по prompts/06_markup_batch.md и подхватывается src/merge_markup.py.
 """
 
+import difflib
 import pathlib
 import re
 
@@ -29,15 +30,27 @@ _SIZE_RE = re.compile(
 _PAREN_RE = re.compile(r"\([^)]*\)")
 _SPACE_RE = re.compile(r"\s+")
 
+# Мера 1 (решение заказчика 2026-08-26): орфографические варианты одного и
+# того же — риска нет. Унификация приставки приёма, ё→е, отсечение
+# модификаторов (первичный/повторный, категории сложности, учёные степени).
+_VISIT_PREFIX_RE = re.compile(
+    r"^(прием|осмотр|консультация)(\s+(осмотр|консультация))*\s*(врача[-\s]*)?")
+_MODIFIER_RE = re.compile(
+    r"\b(первичн\w+|повторн\w+|амбулаторн\w+|лечебно-диагностическ\w+"
+    r"|\d\s*(степени|категории)\s*сложности|высшей категории|\d\s*категории"
+    r"|кмн|дмн|кандидата медицинских наук|доктора медицинских наук|профессора?)\b")
+
 
 def normalize_service_name(name: str) -> str:
-    s = (name or "").lower()
+    s = (name or "").lower().replace("ё", "е")
     s = _PAREN_RE.sub(" ", s)          # скобочные уточнения
     s = s.split("/")[0]                # слэш-хвосты
     s = _SIZE_RE.sub(" ", s)           # размеры, единицы, номера, кратности
     s = re.sub(r"[«»\"'.,;:№]", " ", s)
     s = _SPACE_RE.sub(" ", s).strip(" -–")
-    return s
+    s = _VISIT_PREFIX_RE.sub("прием ", s)   # приём/консультация/осмотр = одно
+    s = _MODIFIER_RE.sub(" ", s)
+    return _SPACE_RE.sub(" ", s).strip(" -–")
 
 
 def build_formulation_index(services: dict | None = None) -> dict[str, str]:
@@ -51,12 +64,29 @@ def build_formulation_index(services: dict | None = None) -> dict[str, str]:
     return index
 
 
-def map_tier1(raw_name: str, index: dict[str, str]) -> dict | None:
+# Мера 3 (заказчик 2026-08-26): клинически опасные почти-совпадения —
+# «удаление ДОБРОкачественных» ↔ «иссечение ЗЛОкачественных» дало 0.84;
+# порог 0.92 в config/thresholds.yaml, ниже не опускать.
+_ANTONYM_STEMS = ("злокачествен", "доброкачествен")
+
+
+def map_tier1(raw_name: str, index: dict[str, str],
+              fuzzy_cutoff: float | None = None) -> dict | None:
     key = normalize_service_name(raw_name)
     tag = index.get(key)
     if tag:
         return {"tag": tag, "code_804n": None, "basis": "точное совпадение формулировки",
                 "tier": "код", "confidence": "высокая"}
+    if fuzzy_cutoff:
+        best = difflib.get_close_matches(key, list(index), n=1, cutoff=fuzzy_cutoff)
+        if best:
+            b = best[0]
+            for stem in _ANTONYM_STEMS:   # добро/злокачественный не сближаем
+                if (stem in key) != (stem in b):
+                    return None
+            return {"tag": index[b], "code_804n": None,
+                    "basis": f"нечёткое совпадение ≥{fuzzy_cutoff} с «{b}»",
+                    "tier": "код", "confidence": "средняя"}
     return None
 
 

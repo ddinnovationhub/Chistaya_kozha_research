@@ -38,61 +38,109 @@ from src.mapper import build_formulation_index, map_tier1
 from src.validators import validate_inn, validate_ogrn
 
 RATE_DELAY_SEC = 3
-MAX_PAGES_PER_SITE = 8
+MAX_PAGES_PER_SITE = 40   # потолок (заказчик 2026-08-26, п.5); правится в
+                          # config/thresholds.yaml cascade.max_pages_per_domain
 
 TYPE_STATUS_PRELIM = "предварительный (ступень 1, до разметки)"
 TYPE_STATUS_FINAL = "финальный (после разметки)"
 
+# Приоритет обхода (заказчик 2026-08-26, п.5): сначала прайс/каталог услуг,
+# затем направления/специалисты, затем лицензии/реквизиты/контакты
+SERVICE_HINTS = ("price", "prais", "prays", "stoimost", "ceny", "cena", "uslug",
+                 "servic", "прайс", "стоимост", "цены", "услуг")
+DIRECTION_HINTS = ("napravlen", "specialist", "vrach", "doctor", "направлен",
+                   "специалист", "врач")
+OTHER_HINTS = ("licen", "rekvizit", "kontakt", "contact", "about", "o-klinike",
+               "o-nas", "лиценз", "реквизит", "контакт")
 
-def _find_section_links(home_text: str, base_url: str) -> list[str]:
-    """Ссылки разделов: HTML — через DOM (a[href] + urljoin, а не регулярка —
-    прогон 2026-08-26 показал шторм 404 на криво склеенных путях),
-    markdown от Jina — по (url) в скобках."""
+
+def _link_priority(url: str, text: str) -> int | None:
+    """0 — прайс/услуги, 1 — направления/специалисты, 2 — прочие полезные,
+    None — не обходить."""
+    probe = (url + " " + text).lower()
+    if any(h in probe for h in SERVICE_HINTS):
+        return 0
+    if any(h in probe for h in DIRECTION_HINTS):
+        return 1
+    if any(h in probe for h in OTHER_HINTS):
+        return 2
+    return None
+
+
+def _page_links(page_text: str, base_url: str) -> list[tuple[str, str]]:
+    """(url, текст ссылки) со страницы: HTML — через DOM, markdown — регэкспом."""
     from urllib.parse import urljoin
 
-    from src.html_text import looks_like_html
-    if looks_like_html(home_text):
-        from src.html_text import _soup
-        links = [urljoin(base_url + "/", a["href"])
-                 for a in _soup(home_text).find_all("a", href=True)]
+    from src.html_text import _soup, looks_like_html
+    out = []
+    if looks_like_html(page_text):
+        for a in _soup(page_text).find_all("a", href=True):
+            out.append((urljoin(base_url + "/", a["href"]),
+                        a.get_text(" ", strip=True)[:80]))
     else:
-        links = [urljoin(base_url + "/", u) for u in
-                 re.findall(r"\((https?://[^)\s]+|/[^)\s]+)\)", home_text)]
-    base_dom = normalize_domain(base_url)
-    out, seen = [], set()
-    for link in links:
-        if not link.startswith("http") or normalize_domain(link) != base_dom:
-            continue
-        low = link.lower()
-        if any(w in low for w in ("uslug", "price", "prais", "napravlen", "vrach",
-                                  "doctor", "licen", "rekvizit", "contact", "kontakt",
-                                  "about", "o-klinike", "o-nas", "ceny", "services")):
-            key = link.split("#")[0].split("?")[0].rstrip("/")
-            if key not in seen and key.rstrip("/") != base_url.rstrip("/"):
-                seen.add(key)
-                out.append(key)
-    return out[:MAX_PAGES_PER_SITE - 1]
+        out = [(urljoin(base_url + "/", u), "") for u in
+               re.findall(r"\((https?://[^)\s]+|/[^)\s]+)\)", page_text)]
+    return out
 
 
 def crawl_site(url: str, city: str, form_index: dict, db=None,
-               min_bytes: int = 3000) -> tuple[dict[str, str], dict]:
-    """Один обход домена через КАСКАД (заказчик 2026-08-26): главная +
-    профильные разделы. Возвращает ({url: text}, meta каскада главной).
-    Уровень клиники = уровень, взявший главную; разделы стартуют с этого
-    уровня как максимума (телеметрия каждой попытки — в fetch_attempts)."""
+               min_bytes: int = 3000,
+               max_pages: int = MAX_PAGES_PER_SITE) -> tuple[dict[str, str], dict]:
+    """АДАПТИВНЫЙ обход домена через каскад (заказчик 2026-08-26, п.5):
+    обходятся ВСЕ страницы, похожие на прайс/каталог услуг, в порядке
+    приоритета (прайс → направления/специалисты → прочее), плюс второй
+    уровень вложенности внутри разделов услуг. Потолок max_pages, пауза
+    между запросами. Телеметрия: pages_found / pages_fetched / cap_hit.
+    Уровень клиники = уровень, взявший главную."""
+    import heapq
+
     pages = {}
     dom = normalize_domain(url) or "unknown"
+    base = url.rstrip("/")
     home, meta = fetch_cascade(url, dom, form_index, db=db, min_bytes=min_bytes)
+    meta.update(pages_found=0, pages_fetched=0, cap_hit=False)
     if home is None:
         return pages, meta
     pages[url] = home
-    for link in _find_section_links(home, url):
+    page_level = max(meta["level"], 2)
+
+    def norm_link(u: str) -> str:
+        return u.split("#")[0].split("?")[0].rstrip("/")
+
+    heap, seen, order = [], {base}, 0
+    def enqueue(links, from_service_page: bool, service_root: str | None):
+        nonlocal order
+        for lurl, ltext in links:
+            key = norm_link(lurl)
+            if not key.startswith("http") or normalize_domain(key) != dom or key in seen:
+                continue
+            prio = _link_priority(key, ltext)
+            # второй уровень: подстраницы внутри раздела услуг обходятся,
+            # даже если их URL не содержит подсказок (направления прайса)
+            if prio is None and from_service_page and service_root \
+                    and key.startswith(service_root):
+                prio = 0
+            if prio is None:
+                continue
+            seen.add(key)
+            heapq.heappush(heap, (prio, order, key))
+            order += 1
+
+    enqueue(_page_links(home, base), from_service_page=False, service_root=None)
+    while heap and len(pages) < max_pages:
+        prio, _, link = heapq.heappop(heap)
         time.sleep(RATE_DELAY_SEC)
-        # разделам достаточно уровня главной: сайт уже показал, чем он берётся
-        text, _ = fetch_cascade(link, dom, form_index, db=db, min_bytes=min_bytes,
-                                max_level=max(meta["level"], 2))
-        if text:
-            pages[link] = text
+        text, _m = fetch_cascade(link, dom, form_index, db=db,
+                                 min_bytes=min_bytes, max_level=page_level)
+        if not text:
+            continue
+        pages[link] = text
+        if prio == 0:   # страница услуг/прайса → её подстраницы тоже в очередь
+            enqueue(_page_links(text, base), from_service_page=True,
+                    service_root=link)
+    meta["pages_found"] = len(seen) - 1
+    meta["pages_fetched"] = len(pages)
+    meta["cap_hit"] = bool(heap) and len(pages) >= max_pages
     # доказательная база: gzip в raw/{city}/{date}/
     day = datetime.date.today().isoformat()
     raw_dir = pathlib.Path("raw") / city / day
@@ -112,6 +160,7 @@ def ensure_stage6_tables(db: sqlite3.Connection):
         flag_single_nonadjacent INTEGER, flag_removal_outside_derm INTEGER,
         flag_site_unreachable INTEGER, unreachable_note TEXT, fetch_level INTEGER,
         nonprofile_excluded INTEGER,
+        crawl_pages_found INTEGER, crawl_pages_fetched INTEGER, crawl_cap_hit INTEGER,
         has_packages INTEGER, specialists_count INTEGER,
         inn TEXT, inn_status TEXT, legal_name TEXT,
         sections_found TEXT, checked_at TEXT);
@@ -128,7 +177,10 @@ def ensure_stage6_tables(db: sqlite3.Connection):
     # миграция таблиц, созданных кодом до 2026-08-26
     for col, typ in (("type_status", "TEXT"), ("flag_site_unreachable", "INTEGER"),
                      ("unreachable_note", "TEXT"), ("fetch_level", "INTEGER"),
-                     ("title_source", "TEXT"), ("nonprofile_excluded", "INTEGER")):
+                     ("title_source", "TEXT"), ("nonprofile_excluded", "INTEGER"),
+                     ("crawl_pages_found", "INTEGER"),
+                     ("crawl_pages_fetched", "INTEGER"),
+                     ("crawl_cap_hit", "INTEGER")):
         try:
             db.execute(f"ALTER TABLE clinics ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
@@ -139,14 +191,16 @@ def ensure_stage6_tables(db: sqlite3.Connection):
 
 def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                    form_index: dict, client_tags: set, city: str,
-                   min_bytes: int = 3000) -> dict:
+                   min_bytes: int = 3000,
+                   max_pages: int = MAX_PAGES_PER_SITE) -> dict:
     dom = cand["domain"]
     clinic_id = f"КЛН-{dom}"
     # Обход С КОРНЯ домена (такт 3: discovery даёт глубокие URL — новость
     # sharmnsk.ru была запрещена robots, и запрет ошибочно закрывал весь сайт;
     # плюс og:site_name и шапка живут на главной)
     url = f"https://{dom}"
-    pages, fetch_meta = crawl_site(url, city, form_index, db=db, min_bytes=min_bytes)
+    pages, fetch_meta = crawl_site(url, city, form_index, db=db,
+                                   min_bytes=min_bytes, max_pages=max_pages)
     disc_url = cand.get("url") or ""
     if pages and disc_url.startswith("http") \
             and normalize_domain(disc_url) == dom \
@@ -202,11 +256,15 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # признаков чужого профиля. Косметология — агрегатом (тег в классификацию,
     # позицией не пишется); венерология — ищем, не собираем; непрофильные
     # (вакцинация, ЭКГ, справки, несмежные специальности) — не собираются.
-    from src.extract_site import (NONPROFILE_SERVICE_RE, PACKAGE_RE,
-                                  VENEREOLOGY_RE, _esthetic_keywords,
-                                  is_esthetic_line, is_zone_or_junk_name)
+    from src.extract_site import (BRAND_INJECTABLE_RE, NONPROFILE_SERVICE_RE,
+                                  PACKAGE_RE, VENEREOLOGY_RE,
+                                  _esthetic_keywords, is_esthetic_line,
+                                  is_zone_or_junk_name)
+    cfg_map = yaml.safe_load(pathlib.Path("config/thresholds.yaml")
+                             .read_text(encoding="utf-8")).get("mapping", {})
+    fuzzy_cutoff = float(cfg_map.get("fuzzy_threshold", 0)) or None
     esth_kws = _esthetic_keywords()
-    mapped, to_markup = [], []
+    mapped, to_markup, brand_rows = [], [], []
     marker_tags = set()          # теги для классификации без строки в таблице
     skipped_nonprofile, skipped_vener, skipped_esth = [], 0, 0
     for s in data["services"]:
@@ -225,7 +283,7 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         if PACKAGE_RE.search(name):
             data["has_packages"] = True   # пакеты флагом, состав не разбираем
             continue
-        m1 = map_tier1(name, form_index)
+        m1 = map_tier1(name, form_index, fuzzy_cutoff=fuzzy_cutoff)
         if m1:
             c = contours.get(m1["tag"])
             if c in ("cosm_est", "cosm_med") or m1["tag"] in ("std_consult", "std_lab"):
@@ -241,6 +299,10 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             else:
                 mapped.append({**s, **m1})
             continue
+        if BRAND_INJECTABLE_RE.search(name) and "волос" not in name.lower():
+            brand_rows.append(s)   # мера 2: свёртка, не потеря
+            data["esthetic_cosmetology_present"] = True
+            continue
         if is_zone_or_junk_name(name):
             continue   # «Щеки», «Бакенбарды», «Один импульс», «Цена…» — не услуги
         if is_esthetic_line(name, esth_kws):
@@ -248,6 +310,35 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             data["esthetic_cosmetology_present"] = True
             continue
         to_markup.append(s)
+
+    # ── Мера 2 (заказчик 2026-08-26): агрегатные строки вместо потери ──
+    if brand_rows:
+        import re as _re
+        brands = []
+        for b in brand_rows:
+            m = _re.search(r"[A-Za-z][A-Za-z0-9+\- ]{2,}", b["name"])
+            if m and m.group(0).strip() not in brands:
+                brands.append(m.group(0).strip())
+        prices = [int(_re.sub(r"\D", "", b["price"])) for b in brand_rows
+                  if b.get("price") and _re.sub(r"\D", "", b["price"])]
+        marker_tags.add("contour_filler")
+        mapped.append({
+            "name": f"Инъекционная эстетика (филлеры/биоревитализанты) — "
+                    f"{len(brand_rows)} позиций (агрегат)",
+            "description": "бренды: " + ", ".join(brands[:15]),
+            "price": (f"от {min(prices)} до {max(prices)} ₽" if prices else None),
+            "page_url": brand_rows[0]["page_url"],
+            "tag": "contour_filler", "code_804n": None,
+            "basis": "агрегат брендов инъекционной эстетики (мера 2, решение заказчика 2026-08-26)",
+            "tier": "код", "confidence": "высокая"})
+    if skipped_esth:
+        mapped.append({
+            "name": f"Эстетическая косметология — {skipped_esth} позиций (агрегат)",
+            "description": "позиции свёрнуты; состав тегов — колонка «Эстетические маркеры»",
+            "price": None, "page_url": url,
+            "tag": "hardware_rejuvenation", "code_804n": None,
+            "basis": "агрегат эстетических позиций (эстетика не разбирается построчно; мера 2)",
+            "tier": "код", "confidence": "высокая"})
     profile_tags = ({m["tag"] for m in mapped} | marker_tags) & set(contours)
 
     # ── Ворота: стоп-лист организаций (п.1) → G1 (ужесточён) → G2 ───────
@@ -313,9 +404,10 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                "gate_reason, type, type_status, rule, grade, esthetic_markers, "
                "nonadjacent, flag_single_nonadjacent, flag_removal_outside_derm, "
                "flag_site_unreachable, unreachable_note, fetch_level, "
-               "nonprofile_excluded, "
+               "nonprofile_excluded, crawl_pages_found, crawl_pages_fetched, "
+               "crawl_cap_hit, "
                "has_packages, specialists_count, inn, inn_status, legal_name, "
-               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                (clinic_id, title, title_source, dom, url, gate, reason,
                 cls["type"], type_status, cls.get("rule"), grade,
                 "; ".join(cls["esthetic_markers_found"]) or None,
@@ -323,6 +415,8 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                 int(cls["flag_single_nonadjacent"]), int(cls["flag_removal_outside_derm"]),
                 0, None, fetch_meta["level"],
                 len(skipped_nonprofile),
+                fetch_meta.get("pages_found"), fetch_meta.get("pages_fetched"),
+                int(bool(fetch_meta.get("cap_hit"))),
                 int(data["has_packages"]), data["specialists_count"],
                 inn, inn_status, data["requisites"]["legal_name"],
                 "; ".join(sorted(seen_sections)) or None, now))
@@ -400,6 +494,7 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
     cfg = yaml.safe_load(pathlib.Path("config/thresholds.yaml").read_text(encoding="utf-8"))
     min_bytes = int(cfg.get("cascade", {}).get("content_min_bytes", 3000))
     unreachable_stop = float(cfg.get("cascade", {}).get("unreachable_share_stop", 0.15))
+    max_pages = int(cfg.get("cascade", {}).get("max_pages_per_domain", MAX_PAGES_PER_SITE))
 
     done_domains = {row[0] for row in db.execute("SELECT domain FROM clinics")}
     cands = [dict(zip(("title", "url", "domain"), row)) for row in db.execute(
@@ -420,7 +515,7 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
         done_domains.add(cand["domain"])
         try:
             r = process_clinic(cand, db, contours, form_index, client_tags, city,
-                               min_bytes=min_bytes)
+                               min_bytes=min_bytes, max_pages=max_pages)
         except Exception as exc:  # noqa: BLE001 — клиника не роняет пачку
             db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, domain, url, "
                        "gate, gate_reason, grade, checked_at) VALUES (?,?,?,?,?,?,?,?)",
