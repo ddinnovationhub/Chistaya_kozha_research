@@ -109,7 +109,9 @@ def test_robots_full_disallow_still_blocks():
     assert _robots_decision(rules_allow, "/uslugi/price") is True
 
 
-def _gate_for(page_html, domain="x.test", title="X"):
+def _run_clinic(page_html, domain="x.test", title="X", judge=False):
+    """Прогон одной клиники по странице; judge=True — плюс пересчёт суждений
+    (src.judgments) поверх собранного. Возвращает (результат, db)."""
     from src.site_checker import ensure_stage6_tables, process_clinic
     import src.site_checker as sc
     from src.classify import load_contours
@@ -125,6 +127,14 @@ def _gate_for(page_html, domain="x.test", title="X"):
                            set(), "Тест")
     finally:
         sc.crawl_site = orig
+    if judge:
+        from src.judgments import recompute
+        recompute(db)
+    return r, db
+
+
+def _gate_for(page_html, domain="x.test", title="X"):
+    r, db = _run_clinic(page_html, domain, title)
     rows = db.execute("SELECT COUNT(*) FROM services_found").fetchone()[0]
     return r, rows
 
@@ -178,64 +188,65 @@ def test_g1_word_kosmetolog_not_enough():
     assert rows == 0
 
 
-def test_nonprofile_services_not_collected():
-    """п.6: вакцинация, ЭКГ, справки, несмежные — в таблицу не попадают."""
+def test_nothing_dropped_inside_included_clinic():
+    """ОТМЕНА второго фильтра (заказчик, 2026-08-25): внутри прошедшей ворота
+    клиники не выбрасывается НИ ОДНА позиция — вакцинация, ЭКГ, приём
+    гинеколога остаются строками; отнесение к профилю — колонка, не условие."""
     page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
     <p>Приём врача-дерматолога — 1 500 ₽</p>
     <p>Вакцинация от гриппа — 900 ₽</p><p>ЭКГ с расшифровкой — 700 ₽</p>
-    <p>Справка в бассейн — 400 ₽</p><p>Приём гинеколога — 1 800 ₽</p>
+    <p>Приём гинеколога — 1 800 ₽</p>
     <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
-    r, rows = _gate_for(page)
-    assert r["gate"] == "Включён"
-    assert r["skipped_nonprofile"] >= 4
-    assert rows == r["services"] == 2   # только дерматологические строки
+    r, db = _run_clinic(page)
+    assert r["gate"] == "Включён"   # приём профильного врача в прайсе
+    names = [x[0] for x in db.execute("SELECT name_raw FROM services_found")]
+    assert any("Вакцинация" in n for n in names)
+    assert any("гинеколога" in n for n in names)
+    assert any("Дерматоскопия" in n for n in names)
+    assert len(names) == 5   # все позиции, ничего не выброшено
+    # «Профиль» пуст до эталона заказчика
+    assert all(p is None for (p,) in db.execute(
+        "SELECT profile FROM services_found"))
 
 
 def test_esthetic_collected_as_aggregate_not_rows():
-    """Эстетика — ОДНОЙ агрегатной строкой на клинику (мера 2, заказчик
-    2026-08-26: свернуть, не выбросить), не построчно."""
+    """Свёртка (пересчёт суждений): эстетика — агрегатной строкой, члены
+    агрегата сохранены в базе (collapsed_into), не потеряны."""
     page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
     <p>Ботулинотерапия — 4 500 ₽</p><p>Биоревитализация — 5 000 ₽</p>
     <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
-    r, rows = _gate_for(page)
+    r, db = _run_clinic(page, judge=True)
     assert r["gate"] == "Включён"
-    assert r["skipped_esthetic"] >= 2
-    assert rows == 3   # 2 дерматологические + 1 агрегат эстетики
+    # видимых строк (без членов агрегатов): приём + дерматоскопия + агрегат
+    vis = [x[0] for x in db.execute(
+        "SELECT name_raw FROM services_found WHERE collapsed_into IS NULL")]
+    assert len(vis) == 3, vis
+    assert any("агрегат" in n for n in vis)
+    # члены агрегата сохранены в базе
+    assert db.execute("SELECT COUNT(*) FROM services_found "
+                      "WHERE collapsed_into IS NOT NULL").fetchone()[0] == 2
 
 
 def test_filler_brands_collapse_to_one_row():
-    """Мера 2: бренды латиницей с мл → одна строка-агрегат с перечнем и
-    диапазоном цен; данные не теряются."""
+    """Мера 2 (пересчёт суждений): бренды латиницей с мл → одна строка-агрегат
+    с перечнем и диапазоном цен; данные не теряются."""
     page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
     <p>Juvederm Ultra 3 1 мл — 18 000 ₽</p>
     <p>Stylage M 1 мл — 15 000 ₽</p>
     <p>Belotero Balance 1 мл — 16 500 ₽</p></body></html>"""
-    from src.site_checker import ensure_stage6_tables  # noqa: F401
-    r, rows = _gate_for(page)
+    r, db = _run_clinic(page, domain="f.test", title="F", judge=True)
     assert r["gate"] == "Включён"
-    assert rows == 2   # приём + агрегат брендов
-    db_check_done = False
-    # содержимое агрегата проверяем через повторный прогон с доступом к БД
-    import src.site_checker as sc
-    from src.classify import load_contours
-    db = sqlite3.connect(":memory:")
-    sc.ensure_stage6_tables(db)
-    orig = sc.crawl_site
-    sc.crawl_site = lambda *a, **k: ({"https://f.test/": page},
-                                     {"level": 2, "last_level": 2, "last_status": "200",
-                                      "blocked_by_robots": False})
-    try:
-        sc.process_clinic({"title": "F", "url": "https://f.test", "domain": "f.test"},
-                          db, load_contours(), FORM_INDEX, set(), "Тест")
-    finally:
-        sc.crawl_site = orig
-    row = db.execute("SELECT name_raw, description_raw, price, tag FROM services_found "
+    row = db.execute("SELECT name_raw, description_raw, price, tag, row_type "
+                     "FROM services_found "
                      "WHERE name_raw LIKE 'Инъекционная эстетика%'").fetchone()
     assert row is not None
     assert "3 позиций" in row[0]
     assert "Juvederm" in row[1] and "Stylage" in row[1]
     assert "от" in row[2] and "до" in row[2]
-    assert row[3] == "contour_filler"
+    assert row[3] == "contour_filler" and row[4] == "агрегат"
+    # видимых строк: приём + агрегат
+    assert db.execute("SELECT COUNT(*) FROM services_found "
+                      "WHERE collapsed_into IS NULL").fetchone()[0] == 2
 
 
 def test_fuzzy_092_maps_close_but_not_antonyms():
@@ -248,42 +259,30 @@ def test_fuzzy_092_maps_close_but_not_antonyms():
     assert m2 is None or "злокачествен" not in str(m2)
 
 
-# ─── Архитектурный разбор заказчика 2026-08-26: тесты на классы ошибок ───
+# ─── Разбор заказчика 2026-08-25: откат второго фильтра, ворота-мера ───
 
-def test_second_level_filter_offprofile_position_not_in_table():
-    """Класс 1: непрофильная позиция НЕ попадает в таблицу услуг независимо
-    от профильности клиники (кейс «Альфа клиника»: выезд медсестры, фтизиатр)."""
+def test_offprofile_positions_stay_in_table():
+    """Отмена второго фильтра: «Выезд медсестры», «Приём фтизиатра» ОСТАЮТСЯ
+    строками таблицы прошедшей ворота клиники (ничего не выбрасывается);
+    гистология без слова «кожа» больше не теряется."""
     page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
     <p>Приём врача-дерматолога — 1 500 ₽</p>
     <p>Удаление невуса лазером — 900 ₽</p>
-    <p>Дерматоскопия — 1 200 ₽</p>
+    <p>Гистологическое исследование удаленного материала — 1 400 ₽</p>
     <p>Выезд медсестры на дом — 800 ₽</p>
-    <p>Приём фтизиатра — 1 000 ₽</p>
-    <p>Оформление справки о болезни — 300 ₽</p></body></html>"""
-    import src.site_checker as sc
-    from src.classify import load_contours
-    db = sqlite3.connect(":memory:")
-    sc.ensure_stage6_tables(db)
-    orig = sc.crawl_site
-    sc.crawl_site = lambda *a, **k: ({"https://ok.test/": page},
-                                     {"level": 2, "last_level": 2, "last_status": "200",
-                                      "blocked_by_robots": False})
-    try:
-        r = sc.process_clinic({"title": "OK", "url": "https://ok.test", "domain": "ok.test"},
-                              db, load_contours(), FORM_INDEX, set(), "Тест")
-    finally:
-        sc.crawl_site = orig
+    <p>Приём фтизиатра — 1 000 ₽</p></body></html>"""
+    r, db = _run_clinic(page)
     assert r["gate"] == "Включён"
-    table_rows = [x[0] for x in db.execute(
-        "SELECT name_raw FROM services_found WHERE mapping_tier != 'вне профиля'")]
-    assert not any("Выезд" in n or "фтизиатр" in n.lower() or "справк" in n.lower()
-                   for n in table_rows), table_rows
-    assert any("невус" in n.lower() for n in table_rows)   # открытость: якорная строка
+    names = [x[0] for x in db.execute("SELECT name_raw FROM services_found")]
+    assert any("Гистологическое" in n for n in names), names
+    assert any("Выезд" in n for n in names)
+    assert any("фтизиатра" in n for n in names)
+    assert any("невуса" in n.lower() for n in names)
 
 
-def test_gate2_measures_share_not_fact():
-    """Класс 2 (кейс «Альфа Технологии»): 3 дерм-позиции из ~40 ортопедических
-    (≈8%) — не конкурент; ворота меряют долю."""
+def test_gate2_hardened_ortho_clinic_excluded():
+    """Ужесточение ворот (кейс «Альфа Технологии»): ортопедия с 2 дерм-
+    позициями из ~23 (<30%, приёма профильного врача нет) — не конкурент."""
     ortho = "".join(f"<p>Ударно-волновая терапия зона {i} — 2 000 ₽</p>"
                     f"<p>Внутрисуставная инъекция {i} — 3 000 ₽</p>" for i in range(10))
     page = f"""<html><body><p>Лицензия ЛО-54-01-000001</p>
@@ -292,47 +291,102 @@ def test_gate2_measures_share_not_fact():
     <p>Карбокситерапия суставов — 1 500 ₽</p></body></html>"""
     r, rows = _gate_for(page)
     assert r["gate"] != "Включён", (r["gate"], r.get("reason"))
-    assert rows == 0
+    assert rows == 0   # прайс не прошедшей клиники не тащим вообще
+
+
+def test_gate2_profile_doctor_visit_includes_clinic():
+    """Приём профильного врача весит больше процедуры: клиника с приёмом
+    дерматолога — конкурент, даже если дерм-процедур мало (доля < 30%)."""
+    other = "".join(f"<p>Общий массаж спины сеанс {i} — 1 500 ₽</p>" for i in range(8))
+    page = f"""<html><body><p>Лицензия ЛО-54-01-000001</p>
+    <p>Приём врача-дерматовенеролога — 1 700 ₽</p>{other}</body></html>"""
+    r, db = _run_clinic(page)
+    assert r["gate"] == "Включён", r.get("reason")
+    assert r["profile_doctor"] is True
+    assert "приём профильного врача" in r["reason"]
 
 
 def test_gate2_landing_with_one_profile_service_passes():
-    """Профильный лендинг (кейс kosmeta): 1 позиция, 100% доля → конкурент."""
+    """Профильный лендинг (кейс kosmeta): 1 позиция, 100% доля ≥ 30% → конкурент."""
     page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
     <p>Лечение акне — 5 000 ₽</p></body></html>"""
     r, rows = _gate_for(page)
     assert r["gate"] == "Включён"
 
 
+def test_gate2_big_clinic_branch():
+    """Ветвь крупной клиники: ≥15 профильных позиций при доле ≥15% —
+    дерматология полноценное направление, теряющееся в широком прайсе."""
+    derm = "".join(f"<p>Удаление невуса лазером категория {i} — {900 + i} ₽</p>"
+                   for i in range(16))
+    other = "".join(f"<p>Общий массаж спины сеанс {i} — 1 200 ₽</p>"
+                    for i in range(60))
+    page = f"""<html><body><p>Лицензия ЛО-54-01-000001</p>{derm}{other}</body></html>"""
+    r, db = _run_clinic(page)
+    assert r["gate"] == "Включён", (r.get("reason"), r.get("derm_rows"),
+                                    r.get("derm_total"))
+    assert r["derm_rows"] >= 15
+    assert r["derm_share"] < 0.30
+
+
 def test_esthetic_family_collapse_as_class():
-    """Класс 3 (кейс angeliy): 7 однотипных УВЧ-строк → одна строка-агрегат
-    семейства с числом позиций и диапазоном цен."""
+    """Свёртка как класс (кейс angeliy, пересчёт суждений): 7 однотипных
+    УВЧ-строк → одна строка-агрегат семейства; члены сохранены в базе."""
     uvch = "".join(f"<p>Воздействие токами ультравысокой частоты на кожу зона {z} — {p} ₽</p>"
                    for z, p in [("лицо", "6 000"), ("шея", "4 500"), ("лицо и шея", "11 000"),
                                 ("декольте", "9 000"), ("лоб", "3 000"), ("щеки", "5 000"),
                                 ("подбородок", "4 000")])
     page = f"""<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>{uvch}</body></html>"""
-    import src.site_checker as sc
-    from src.classify import load_contours
-    db = sqlite3.connect(":memory:")
-    sc.ensure_stage6_tables(db)
-    orig = sc.crawl_site
-    sc.crawl_site = lambda *a, **k: ({"https://u.test/": page},
-                                     {"level": 2, "last_level": 2, "last_status": "200",
-                                      "blocked_by_robots": False})
-    try:
-        sc.process_clinic({"title": "U", "url": "https://u.test", "domain": "u.test"},
-                          db, load_contours(), FORM_INDEX, set(), "Тест")
-    finally:
-        sc.crawl_site = orig
-    aggs = list(db.execute("SELECT name_raw, price FROM services_found "
+    r, db = _run_clinic(page, domain="u.test", title="U", judge=True)
+    aggs = list(db.execute("SELECT name_raw, price, description_raw FROM services_found "
                            "WHERE name_raw LIKE '%позиций (агрегат)%'"))
     assert len(aggs) >= 1
     assert any("7 позиций" in a[0] for a in aggs), aggs
     assert any(a[1] and "от" in a[1] and "до" in a[1] for a in aggs)
+    # перечень свёрнутых позиций в описании обязателен
+    assert any("лицо и шея" in (a[2] or "") for a in aggs)
     per_line = db.execute("SELECT COUNT(*) FROM services_found "
                           "WHERE name_raw LIKE 'Воздействие токами%' "
-                          "AND name_raw NOT LIKE '%агрегат%'").fetchone()[0]
-    assert per_line == 0   # построчно УВЧ в таблице нет
+                          "AND collapsed_into IS NULL "
+                          "AND row_type != 'агрегат'").fetchone()[0]
+    assert per_line == 0   # построчно УВЧ в видимой таблице нет
+    kept = db.execute("SELECT COUNT(*) FROM services_found "
+                      "WHERE collapsed_into IS NOT NULL").fetchone()[0]
+    assert kept == 7       # но все 7 позиций сохранены в базе
+
+
+def test_consumables_marked_not_dropped():
+    """«Тип строки»: канюли/анестезия — расходник, остаются в таблице."""
+    page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Канюля для контурной пластики — 500 ₽</p>
+    <p>Аппликационная анестезия — 700 ₽</p>
+    <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
+    r, db = _run_clinic(page)
+    assert r["gate"] == "Включён"
+    types = dict(db.execute("SELECT name_raw, row_type FROM services_found"))
+    assert types.get("Канюля для контурной пластики") == "расходник"
+    assert types.get("Аппликационная анестезия") == "расходник"
+    assert types.get("Дерматоскопия") == "услуга"
+
+
+def test_judgments_recompute_is_idempotent_and_no_recrawl():
+    """Разделение сбора и суждений: пересчёт по базе даёт тег/тип без обхода;
+    повторный запуск не плодит агрегаты."""
+    page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Дерматоскопия — 1 200 ₽</p>
+    <p>Ботулинотерапия — 4 500 ₽</p><p>Биоревитализация — 5 000 ₽</p></body></html>"""
+    r, db = _run_clinic(page, judge=True)
+    from src.judgments import recompute
+    recompute(db)   # второй запуск — идемпотентность
+    aggs = db.execute("SELECT COUNT(*) FROM services_found "
+                      "WHERE row_type='агрегат'").fetchone()[0]
+    assert aggs == 1
+    tag = db.execute("SELECT tag, mapping_tier FROM services_found "
+                     "WHERE name_raw='Дерматоскопия'").fetchone()
+    assert tag[0] == "dermatoscopy" and tag[1] == "код"
+    ctype = db.execute("SELECT type, grade FROM clinics").fetchone()
+    assert ctype[0] and ctype[0] != "Не классифицировано"
+    assert ctype[1] in ("A", "B")
 
 
 def test_headline_is_not_org_name():
@@ -345,14 +399,17 @@ def test_headline_is_not_org_name():
     assert not looks_like_headline("Наедине-Н")
 
 
-def test_descriptive_sentence_is_not_service():
-    """Класс 4: описательное предложение не записывается услугой."""
+def test_descriptive_sentence_marked_as_service_row():
+    """Обрывок описания НЕ выбрасывается (заказчик, 2026-08-25) — остаётся
+    строкой с «Тип строки» = служебное, услугой не считается."""
     page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
     <p>Контролируемая глубина воздействия на ткани позволяет максимально безопасно — 5 000 ₽</p>
     </body></html>"""
-    r, rows = _gate_for(page)
-    names = []
-    assert rows == 1   # только приём
+    r, db = _run_clinic(page)
+    types = dict(db.execute("SELECT name_raw, row_type FROM services_found"))
+    assert types.get("Приём врача-дерматолога") == "услуга"
+    descr = [t for n, t in types.items() if "Контролируемая" in n]
+    assert descr == ["служебное"]
 
 
 def test_ownership_detection():
@@ -364,33 +421,39 @@ def test_ownership_detection():
     assert detect_ownership(["ничего"], None) == "Уточнить"
 
 
-def test_profile_share_gate_blocks_bad_table(tmp_path, monkeypatch):
-    """п.4: доля профильных строк < 70% → таблица не выпускается."""
-    import pytest
-    from src.export_stage6 import export_intermediate
+def test_export_has_no_share_gate_and_has_completeness_sheet(tmp_path, monkeypatch):
+    """Гейт «доля профильных ≥70%» отменён (мерил тавтологию); выгрузка
+    выходит всегда, метрика — лист «Полнота_сбора»; листа отсечений нет;
+    колонки «Есть у ЧК» нет, «Профиль» и «Тип строки» есть."""
+    import openpyxl
+    from src.export_stage6 import SERVICE_COLS, export_intermediate
     from src.site_checker import ensure_stage6_tables
     monkeypatch.chdir(Path(__file__).resolve().parent.parent)
     db = sqlite3.connect(":memory:")
     ensure_stage6_tables(db)
-    db.execute("INSERT INTO clinics (clinic_id, title, gate) VALUES ('КЛН-x','X','Включён')")
-    for i in range(8):   # 8 строк чужого тега (не профиль, не разметка, не агрегат)
+    db.execute("INSERT INTO clinics (clinic_id, title, gate, price_positions_found) "
+               "VALUES ('КЛН-x','X','Включён',9)")
+    for i in range(8):   # 8 строк чужого профиля — раньше гейт бы упал
         db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, "
-                   "tag, mapping_tier, mapping_basis) VALUES ('КЛН-x','X',?,?,'код','точное')",
-                   (f"строка {i}", "botulinum_cosm"))
-    db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, tag, "
-               "mapping_tier, mapping_basis) VALUES ('КЛН-x','X','Дерматоскопия',"
-               "'dermatoscopy','код','точное')")
-    with pytest.raises(RuntimeError, match="НЕ ВЫПУЩЕНА"):
-        export_intermediate("Тест-гейт", db)
+                   "row_type, price) VALUES ('КЛН-x','X',?,'услуга','1 000 ₽')",
+                   (f"строка {i}",))
+    db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, "
+               "row_type, price) VALUES ('КЛН-x','X','Дерматоскопия','услуга','1 200 ₽')")
+    monkeypatch.setattr("pathlib.Path.mkdir", lambda *a, **k: None, raising=False)
+    out = export_intermediate("Тест-гейт", db)   # НЕ падает
+    wb = openpyxl.load_workbook(out)
+    assert "Полнота_сбора" in wb.sheetnames
+    assert "Отсечено_фильтром_позиции" not in wb.sheetnames
+    assert "Есть у ЧК" not in SERVICE_COLS
+    assert "Профиль" in SERVICE_COLS and "Тип строки" in SERVICE_COLS
+    out.unlink(missing_ok=True)
 
 
 def test_anchor_does_not_match_podkozhnoe():
-    """Такт 3: «подкожное введение» и суставные инъекции — не дерматология;
-    «кисты сальных желёз» — дерматология (ложное отсечение исправлено)."""
-    from src.extract_site import NONPROFILE_SERVICE_RE, PROFILE_ANCHOR_RE
+    """Якорь (только счётчик ворот): «подкожное введение» — не дерматология;
+    «кисты сальных желёз» и «лечение кожи головы» — дерматология."""
+    from src.extract_site import PROFILE_ANCHOR_RE
     assert not PROFILE_ANCHOR_RE.search("Подкожное введение лекарственных препаратов")
-    assert NONPROFILE_SERVICE_RE.search("Внутри/околосуставное введение лекарственных препаратов")
-    assert NONPROFILE_SERVICE_RE.search("Ударно-волновая терапия (коррекция фигуры)")
     assert PROFILE_ANCHOR_RE.search("Гипертрофированные сальные железы (кисты сальных желез)")
     assert PROFILE_ANCHOR_RE.search("Лечение кожи головы")
 

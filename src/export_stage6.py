@@ -1,10 +1,22 @@
-"""Промежуточная выгрузка этапа 6 (п.8 промпта 2026-08-26):
-лист 02_Услуги по обработанным клиникам, Спорные маппинги (средняя/низкая
-уверенность), Услуги без тега, Сводка распределения, По клиникам.
+"""Промежуточная выгрузка этапа 6 (п.8 промпта 2026-08-26).
 
-Плюс файл «на разметку» (п.6 промпта исправления 2026-08-26): всё, что
-ступень 1 не закрыла, уходит в output/{город}_на_разметку_{дата}.json —
-заказчик размечает батчи в Claude Code по prompts/06_markup_batch.md."""
+Разделение сбора и суждений (заказчик, 2026-08-25, часть 2):
+- колонки СБОРА (клиника, название/описание/цена/URL, «Тип строки»,
+  телеметрия доступа, пакеты) пишет этап 6 при обходе;
+- колонки СУЖДЕНИЙ (тег, код 804н, основание/ступень маппинга, уверенность,
+  тип клиники, правило, грейд, маркеры, флаги) заполняет пересчитываемый шаг
+  python -m src.judgments — по базе, без повторного обхода;
+- колонка «Профиль» создана, но НЕ заполняется до эталона заказчика (часть 3);
+- колонки «Есть у ЧК» нет: сравнение с клиентом — последний шаг, после разметки.
+
+Метрика выгрузки — ПОЛНОТА СБОРА (лист «Полнота_сбора»): по каждой клиникe,
+прошедшей ворота, — сколько позиций с ценой на сайте, сколько в таблице,
+расхождение объяснено построчно. Гейт «доля профильных строк» отменён
+(измерял тавтологию — решение заказчика 2026-08-25).
+
+Плюс файл «на разметку»: всё, что ступень 1 не закрыла, уходит в
+output/{город}_на_разметку_{дата}.json — заказчик размечает батчи в Claude
+Code по prompts/06_markup_batch.md."""
 
 import datetime
 import json
@@ -22,9 +34,9 @@ NOTE = Font(name="Arial", size=9, italic=True, color="555555")
 HDR = PatternFill("solid", fgColor="DDE7F3")
 
 SERVICE_COLS = ["ИД клиники", "Клиника", "Название с сайта (дословно)",
-                "Описание с сайта", "URL страницы", "Цена", "Наш тег",
-                "Код 804н", "Основание маппинга", "Ступень маппинга",
-                "Уверенность", "Есть у ЧК"]
+                "Описание с сайта", "URL страницы", "Цена", "Тип строки",
+                "Профиль", "Наш тег", "Код 804н", "Основание маппинга",
+                "Ступень маппинга", "Уверенность"]
 
 
 def _sheet(ws, note, headers, widths):
@@ -38,99 +50,83 @@ def _sheet(ws, note, headers, widths):
     return 3
 
 
-def _put(ws, r, vals):
+def _put(ws, r, vals, empty_ok_cols: set[int] = frozenset()):
     for i, v in enumerate(vals, 1):
-        c = ws.cell(r, i, v if v not in (None, "") else "Не найдено")
+        if v is None and i not in empty_ok_cols:
+            v = "Не найдено"
+        c = ws.cell(r, i, "" if v is None else v)
         c.font = ARIAL
         c.alignment = Alignment(vertical="top", wrap_text=True)
 
 
+# «Профиль» (8) пуст до эталона заказчика; суждения (9-13) пусты до
+# пересчёта src.judgments — «Не найдено» тут было бы ложью о сайте
+_SVC_EMPTY_OK = {7, 8, 9, 10, 11, 12, 13}
+
+
 def _svc_rows(db, where=""):
-    base = "WHERE mapping_tier != 'вне профиля'"   # второй уровень фильтра
+    # члены агрегатов скрыты (представлены строкой-агрегатом с перечнем);
+    # сами позиции сохранены в базе — свёртка группирует, не теряет
+    base = "WHERE collapsed_into IS NULL"
     if where:
         base += " AND " + where.replace("WHERE ", "")
     return list(db.execute(
-        "SELECT clinic_id, clinic_title, name_raw, description_raw, page_url, price, "
-        "COALESCE(tag, 'тега нет'), COALESCE(code_804n, 'код не определён'), "
-        "mapping_basis, mapping_tier, confidence, client_has "
+        "SELECT clinic_id, clinic_title, name_raw, description_raw, page_url, "
+        "price, row_type, profile, tag, code_804n, "
+        "mapping_basis, mapping_tier, confidence "
         f"FROM services_found {base} ORDER BY clinic_id, name_raw"))
 
 
-# Профильные контуры для смысловой метрики (разбор заказчика 2026-08-26, п.4)
-_PROFILE_CONTOURS = ("derm", "oncoderm", "trich", "dermsurg")
-
-
-def profile_share(db: sqlite3.Connection) -> tuple[float, int, int]:
-    """Доля профильных строк в 02_Услуги: (доля, профильных, всего).
-    Профильная строка = тег профильного контура, ИЛИ якорная строка на
-    разметке (второй фильтр пропускает только якорные), ИЛИ строка-агрегат."""
-    import yaml as _yaml
-
-    contours = {t["tag"]: t["contour"] for t in _yaml.safe_load(
-        pathlib.Path("dictionaries/services.yaml").read_text(encoding="utf-8"))["tags"]}
-    rows = list(db.execute(
-        "SELECT tag, mapping_tier, mapping_basis FROM services_found "
-        "WHERE mapping_tier != 'вне профиля'"))
-    total = len(rows)
-    good = sum(1 for tag, tier, basis in rows
-               if contours.get(tag) in _PROFILE_CONTOURS
-               or tier == 'на разметке'
-               or 'агрегат' in (basis or ''))
-    return (good / total if total else 1.0), good, total
+_SVC_WIDTHS = [16, 26, 40, 36, 32, 10, 11, 10, 20, 14, 30, 12, 12]
 
 
 def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
-    # ── СМЫСЛОВОЙ ГЕЙТ (разбор заказчика 2026-08-26, п.4): доля профильных
-    # строк ниже порога → таблица НЕ выпускается, разбираться дальше ──
-    import yaml as _yaml
-    qcfg = _yaml.safe_load(pathlib.Path("config/thresholds.yaml")
-                           .read_text(encoding="utf-8")).get("quality", {})
-    share_min = float(qcfg.get("profile_share_min", 0.70))
-    share, good, total = profile_share(db)
-    if total and share < share_min:
-        raise RuntimeError(
-            f"⛔ ТАБЛИЦА НЕ ВЫПУЩЕНА: доля профильных строк {share:.0%} "
-            f"({good}/{total}) ниже порога {share_min:.0%} "
-            f"(quality.profile_share_min) — разбор продолжается")
-
     wb = openpyxl.Workbook()
     day = datetime.date.today().isoformat()
 
     ws = wb.active
     ws.title = "02_Услуги"
-    r = _sheet(ws, f"Все услуги первых обработанных клиник ({city}, {day}). Сбор ОТКРЫТЫЙ: "
-                   "включая позиции вне справочника. Основание и ступень маппинга — для выборочной проверки решений.",
-               SERVICE_COLS, [16, 26, 40, 36, 32, 10, 20, 14, 30, 12, 12, 10])
+    r = _sheet(ws, f"Все позиции клиник, прошедших ворота ({city}, {day}). Сбор ОТКРЫТЫЙ и ПОЛНЫЙ: "
+                   "внутри прошедшей клиники не выбрасывается ни одна позиция (расходники/служебные — "
+                   "с пометкой «Тип строки»). Колонки маппинга заполняет пересчитываемый шаг "
+                   "python -m src.judgments; «Профиль» — по эталону заказчика (пока пуст).",
+               SERVICE_COLS, _SVC_WIDTHS)
     for row in _svc_rows(db):
-        _put(ws, r, row); r += 1
+        _put(ws, r, list(row), _SVC_EMPTY_OK); r += 1
 
     ws = wb.create_sheet("Спорные_маппинги")
     r = _sheet(ws, "Все строки с уверенностью «средняя» или «низкая» — на выборочную проверку заказчиком.",
-               SERVICE_COLS, [16, 26, 40, 36, 32, 10, 20, 14, 30, 12, 12, 10])
+               SERVICE_COLS, _SVC_WIDTHS)
     for row in _svc_rows(db, "WHERE confidence IN ('средняя','низкая')"):
-        _put(ws, r, row); r += 1
+        _put(ws, r, list(row), _SVC_EMPTY_OK); r += 1
 
     ws = wb.create_sheet("Услуги_без_тега")
-    r = _sheet(ws, "Услуги, для которых тега не нашлось (после разметки) или разметка ещё не выполнена — "
+    r = _sheet(ws, "Позиции без тега (ждут разметки или вне справочника) — "
                    "прямой ответ «что оказывают конкуренты и не оказывает клиент».",
-               SERVICE_COLS, [16, 26, 40, 36, 32, 10, 20, 14, 30, 12, 12, 10])
-    for row in _svc_rows(db, "WHERE tag IS NULL"):
-        _put(ws, r, row); r += 1
+               SERVICE_COLS, _SVC_WIDTHS)
+    for row in _svc_rows(db, "WHERE tag IS NULL AND row_type IN ('услуга','агрегат')"):
+        _put(ws, r, list(row), _SVC_EMPTY_OK); r += 1
 
     ws = wb.create_sheet("Сводка")
-    r = _sheet(ws, "Распределение маппинга по обработанным клиникам.", ["Показатель", "Значение"], [56, 40])
+    r = _sheet(ws, "Распределение по обработанным клиникам. Метрика качества — полнота сбора "
+                   "(лист «Полнота_сбора»); гейт «доля профильных строк» отменён заказчиком 2026-08-25.",
+               ["Показатель", "Значение"], [56, 40])
     q = lambda sql: db.execute(sql).fetchone()[0]  # noqa: E731
-    total = q("SELECT COUNT(*) FROM services_found WHERE mapping_tier != 'вне профиля'")
     stats = [
-        ("ДОЛЯ ПРОФИЛЬНЫХ СТРОК (гейт ≥70%)", f"{share:.0%} ({good}/{total})"),
-        ("Всего строк услуг (без «вне профиля»)", total),
-        ("Отсечено вторым фильтром (нет профильного якоря)",
-         q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='вне профиля'")),
-        ("Смаплено кодом (ступень 1, точное совпадение)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='код'")),
-        ("Размечено вручную (Claude Code, ступень 2)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='разметка'")),
-        ("Ожидает разметки", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='на разметке'")),
-        ("Без кода 804н", q("SELECT COUNT(*) FROM services_found WHERE code_804n IS NULL")),
-        ("Без тега (вне справочника, после разметки)", q("SELECT COUNT(*) FROM services_found WHERE tag IS NULL AND mapping_tier='разметка'")),
+        ("Всего строк в 02_Услуги (без членов агрегатов)",
+         q("SELECT COUNT(*) FROM services_found WHERE collapsed_into IS NULL")),
+        ("— из них: услуга / расходник / служебное / агрегат",
+         " / ".join(str(q("SELECT COUNT(*) FROM services_found WHERE "
+                          f"collapsed_into IS NULL AND row_type='{t}'"))
+                    for t in ("услуга", "расходник", "служебное", "агрегат"))),
+        ("Позиций свёрнуто в агрегаты (перечень — в описании агрегата)",
+         q("SELECT COUNT(*) FROM services_found WHERE collapsed_into IS NOT NULL")),
+        ("Смаплено кодом (ступень 1, точное совпадение)",
+         q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='код'")),
+        ("Размечено вручную (Claude Code, ступень 2)",
+         q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='разметка'")),
+        ("Ожидает разметки",
+         q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='на разметке'")),
         ("Уверенность высокая / средняя / низкая",
          f"{q('SELECT COUNT(*) FROM services_found WHERE confidence=' + chr(39) + 'высокая' + chr(39))}"
          f" / {q('SELECT COUNT(*) FROM services_found WHERE confidence=' + chr(39) + 'средняя' + chr(39))}"
@@ -139,39 +135,64 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
     for k, v in stats:
         _put(ws, r, [k, v]); r += 1
 
+    ws = wb.create_sheet("Полнота_сбора")
+    r = _sheet(ws, "МЕТРИКА ВЫГРУЗКИ (заказчик, 2026-08-25): по каждой клинике, прошедшей ворота, — "
+                   "позиций с ценой на сайте vs попало в таблицу; расхождение объяснено построчно. "
+                   "Свёрнутые позиции НЕ потеряны: перечень в описании агрегата.",
+               ["ИД", "Клиника", "Позиций с ценой на сайте", "Строк в таблице",
+                "— из них с ценой", "Свёрнуто в агрегаты (позиций)",
+                "Отсечено фильтром страниц несмежных разделов", "Объяснение расхождения"],
+               [14, 26, 14, 12, 12, 14, 16, 60])
+    for row in db.execute(
+            "SELECT c.clinic_id, c.title, c.price_positions_found, c.agg_collapsed, "
+            "c.nonadj_skipped, "
+            "(SELECT COUNT(*) FROM services_found s WHERE s.clinic_id=c.clinic_id "
+            " AND s.collapsed_into IS NULL) AS in_table, "
+            "(SELECT COUNT(*) FROM services_found s WHERE s.clinic_id=c.clinic_id "
+            " AND s.collapsed_into IS NULL AND s.price IS NOT NULL) AS in_table_priced "
+            "FROM clinics c WHERE c.gate='Включён' ORDER BY c.clinic_id"):
+        cid, title, found, agg_n, nonadj_n, in_table, in_priced = row
+        found = found or 0; agg_n = agg_n or 0; nonadj_n = nonadj_n or 0
+        expl = []
+        if agg_n:
+            expl.append(f"{agg_n} позиций представлены строками-агрегатами "
+                        f"(перечень в описании)")
+        if nonadj_n:
+            expl.append(f"{nonadj_n} позиций со страниц несмежных разделов "
+                        f"не собраны (фильтр страниц, сохранён заказчиком)")
+        represented = in_table + agg_n - db.execute(
+            "SELECT COUNT(*) FROM services_found WHERE clinic_id=? "
+            "AND row_type='агрегат'", (cid,)).fetchone()[0]
+        if represented >= found:
+            expl.append("все позиции с ценой представлены в таблице")
+        _put(ws, r, [cid, title, found, in_table, in_priced, agg_n, nonadj_n,
+                     "; ".join(expl) or "расхождений нет"]); r += 1
+
     ws = wb.create_sheet("По_клиникам")
-    r = _sheet(ws, "Итог по каждой обработанной клинике: ворота, тип, флаги, грейд. "
-                   "Тип до слияния разметки — ПРЕДВАРИТЕЛЬНЫЙ (см. «Статус типа»).",
-               ["ИД", "Клиника", "Форма собственности", "Домен", "Ворота", "Причина", "Тип", "Статус типа",
-                "Правило", "Грейд", "Эстетические маркеры", "Несмежные",
+    r = _sheet(ws, "Итог по каждой клинике. СБОР: ворота, причина, телеметрия, форма собственности, ИНН. "
+                   "СУЖДЕНИЯ (тип, правило, грейд, маркеры) — заполняет python -m src.judgments; "
+                   "тип до слияния разметки — предварительный.",
+               ["ИД", "Клиника", "Форма собственности", "Домен", "Ворота", "Причина",
+                "Профильных позиций (ворота)", "Всего позиций", "Приём профильного врача",
+                "Тип", "Статус типа", "Правило", "Грейд",
+                "Эстетические маркеры", "Несмежные",
                 "Флаг: единств. несмежное", "Флаг: удаление вне дерм-контура",
                 "Флаг: сайт недоступен", "Примечание доступности", "Уровень каскада",
                 "Пакеты", "ИНН", "Статус ИНН", "Разделы"],
-               [14, 26, 18, 20, 14, 24, 14, 22, 10, 8, 24, 24, 12, 14, 12, 30, 10, 8, 14, 24, 26])
+               [14, 26, 18, 20, 14, 30, 12, 10, 24, 14, 22, 10, 8, 24, 24, 12, 14, 12, 30, 10, 8, 14, 24, 26])
     for row in db.execute(
             "SELECT clinic_id, title, ownership_form, domain, gate, gate_reason, "
-            "type, type_status, "
-            "rule, grade, esthetic_markers, nonadjacent, flag_single_nonadjacent, "
-            "flag_removal_outside_derm, flag_site_unreachable, unreachable_note, "
-            "fetch_level, has_packages, inn, inn_status, sections_found "
-            "FROM clinics ORDER BY clinic_id"):
-        _put(ws, r, list(row)); r += 1
-
-    ws = wb.create_sheet("Отсечено_фильтром_позиции")
-    r = _sheet(ws, "Строки, отсечённые ВТОРЫМ уровнем фильтра (нет профильного якоря в названии) — "
-                   "на выборочную проверку: профильная услуга здесь = дефект якорного словаря.",
-               ["ИД клиники", "Клиника", "Название с сайта", "Цена", "URL"],
-               [16, 26, 50, 12, 34])
-    for row in db.execute("SELECT clinic_id, clinic_title, name_raw, price, page_url "
-                          "FROM services_found WHERE mapping_tier='вне профиля' "
-                          "ORDER BY clinic_id, name_raw"):
-        _put(ws, r, list(row)); r += 1
+            "gate_profile_rows, gate_total_rows, gate_profile_doctor, "
+            "type, type_status, rule, grade, esthetic_markers, nonadjacent, "
+            "flag_single_nonadjacent, flag_removal_outside_derm, "
+            "flag_site_unreachable, unreachable_note, fetch_level, has_packages, "
+            "inn, inn_status, sections_found FROM clinics ORDER BY clinic_id"):
+        _put(ws, r, list(row), empty_ok_cols={10, 11, 12, 13, 14, 16, 17}); r += 1
 
     ws = wb.create_sheet("07_Качество")
-    r = _sheet(ws, "Каскад доступа к сайтам (заказчик, 2026-08-26): кто каким уровнем взят, "
-                   "кто не взят ничем. Телеметрия попыток — таблица fetch_attempts в osint.db.",
+    r = _sheet(ws, "Каскад доступа к сайтам: кто каким уровнем взят, кто не взят ничем. "
+                   "Телеметрия попыток — таблица fetch_attempts в osint.db.",
                ["Показатель", "Значение"], [56, 60])
-    q = lambda sql: db.execute(sql).fetchone()[0]  # noqa: E731
     total_clinics = q("SELECT COUNT(*) FROM clinics")
     unreachable = [row[0] for row in db.execute(
         "SELECT domain FROM clinics WHERE flag_site_unreachable=1 ORDER BY domain")]
@@ -189,8 +210,8 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
          q("SELECT COUNT(*) FROM fetch_attempts WHERE note LIKE 'suspicious_zero%'")),
         ("Заблокировано robots.txt (обход запрещён)",
          q("SELECT COUNT(*) FROM fetch_attempts WHERE status='robots_disallow'")),
-        ("Непрофильных строк отбито при сборе (вакцинация, ЭКГ, несмежные и т.п.)",
-         q("SELECT COALESCE(SUM(nonprofile_excluded),0) FROM clinics")),
+        ("Позиций со страниц несмежных разделов не собрано (фильтр страниц)",
+         q("SELECT COALESCE(SUM(nonadj_skipped),0) FROM clinics")),
         ("Обход: страниц найдено / обойдено (адаптивный, потолок 40)",
          f"{q('SELECT COALESCE(SUM(crawl_pages_found),0) FROM clinics')}"
          f" / {q('SELECT COALESCE(SUM(crawl_pages_fetched),0) FROM clinics')}"),
@@ -209,7 +230,7 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
                [16, 22, 22, 60, 34])
     for row in db.execute("SELECT clinic_id, kind, detail, quote, url "
                           "FROM clinic_evidence ORDER BY clinic_id, kind"):
-        _put(ws, r, list(row)); r += 1
+        _put(ws, r, list(row), empty_ok_cols={3, 5}); r += 1
 
     out = pathlib.Path("output") / f"{city}_этап6_промежуточная_{day}.xlsx"
     wb.save(out)
@@ -217,12 +238,13 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
 
 
 def export_markup(city: str, db: sqlite3.Connection) -> pathlib.Path | None:
-    """Файл «на разметку» (п.6, 2026-08-26): все строки mapping_tier='на разметке'
-    батчами по клиникам, с row_id для обратной записи merge_markup.
-    Возвращает None, если размечать нечего."""
+    """Файл «на разметку»: строки mapping_tier='на разметке' (только услуги,
+    не расходники/служебные, не члены агрегатов) батчами по клиникам,
+    с row_id для обратной записи merge_markup. None, если размечать нечего."""
     rows = list(db.execute(
         "SELECT id, clinic_id, clinic_title, name_raw, description_raw, page_url, price "
         "FROM services_found WHERE mapping_tier='на разметке' "
+        "AND collapsed_into IS NULL AND row_type='услуга' "
         "ORDER BY clinic_id, name_raw"))
     if not rows:
         return None
