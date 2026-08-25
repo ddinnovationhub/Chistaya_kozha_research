@@ -146,9 +146,16 @@ PROCEDURE_WORD_RE = re.compile(
 
 
 def is_zone_or_junk_name(name: str) -> bool:
-    """Строка-зона/служебная строка прайса без процедурного слова — не услуга."""
+    """Строка-зона/служебная строка прайса — не услуга. Помимо явного словаря
+    зон: короткая строка (≤3 слов) без единого процедурного слова — зона
+    («Бакенбарды», «Фаланги пальцев», «50 р/1см 2» с сайта elix.pro/alab54;
+    словарные услуги проверяются ступенью 1 ДО этого правила)."""
     s = name.strip().lower()
-    return bool(ZONE_OR_JUNK_NAME_RE.match(s)) and not PROCEDURE_WORD_RE.search(s)
+    if PROCEDURE_WORD_RE.search(s):
+        return False
+    if ZONE_OR_JUNK_NAME_RE.match(s):
+        return True
+    return len(s.split()) <= 3
 
 # венерология: ищем, но позициями не собираем (решение заказчика, промпт этапа 6)
 VENEREOLOGY_RE = re.compile(
@@ -206,7 +213,10 @@ def _esthetic_keywords(services: dict | None = None) -> list[str]:
             kw = phrase.split("(")[0].strip().lower()
             if len(kw) >= 5:
                 kws.add(kw)
-    kws.update(["ботокс", "филлер", "фотоомоложение"])
+    kws.update(["ботокс", "филлер", "фотоомоложение", "шлифовк", "омоложени",
+                "мезонит", "блефаропласт", "ревитализац", "лифтинг",
+                "фотоэпиляц", "электроэпиляц", "шугаринг", "депиляц",
+                "нитевой", "смас", "контурная пластик"])
     return sorted(kws)
 
 

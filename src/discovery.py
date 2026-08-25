@@ -29,7 +29,9 @@ AGGREGATOR_DOMAINS = {
     "prodoctorov.ru", "napopravku.ru", "zoon.ru", "2gis.ru", "yandex.ru",
     "maps.yandex.ru", "vk.com", "avito.ru", "flamp.ru", "yell.ru",
     "docdoc.ru", "sberhealth.ru", "irecommend.ru", "otzovik.com",
-    "kiberis.ru",   # мед-справочник; вскрыт тактом 3 пачки 2026-08-26
+    # справочники и СМИ, вскрытые тактом 3 пачек 2026-08-26: их страницы —
+    # статьи и карточки, не сайты клиник
+    "kiberis.ru", "doctortut.com", "kp.ru", "sibmeda.ru",
 }
 
 

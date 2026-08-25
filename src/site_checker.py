@@ -211,9 +211,8 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     skipped_nonprofile, skipped_vener, skipped_esth = [], 0, 0
     for s in data["services"]:
         name = s["name"]
-        # порядок: чужой профиль/пакет/зона/эстетика — ДО словаря (такт 3:
-        # «Фототерапия (фотоэпиляция бедра)» мапилась в мед-тег phototherapy,
-        # потому что нормализация выбрасывала скобочное уточнение)
+        # порядок такта 3: чужой профиль/венерология/пакеты → словарь
+        # (с guard'ом на эстетический конфликт) → зоны → эстетика → разметка
         if NONPROFILE_SERVICE_RE.search(name):
             skipped_nonprofile.append(name)
             continue
@@ -226,15 +225,6 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         if PACKAGE_RE.search(name):
             data["has_packages"] = True   # пакеты флагом, состав не разбираем
             continue
-        if is_zone_or_junk_name(name):
-            continue   # «Щеки», «Один импульс», «Цена…» — не услуги
-        if is_esthetic_line(name, esth_kws):
-            skipped_esth += 1
-            data["esthetic_cosmetology_present"] = True
-            m1 = map_tier1(name, form_index)
-            if m1 and contours.get(m1["tag"]) in ("cosm_est", "cosm_med"):
-                marker_tags.add(m1["tag"])   # состав маркеров для Типа 2
-            continue
         m1 = map_tier1(name, form_index)
         if m1:
             c = contours.get(m1["tag"])
@@ -242,8 +232,20 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                 marker_tags.add(m1["tag"])
                 skipped_esth += int(c in ("cosm_est", "cosm_med"))
                 skipped_vener += int(m1["tag"] in ("std_consult", "std_lab"))
+            elif is_esthetic_line(name, esth_kws):
+                # конфликт: словарный мед-тег при эстетическом маркере в полном
+                # названии («Фототерапия (фотоэпиляция бедра)» → phototherapy) —
+                # слепой маппинг запрещён, спорное решает разметчик
+                data["esthetic_cosmetology_present"] = True
+                to_markup.append({**s, "conflict": "словарь vs эстетический маркер"})
             else:
                 mapped.append({**s, **m1})
+            continue
+        if is_zone_or_junk_name(name):
+            continue   # «Щеки», «Бакенбарды», «Один импульс», «Цена…» — не услуги
+        if is_esthetic_line(name, esth_kws):
+            skipped_esth += 1
+            data["esthetic_cosmetology_present"] = True
             continue
         to_markup.append(s)
     profile_tags = ({m["tag"] for m in mapped} | marker_tags) & set(contours)
@@ -256,7 +258,11 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         # стоп-лист проверяется ДО маркеров: «косметолог» на сайте салона
         # найдётся всегда; приём врача в прайсе снимает стоп-лист
         gate, reason = "Исключён", data["org_stoplist_type"]
-    elif data["lab_only"]:
+    elif data["lab_only"] and not data["profile_markers_found"] \
+            and not data["nonadjacent_signs"]:
+        # такт 3: «Наедине-Н» (многопрофильный медцентр, 6 несмежных приёмов)
+        # ложно исключался как лаборатория, потому что взятые страницы были
+        # прайсом анализов; клиника с приёмами/профилем — не лаборатория
         gate, reason = "Исключён", "лаборатория без приёма врача"
     elif not (data["license_evidence"]["found"] or doctor_visit):
         # G1: только лицензия ИЛИ приём врача в прайсе; слов в тексте мало
@@ -334,7 +340,9 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                    "mapping_tier, confidence, client_has) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
                    (clinic_id, title, s["name"], s.get("description"),
                     s["page_url"], s.get("price"), None, None,
-                    "ступень 1: точного совпадения со справочником нет",
+                    ("конфликт: словарное совпадение при эстетическом маркере "
+                     "в названии — решает разметчик") if s.get("conflict")
+                    else "ступень 1: точного совпадения со справочником нет",
                     "на разметке", None, None))
     # ── Доказательства: каждый факт с цитатой и URL (такт 3, Верификатор) ──
     db.execute("DELETE FROM clinic_evidence WHERE clinic_id=?", (clinic_id,))
