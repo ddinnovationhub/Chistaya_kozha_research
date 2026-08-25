@@ -382,3 +382,30 @@ def test_profile_share_gate_blocks_bad_table(tmp_path, monkeypatch):
                "'dermatoscopy','код','точное')")
     with pytest.raises(RuntimeError, match="НЕ ВЫПУЩЕНА"):
         export_intermediate("Тест-гейт", db)
+
+
+def test_anchor_does_not_match_podkozhnoe():
+    """Такт 3: «подкожное введение» и суставные инъекции — не дерматология;
+    «кисты сальных желёз» — дерматология (ложное отсечение исправлено)."""
+    from src.extract_site import NONPROFILE_SERVICE_RE, PROFILE_ANCHOR_RE
+    assert not PROFILE_ANCHOR_RE.search("Подкожное введение лекарственных препаратов")
+    assert NONPROFILE_SERVICE_RE.search("Внутри/околосуставное введение лекарственных препаратов")
+    assert NONPROFILE_SERVICE_RE.search("Ударно-волновая терапия (коррекция фигуры)")
+    assert PROFILE_ANCHOR_RE.search("Гипертрофированные сальные железы (кисты сальных желез)")
+    assert PROFILE_ANCHOR_RE.search("Лечение кожи головы")
+
+
+def test_modifier_before_prefix_in_normalize():
+    """Такт 3: «Первичная консультация врача-косметолога…» унифицируется."""
+    from src.mapper import normalize_service_name
+    assert normalize_service_name(
+        "Первичная консультация врача-косметолога с выдачей плана лечения") \
+        == normalize_service_name("Приём врача-косметолога")
+
+
+def test_ownership_legal_name_wins_over_page_text():
+    """Такт 3 (кейс putevka.com): ООО в реквизитах решает, даже если контент
+    упоминает ГБУЗ-санатории."""
+    from src.extract_site import detect_ownership
+    assert detect_ownership(["путёвки в ГБУЗ санаторий, Министерство здравоохранения"],
+                            "ООО «Система бронирования Путевка»") == "частная"
