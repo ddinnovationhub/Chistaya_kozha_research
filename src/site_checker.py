@@ -111,6 +111,7 @@ def ensure_stage6_tables(db: sqlite3.Connection):
         grade TEXT, esthetic_markers TEXT, nonadjacent TEXT,
         flag_single_nonadjacent INTEGER, flag_removal_outside_derm INTEGER,
         flag_site_unreachable INTEGER, unreachable_note TEXT, fetch_level INTEGER,
+        nonprofile_excluded INTEGER,
         has_packages INTEGER, specialists_count INTEGER,
         inn TEXT, inn_status TEXT, legal_name TEXT,
         sections_found TEXT, checked_at TEXT);
@@ -127,7 +128,7 @@ def ensure_stage6_tables(db: sqlite3.Connection):
     # миграция таблиц, созданных кодом до 2026-08-26
     for col, typ in (("type_status", "TEXT"), ("flag_site_unreachable", "INTEGER"),
                      ("unreachable_note", "TEXT"), ("fetch_level", "INTEGER"),
-                     ("title_source", "TEXT")):
+                     ("title_source", "TEXT"), ("nonprofile_excluded", "INTEGER")):
         try:
             db.execute(f"ALTER TABLE clinics ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
@@ -178,32 +179,61 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     else:
         title, title_source = dom, "домен — Уточнить"
 
-    # ── Ступень 1 (код) — нужна воротам G2, но в базу пока не пишется ──
+    # ── Ступень 1 (код) + маршрутизация по профилю ──────────────────────
+    # В таблицу собираются ТОЛЬКО услуги профиля (дерматология, дермато-
+    # онкология, трихология, дерматохирургия) и неопознанные строки без
+    # признаков чужого профиля. Косметология — агрегатом (тег в классификацию,
+    # позицией не пишется); венерология — ищем, не собираем; непрофильные
+    # (вакцинация, ЭКГ, справки, несмежные специальности) — не собираются.
+    from src.extract_site import (NONPROFILE_SERVICE_RE, VENEREOLOGY_RE,
+                                  _esthetic_keywords, is_esthetic_line)
+    esth_kws = _esthetic_keywords()
     mapped, to_markup = [], []
+    marker_tags = set()          # теги для классификации без строки в таблице
+    skipped_nonprofile, skipped_vener, skipped_esth = [], 0, 0
     for s in data["services"]:
         m1 = map_tier1(s["name"], form_index)
         if m1:
-            mapped.append({**s, **m1})
-        else:
-            to_markup.append(s)
-    profile_tags = {m["tag"] for m in mapped if m.get("tag")} & set(contours)
+            c = contours.get(m1["tag"])
+            if c in ("cosm_est", "cosm_med") or m1["tag"] in ("std_consult", "std_lab"):
+                marker_tags.add(m1["tag"])
+                skipped_esth += int(c in ("cosm_est", "cosm_med"))
+                skipped_vener += int(m1["tag"] in ("std_consult", "std_lab"))
+            else:
+                mapped.append({**s, **m1})
+            continue
+        if NONPROFILE_SERVICE_RE.search(s["name"]):
+            skipped_nonprofile.append(s["name"])
+            continue
+        if VENEREOLOGY_RE.search(s["name"]):
+            skipped_vener += 1
+            continue
+        if is_esthetic_line(s["name"], esth_kws):
+            skipped_esth += 1
+            data["esthetic_cosmetology_present"] = True
+            continue
+        to_markup.append(s)
+    profile_tags = ({m["tag"] for m in mapped} | marker_tags) & set(contours)
 
-    # ── Ворота G1 → G2 ──
-    g1 = data["license_evidence"]["found"] or bool(data["doctor_specialties"])
+    # ── Ворота: стоп-лист организаций (п.1) → G1 (ужесточён) → G2 ───────
+    doctor_visit = data["doctor_visit_line"]
     g2 = bool(profile_tags or data["profile_markers_found"]
               or data["esthetic_cosmetology_present"])
-    if not g1:
+    if data["org_stoplist_type"] and not doctor_visit:
+        # стоп-лист проверяется ДО маркеров: «косметолог» на сайте салона
+        # найдётся всегда; приём врача в прайсе снимает стоп-лист
+        gate, reason = "Исключён", data["org_stoplist_type"]
+    elif data["lab_only"]:
+        gate, reason = "Исключён", "лаборатория без приёма врача"
+    elif not (data["license_evidence"]["found"] or doctor_visit):
+        # G1: только лицензия ИЛИ приём врача в прайсе; слов в тексте мало
         gate, reason = "Исключён", "салон красоты / нет медицинской деятельности"
     elif not g2:
         fact = ", ".join(data["doctor_specialties"][:4])
         gate = "Исключён"
         reason = ("нет релевантного профиля"
                   + (f" (фактический: {fact})" if fact else ""))
-        mapped, to_markup = [], []   # услуги нерелевантной клиники НЕ пишутся
-    elif not mapped and not to_markup:
-        # профильные слова есть, а услуг на страницах ноль (пример прогона
-        # 2026-08-26: akriderm.com — сайт МАЗИ, «дерматолог» в текстах есть,
-        # услуг нет) — не включать молча, отдать на ручную проверку
+    elif not mapped and not to_markup and not marker_tags:
         gate, reason = "Требует проверки", "профильные слова есть, услуг на страницах не найдено"
     else:
         gate, reason = "Включён", "G1-G2 пройдены"
@@ -244,14 +274,16 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                "gate_reason, type, type_status, rule, grade, esthetic_markers, "
                "nonadjacent, flag_single_nonadjacent, flag_removal_outside_derm, "
                "flag_site_unreachable, unreachable_note, fetch_level, "
+               "nonprofile_excluded, "
                "has_packages, specialists_count, inn, inn_status, legal_name, "
-               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                (clinic_id, title, title_source, dom, url, gate, reason,
                 cls["type"], type_status, cls.get("rule"), grade,
                 "; ".join(cls["esthetic_markers_found"]) or None,
                 "; ".join(nonadj) or None,
                 int(cls["flag_single_nonadjacent"]), int(cls["flag_removal_outside_derm"]),
                 0, None, fetch_meta["level"],
+                len(skipped_nonprofile),
                 int(data["has_packages"]), data["specialists_count"],
                 inn, inn_status, data["requisites"]["legal_name"],
                 "; ".join(sorted(seen_sections)) or None, now))
@@ -274,6 +306,13 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # ── Доказательства: каждый факт с цитатой и URL (такт 3, Верификатор) ──
     db.execute("DELETE FROM clinic_evidence WHERE clinic_id=?", (clinic_id,))
     ev = []
+    if data["org_stoplist_type"]:
+        ev.append(("стоп-лист организаций", data["org_stoplist_type"],
+                   data["org_stoplist_evidence"], None))
+    if doctor_visit:
+        ev.append(("приём врача в прайсе (G1)", None, doctor_visit[:200], None))
+    for name in skipped_nonprofile[:5]:
+        ev.append(("непрофильная услуга (не собрана)", None, name[:200], None))
     if data["license_evidence"]["found"]:
         ev.append(("лицензия", None, data["license_evidence"]["quote"],
                    data["license_evidence"]["url"]))
@@ -296,10 +335,12 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         if PRICE_RE.search(ln))
     price_rows_written = sum(1 for x in (*mapped, *to_markup) if x.get("price"))
 
-    return {"clinic_id": clinic_id, "title": title, "gate": gate,
+    return {"clinic_id": clinic_id, "title": title, "gate": gate, "reason": reason,
             "type": cls["type"], "type_status": type_status, "grade": grade,
             "services": len(mapped) + len(to_markup),
             "tier1_mapped": len(mapped), "to_markup": len(to_markup),
+            "skipped_nonprofile": len(skipped_nonprofile),
+            "skipped_venereology": skipped_vener, "skipped_esthetic": skipped_esth,
             "price_lines_on_pages": price_lines_on_pages,
             "price_rows_written": price_rows_written,
             "dirty_names_rejected": data["dirty_names_rejected"],
@@ -322,7 +363,12 @@ def run_stage6(city: str, db: sqlite3.Connection, max_clinics: int = 10) -> dict
     done_domains = {row[0] for row in db.execute("SELECT domain FROM clinics")}
     cands = [dict(zip(("title", "url", "domain"), row)) for row in db.execute(
         "SELECT title, url, domain FROM candidates WHERE kind='site' "
-        "AND domain IS NOT NULL ORDER BY discovered_at, domain")]
+        "AND domain IS NOT NULL ORDER BY domain")]
+    # СЛУЧАЙНАЯ выборка с фиксированным seed (заказчик 2026-08-26, п.2):
+    # алфавитный порядок брал один край списка; shuffle детерминирован
+    import random
+    run_cfg = yaml.safe_load(pathlib.Path("config/run.yaml").read_text(encoding="utf-8"))
+    random.Random(int(run_cfg.get("stage6_sample_seed", 42))).shuffle(cands)
 
     processed, results = 0, []
     for cand in cands:

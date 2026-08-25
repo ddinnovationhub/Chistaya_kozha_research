@@ -107,3 +107,96 @@ def test_robots_full_disallow_still_blocks():
     assert _robots_decision(rules, "/") is False
     rules_allow = _parse_robots("User-agent: *\nDisallow: /\nAllow: /uslugi\n")
     assert _robots_decision(rules_allow, "/uslugi/price") is True
+
+
+def _gate_for(page_html, domain="x.test", title="X"):
+    from src.site_checker import ensure_stage6_tables, process_clinic
+    import src.site_checker as sc
+    from src.classify import load_contours
+    db = sqlite3.connect(":memory:")
+    ensure_stage6_tables(db)
+    orig = sc.crawl_site
+    sc.crawl_site = lambda *a, **k: ({f"https://{domain}/": page_html},
+                                     {"level": 2, "last_level": 2,
+                                      "last_status": "200", "blocked_by_robots": False})
+    try:
+        r = process_clinic({"title": title, "url": f"https://{domain}",
+                            "domain": domain}, db, load_contours(), FORM_INDEX,
+                           set(), "Тест")
+    finally:
+        sc.crawl_site = orig
+    rows = db.execute("SELECT COUNT(*) FROM services_found").fetchone()[0]
+    return r, rows
+
+
+def test_stoplist_pharma_site_excluded():
+    """п.1: сайт мази — производитель препарата, не клиника (кейс akriderm)."""
+    page = """<html><body><p>Акридерм — инструкция по применению</p>
+    <p>Действующее вещество: бетаметазон</p><p>Дерматолог рекомендует</p>
+    <p>Дерматит: лечение — 500 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Исключён" and "производитель" in r["reason"]
+    assert rows == 0
+
+
+def test_stoplist_salon_excluded():
+    """п.1: салон красоты — «косметолог» в тексте не делает его клиникой (кейс albane)."""
+    page = """<html><body><p>Салон: стрижка, укладка, маникюр, педикюр</p>
+    <p>Наш косметолог ждёт вас</p><p>Чистка лица — 2 000 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Исключён" and "салон" in r["reason"]
+    assert rows == 0
+
+
+def test_lab_without_doctor_excluded():
+    """п.1: лаборатория без приёма врача (кейс alab54)."""
+    page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
+    <p>Анализ волос на микроэлементы — 3 000 ₽</p>
+    <p>Микроскопическое исследование соскоба — 900 ₽</p>
+    <p>ПЦР на дерматофиты — 1 200 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Исключён" and "лаборатория" in r["reason"]
+    assert rows == 0
+
+
+def test_doctor_visit_in_price_lifts_stoplist():
+    """Медцентр с парикмахерской зоной: приём врача в прайсе снимает стоп-лист."""
+    page = """<html><body><p>Стрижка и укладка</p>
+    <p>Приём врача-дерматолога первичный — 1 800 ₽</p>
+    <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Включён"
+    assert rows >= 2
+
+
+def test_g1_word_kosmetolog_not_enough():
+    """п.1: слова «косметолог» в тексте недостаточно — нужен приём в прайсе или лицензия."""
+    page = """<html><body><p>Наши косметологи лучшие в городе</p>
+    <p>Пилинг — 1 500 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Исключён"
+    assert rows == 0
+
+
+def test_nonprofile_services_not_collected():
+    """п.6: вакцинация, ЭКГ, справки, несмежные — в таблицу не попадают."""
+    page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
+    <p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Вакцинация от гриппа — 900 ₽</p><p>ЭКГ с расшифровкой — 700 ₽</p>
+    <p>Справка в бассейн — 400 ₽</p><p>Приём гинеколога — 1 800 ₽</p>
+    <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Включён"
+    assert r["skipped_nonprofile"] >= 4
+    assert rows == r["services"] == 2   # только дерматологические строки
+
+
+def test_esthetic_collected_as_aggregate_not_rows():
+    """Эстетика — агрегатом (маркер для Типа 2), не позициями."""
+    page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Ботулинотерапия — 4 500 ₽</p><p>Биоревитализация — 5 000 ₽</p>
+    <p>Дерматоскопия — 1 200 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Включён"
+    assert r["skipped_esthetic"] >= 2
+    assert rows == 2   # дерматологические строки; эстетика — маркером

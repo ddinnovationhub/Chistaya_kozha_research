@@ -188,7 +188,9 @@ def run_l1(city: str, l1_queries: list[dict], db: sqlite3.Connection) -> dict:
     if os.environ.get("SKIP_L1"):
         return {"l1_executed": 0, "l1_errors": 0, "l1_suspicious_zero": 0,
                 "l1_new_candidates": 0,
-                "quality_note": "рубричный слой (L1) отключён переменной SKIP_L1 — полнота занижена"}
+                "quality_note": ("L1 выполняется отдельно с локальной машины "
+                                 "(python -m src.run_l1; решение заказчика 2026-08-26: "
+                                 "каталоги блокируют IP Actions, CAPTCHA не обходим)")}
     try:
         return asyncio.run(run_l1_async(city, city_code(city), l1_queries, db))
     except Exception as exc:  # noqa: BLE001 — каталоги не должны ронять весь прогон

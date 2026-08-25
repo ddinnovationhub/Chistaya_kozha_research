@@ -136,6 +136,10 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
          q("SELECT COUNT(*) FROM fetch_attempts WHERE note LIKE 'suspicious_zero%'")),
         ("Заблокировано robots.txt (обход запрещён)",
          q("SELECT COUNT(*) FROM fetch_attempts WHERE status='robots_disallow'")),
+        ("Непрофильных строк отбито при сборе (вакцинация, ЭКГ, несмежные и т.п.)",
+         q("SELECT COALESCE(SUM(nonprofile_excluded),0) FROM clinics")),
+        ("Слой L1 (каталоги)", "выполняется отдельно с локальной машины "
+                               "(python -m src.run_l1; решение заказчика 2026-08-26)"),
     ]
     for k, v in rows:
         _put(ws, r, [k, v]); r += 1

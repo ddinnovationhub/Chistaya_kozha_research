@@ -59,6 +59,92 @@ _BAD_NAME_RE = re.compile(r"[<>]|class=|href=|style=|&#|\bspan\b|\bdiv\b", re.IG
 def is_clean_name(name: str) -> bool:
     return not _BAD_NAME_RE.search(name or "")
 
+
+# ── Стоп-лист типов организаций (заказчик 2026-08-26, п.1): проверяется
+# ДО поиска профильных маркеров — слово «косметолог» на сайте салона
+# найдётся всегда, признаком клиники не является ──────────────────────────
+ORG_STOPLIST = {
+    "производитель препарата / аптека / интернет-магазин": [
+        "инструкция по применению", "действующее вещество", "купить в аптеке",
+        "состав препарата", "форма выпуска", "безрецептурный", "добавить в корзину",
+    ],
+    "салон красоты / парикмахерская / ногтевая студия": [
+        "стрижка", "окрашивание волос", "маникюр", "педикюр",
+        "наращивание ресниц", "укладка", "барбершоп", "парикмахерск",
+    ],
+    "агрегатор / справочник / доска объявлений": [
+        # только однозначные признаки: «отзывы о врачах» встречается и на
+        # сайтах клиник — в маркеры не берём (домены агрегаторов и так
+        # отфильтрованы на discovery по AGGREGATOR_DOMAINS)
+        "доска объявлений", "каталог организаций", "все клиники города",
+        "сравните цены клиник",
+    ],
+}
+
+# G1 ужесточён (п.1): «приём врача с медицинской специальностью в прайсе» —
+# строка услуг вида приём/консультация/осмотр + врач/специальность.
+_DOCTOR_VISIT_RE = re.compile(
+    r"(приём|прием|консультаци|осмотр)\S*\s+(врач|" + "|".join(SPECIALTY_WORDS) + ")",
+    re.IGNORECASE)
+
+# Лаборатория без приёма врача (п.1): все услуги — анализы/исследования
+_LAB_SERVICE_RE = re.compile(
+    r"анализ|исследовани|соскоб|посев|пцр|мазок|тест\b|панель|микроскопи|забор ",
+    re.IGNORECASE)
+
+
+def doctor_visit_in_services(names: list[str]) -> str | None:
+    """Первая строка прайса, подтверждающая приём врача, или None."""
+    for n in names:
+        if _DOCTOR_VISIT_RE.search(n):
+            return n
+    return None
+
+
+def looks_like_lab_only(names: list[str]) -> bool:
+    named = [n for n in names if len(n) >= 4]
+    return bool(named) and all(_LAB_SERVICE_RE.search(n) for n in named) \
+        and doctor_visit_in_services(named) is None
+
+
+# ── Границы сбора (промпт этапа 6, п.1 + такт-3 критерии 2026-08-26):
+# в таблицу попадают только услуги профиля (дерматология, дермато-онкология,
+# трихология, дерматохирургия); остальное не собирается позициями ──────────
+NONPROFILE_SERVICE_RE = re.compile(
+    r"вакцин|прививк|иммуниза|экг\b|спирограф|спирометр|справк|больничн|медкнижк"
+    r"|медосмотр|флюорограф|рентген|мрт\b|фгдс|гастроскоп|колоноскоп|капельниц"
+    r"|анализ крови|биохими|гормон|коагулограм|общий анализ|витамин\b"
+    r"|гинеколог|уролог|андролог|стоматолог|офтальмолог|окулист|кардиолог|невролог"
+    r"|оториноларинголог|отоларинголог|лор-|терапевт|педиатр|эндокринолог"
+    r"|аллерголог|иммунолог|гастроэнтеролог|пульмонолог|ревматолог|психотерапевт"
+    r"|психиатр|нарколог|флеболог|проктолог|маммолог|логопед|остеопат|мануальн"
+    r"|массаж спины|массаж тела|узи (брюшной|органов|щитовидн|молочн|малого)",
+    re.IGNORECASE)
+
+# венерология: ищем, но позициями не собираем (решение заказчика, промпт этапа 6)
+VENEREOLOGY_RE = re.compile(
+    r"иппп|сифилис|гоноре|хламиди|трихомониаз|уреаплазм|микоплазм"
+    r"|социально[- ]значимые инфекции|(?<!дермато)венеролог",
+    re.IGNORECASE)
+
+
+def is_esthetic_line(name: str, esth_kws: list[str]) -> bool:
+    low = name.lower()
+    return any(kw in low for kw in esth_kws)
+
+
+def detect_org_stoplist(pages_text: list[str]) -> tuple[str | None, str | None]:
+    """(тип организации из стоп-листа, цитата-признак) или (None, None)."""
+    for text in pages_text:
+        low = text.lower()
+        for org_type, markers in ORG_STOPLIST.items():
+            for m in markers:
+                if m in low:
+                    i = low.find(m)
+                    line = text[max(0, i - 60):i + 90].replace("\n", " ").strip()
+                    return org_type, f"«…{line}…»"
+    return None, None
+
 _NAV_JUNK = ("корзин", "записаться", "запись на", "режим работы", "поиск по",
              "меню", "наверх", "cookie", "политик", "конфиденциальн", "войти",
              "личный кабинет", "телефон", "©", "все права")
@@ -182,6 +268,7 @@ def extract_pages(pages: dict[str, str], form_index: dict,
     }
     seen_names: dict[str, dict] = {}
     seen_nonadj = set()
+    visible_texts = []
 
     first = True
     for url, raw in pages.items():
@@ -190,6 +277,7 @@ def extract_pages(pages: dict[str, str], form_index: dict,
             result["page_title"] = page_title(raw)
             first = False
         text = html_to_text(raw)   # п.2: только видимый текст из DOM, не разметка
+        visible_texts.append(text)
         low_url = url.lower()
         prev_line = ""
         for canon, keys in _SECTION_CANON:
@@ -267,4 +355,10 @@ def extract_pages(pages: dict[str, str], form_index: dict,
     result["sections_found"] = sorted(result["sections_found"])
     result["doctor_specialties"] = sorted(result["doctor_specialties"])
     result["profile_markers_found"] = sorted(result["profile_markers_found"])
+    # ── Сигналы типа организации (стоп-лист, п.1) и приёма врача (G1) ──
+    names = [s["name"] for s in result["services"]]
+    result["org_stoplist_type"], result["org_stoplist_evidence"] = \
+        detect_org_stoplist(visible_texts)
+    result["doctor_visit_line"] = doctor_visit_in_services(names)
+    result["lab_only"] = looks_like_lab_only(names)
     return result

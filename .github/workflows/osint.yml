@@ -39,6 +39,10 @@ jobs:
       # JINA_API_KEY (необязателен): Jina отдаёт 403 датацентровым IP Actions;
       # бесплатный ключ jina.ai возвращает уровень 1 каскада в строй
       JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      # L1 в Actions отключён (заказчик 2026-08-26, п.4): 2ГИС отдаёт CAPTCHA,
+      # Яндекс.Карты — «limited» датацентровым IP; слой гоняется с локальной
+      # машины заказчика: python -m src.run_l1 → python -m src.import_l1
+      SKIP_L1: "1"
       CITY: ${{ github.event.inputs.city }}
       QUERY_LIMIT: ${{ github.event.inputs.limit }}
     steps:
