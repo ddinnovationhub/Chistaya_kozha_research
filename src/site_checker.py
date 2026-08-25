@@ -256,10 +256,10 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # признаков чужого профиля. Косметология — агрегатом (тег в классификацию,
     # позицией не пишется); венерология — ищем, не собираем; непрофильные
     # (вакцинация, ЭКГ, справки, несмежные специальности) — не собираются.
-    from src.extract_site import (BRAND_INJECTABLE_RE, NONPROFILE_SERVICE_RE,
-                                  PACKAGE_RE, VENEREOLOGY_RE,
-                                  _esthetic_keywords, is_esthetic_line,
-                                  is_zone_or_junk_name)
+    from src.extract_site import (BRAND_INJECTABLE_RE, NONADJ_PAGE_URL_RE,
+                                  NONPROFILE_SERVICE_RE, PACKAGE_RE,
+                                  VENEREOLOGY_RE, _esthetic_keywords,
+                                  is_esthetic_line, is_zone_or_junk_name)
     cfg_map = yaml.safe_load(pathlib.Path("config/thresholds.yaml")
                              .read_text(encoding="utf-8")).get("mapping", {})
     fuzzy_cutoff = float(cfg_map.get("fuzzy_threshold", 0)) or None
@@ -308,6 +308,11 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
         if is_esthetic_line(name, esth_kws):
             skipped_esth += 1
             data["esthetic_cosmetology_present"] = True
+            continue
+        if NONADJ_PAGE_URL_RE.search(s.get("page_url") or ""):
+            # страница несмежного раздела: без словарного совпадения профиля
+            # строка не собирается («Лечение кариеса» с /uslugi-stomatologii)
+            skipped_nonprofile.append(f"{name} [страница несмежного раздела]")
             continue
         to_markup.append(s)
 

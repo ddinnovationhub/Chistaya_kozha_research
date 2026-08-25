@@ -127,7 +127,8 @@ NONPROFILE_SERVICE_RE = re.compile(
     r"|массаж спины|массаж тела|узи (брюшной|органов|щитовидн|молочн|малого)"
     r"|клонорхоз|описторхоз|паразит|гельминт|лямбли|щитовидн"
     r"|пластическ\w+ хирург|ринопластик|маммопластик|липосакц|абдоминопласт"
-    r"|отопластик|подтяжка груди",
+    r"|отопластик|подтяжка груди"
+    r"|\bузи\b(?![ -]кожи)|гистеросальпинг|отцовств|материнств|\bднк\b|родств",
     re.IGNORECASE)
 
 # Зонные и служебные строки прайса — не услуги (такт 3: «Щеки | 5 940 ₽»,
@@ -174,6 +175,21 @@ def is_zone_or_junk_name(name: str) -> bool:
 # мезотерапия волос латинских брендов относится к трихологии, не сюда.
 BRAND_INJECTABLE_RE = re.compile(
     r"(?=.*[A-Za-z]{3,})(?=.*\d[.,]?\d?\s*(мл|ml)\b)", re.IGNORECASE)
+
+# Такт 3 после адаптивного обхода (2026-08-26): 40 страниц затащили несмежные
+# разделы многопрофильных сайтов — стоматологию, ДНК-экспертизу, общую
+# лабораторию naedine-n (850 из 914 строк). Название услуги чужого раздела
+# не содержит слова специальности («Лечение кариеса») — фильтруем ПО URL
+# страницы-источника: с несмежно-контекстной страницы собираются ТОЛЬКО
+# словарные совпадения профиля (профильная лаборатория КВД живёт на тех же
+# /analizy-страницах — dict-hit её сохраняет).
+NONADJ_PAGE_URL_RE = re.compile(
+    r"stomatolog|ginekolog|urolog|kardiolog|nevrolog|oftalmolog|otolaringolog"
+    r"|/lor[-/]|endokrinolog|pediatr|terapevt|psihiatr|psiholog|flebolog"
+    r"|analiz|laborator|/dnk|ekspertiz|/uzi|uzi-|massazh|reproduk|biohim"
+    r"|mikrobiolog|molekuljar|gormon|allergolog|immunolog|gastroenterolog"
+    r"|plastich|vakcin|privivk",
+    re.IGNORECASE)
 
 # венерология: ищем, но позициями не собираем (решение заказчика, промпт этапа 6)
 VENEREOLOGY_RE = re.compile(
