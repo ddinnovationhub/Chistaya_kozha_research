@@ -246,3 +246,139 @@ def test_fuzzy_092_maps_close_but_not_antonyms():
     m2 = map_tier1("Удаление доброкачественных новообразований кожи",
                    FORM_INDEX, fuzzy_cutoff=0.92)
     assert m2 is None or "злокачествен" not in str(m2)
+
+
+# ─── Архитектурный разбор заказчика 2026-08-26: тесты на классы ошибок ───
+
+def test_second_level_filter_offprofile_position_not_in_table():
+    """Класс 1: непрофильная позиция НЕ попадает в таблицу услуг независимо
+    от профильности клиники (кейс «Альфа клиника»: выезд медсестры, фтизиатр)."""
+    page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
+    <p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Удаление невуса лазером — 900 ₽</p>
+    <p>Дерматоскопия — 1 200 ₽</p>
+    <p>Выезд медсестры на дом — 800 ₽</p>
+    <p>Приём фтизиатра — 1 000 ₽</p>
+    <p>Оформление справки о болезни — 300 ₽</p></body></html>"""
+    import src.site_checker as sc
+    from src.classify import load_contours
+    db = sqlite3.connect(":memory:")
+    sc.ensure_stage6_tables(db)
+    orig = sc.crawl_site
+    sc.crawl_site = lambda *a, **k: ({"https://ok.test/": page},
+                                     {"level": 2, "last_level": 2, "last_status": "200",
+                                      "blocked_by_robots": False})
+    try:
+        r = sc.process_clinic({"title": "OK", "url": "https://ok.test", "domain": "ok.test"},
+                              db, load_contours(), FORM_INDEX, set(), "Тест")
+    finally:
+        sc.crawl_site = orig
+    assert r["gate"] == "Включён"
+    table_rows = [x[0] for x in db.execute(
+        "SELECT name_raw FROM services_found WHERE mapping_tier != 'вне профиля'")]
+    assert not any("Выезд" in n or "фтизиатр" in n.lower() or "справк" in n.lower()
+                   for n in table_rows), table_rows
+    assert any("невус" in n.lower() for n in table_rows)   # открытость: якорная строка
+
+
+def test_gate2_measures_share_not_fact():
+    """Класс 2 (кейс «Альфа Технологии»): 3 дерм-позиции из ~40 ортопедических
+    (≈8%) — не конкурент; ворота меряют долю."""
+    ortho = "".join(f"<p>Ударно-волновая терапия зона {i} — 2 000 ₽</p>"
+                    f"<p>Внутрисуставная инъекция {i} — 3 000 ₽</p>" for i in range(10))
+    page = f"""<html><body><p>Лицензия ЛО-54-01-000001</p>
+    <p>Приём травматолога-ортопеда — 1 500 ₽</p>{ortho}
+    <p>Лечение акне — 2 000 ₽</p><p>Удаление папиллом — 900 ₽</p>
+    <p>Карбокситерапия суставов — 1 500 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] != "Включён", (r["gate"], r.get("reason"))
+    assert rows == 0
+
+
+def test_gate2_landing_with_one_profile_service_passes():
+    """Профильный лендинг (кейс kosmeta): 1 позиция, 100% доля → конкурент."""
+    page = """<html><body><p>Лицензия ЛО-54-01-000001</p>
+    <p>Лечение акне — 5 000 ₽</p></body></html>"""
+    r, rows = _gate_for(page)
+    assert r["gate"] == "Включён"
+
+
+def test_esthetic_family_collapse_as_class():
+    """Класс 3 (кейс angeliy): 7 однотипных УВЧ-строк → одна строка-агрегат
+    семейства с числом позиций и диапазоном цен."""
+    uvch = "".join(f"<p>Воздействие токами ультравысокой частоты на кожу зона {z} — {p} ₽</p>"
+                   for z, p in [("лицо", "6 000"), ("шея", "4 500"), ("лицо и шея", "11 000"),
+                                ("декольте", "9 000"), ("лоб", "3 000"), ("щеки", "5 000"),
+                                ("подбородок", "4 000")])
+    page = f"""<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>{uvch}</body></html>"""
+    import src.site_checker as sc
+    from src.classify import load_contours
+    db = sqlite3.connect(":memory:")
+    sc.ensure_stage6_tables(db)
+    orig = sc.crawl_site
+    sc.crawl_site = lambda *a, **k: ({"https://u.test/": page},
+                                     {"level": 2, "last_level": 2, "last_status": "200",
+                                      "blocked_by_robots": False})
+    try:
+        sc.process_clinic({"title": "U", "url": "https://u.test", "domain": "u.test"},
+                          db, load_contours(), FORM_INDEX, set(), "Тест")
+    finally:
+        sc.crawl_site = orig
+    aggs = list(db.execute("SELECT name_raw, price FROM services_found "
+                           "WHERE name_raw LIKE '%позиций (агрегат)%'"))
+    assert len(aggs) >= 1
+    assert any("7 позиций" in a[0] for a in aggs), aggs
+    assert any(a[1] and "от" in a[1] and "до" in a[1] for a in aggs)
+    per_line = db.execute("SELECT COUNT(*) FROM services_found "
+                          "WHERE name_raw LIKE 'Воздействие токами%' "
+                          "AND name_raw NOT LIKE '%агрегат%'").fetchone()[0]
+    assert per_line == 0   # построчно УВЧ в таблице нет
+
+
+def test_headline_is_not_org_name():
+    """Класс 4: заголовок страницы — не имя организации."""
+    from src.extract_site import looks_like_headline
+    assert looks_like_headline("Лечение купероза на лице в Новосибирске: цены")
+    assert looks_like_headline("Стоимость медицинских услуг")
+    assert looks_like_headline("Контурная пластика лица в Новосибирске - цены, фото до/после")
+    assert not looks_like_headline("Клиника Пример")
+    assert not looks_like_headline("Наедине-Н")
+
+
+def test_descriptive_sentence_is_not_service():
+    """Класс 4: описательное предложение не записывается услугой."""
+    page = """<html><body><p>Приём врача-дерматолога — 1 500 ₽</p>
+    <p>Контролируемая глубина воздействия на ткани позволяет максимально безопасно — 5 000 ₽</p>
+    </body></html>"""
+    r, rows = _gate_for(page)
+    names = []
+    assert rows == 1   # только приём
+
+
+def test_ownership_detection():
+    """п.5: форма собственности — признак по данным, не фильтр."""
+    from src.extract_site import detect_ownership
+    assert detect_ownership(["ФГБУ ГНЦДК Минздрава России, Новосибирский филиал"], None) \
+        == "государственная"
+    assert detect_ownership(["реквизиты"], "ООО «Альфа Клиник»") == "частная"
+    assert detect_ownership(["ничего"], None) == "Уточнить"
+
+
+def test_profile_share_gate_blocks_bad_table(tmp_path, monkeypatch):
+    """п.4: доля профильных строк < 70% → таблица не выпускается."""
+    import pytest
+    from src.export_stage6 import export_intermediate
+    from src.site_checker import ensure_stage6_tables
+    monkeypatch.chdir(Path(__file__).resolve().parent.parent)
+    db = sqlite3.connect(":memory:")
+    ensure_stage6_tables(db)
+    db.execute("INSERT INTO clinics (clinic_id, title, gate) VALUES ('КЛН-x','X','Включён')")
+    for i in range(8):   # 8 строк чужого тега (не профиль, не разметка, не агрегат)
+        db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, "
+                   "tag, mapping_tier, mapping_basis) VALUES ('КЛН-x','X',?,?,'код','точное')",
+                   (f"строка {i}", "botulinum_cosm"))
+    db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, tag, "
+               "mapping_tier, mapping_basis) VALUES ('КЛН-x','X','Дерматоскопия',"
+               "'dermatoscopy','код','точное')")
+    with pytest.raises(RuntimeError, match="НЕ ВЫПУЩЕНА"):
+        export_intermediate("Тест-гейт", db)

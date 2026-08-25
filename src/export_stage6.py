@@ -46,14 +46,53 @@ def _put(ws, r, vals):
 
 
 def _svc_rows(db, where=""):
+    base = "WHERE mapping_tier != 'вне профиля'"   # второй уровень фильтра
+    if where:
+        base += " AND " + where.replace("WHERE ", "")
     return list(db.execute(
         "SELECT clinic_id, clinic_title, name_raw, description_raw, page_url, price, "
         "COALESCE(tag, 'тега нет'), COALESCE(code_804n, 'код не определён'), "
         "mapping_basis, mapping_tier, confidence, client_has "
-        f"FROM services_found {where} ORDER BY clinic_id, name_raw"))
+        f"FROM services_found {base} ORDER BY clinic_id, name_raw"))
+
+
+# Профильные контуры для смысловой метрики (разбор заказчика 2026-08-26, п.4)
+_PROFILE_CONTOURS = ("derm", "oncoderm", "trich", "dermsurg")
+
+
+def profile_share(db: sqlite3.Connection) -> tuple[float, int, int]:
+    """Доля профильных строк в 02_Услуги: (доля, профильных, всего).
+    Профильная строка = тег профильного контура, ИЛИ якорная строка на
+    разметке (второй фильтр пропускает только якорные), ИЛИ строка-агрегат."""
+    import yaml as _yaml
+
+    contours = {t["tag"]: t["contour"] for t in _yaml.safe_load(
+        pathlib.Path("dictionaries/services.yaml").read_text(encoding="utf-8"))["tags"]}
+    rows = list(db.execute(
+        "SELECT tag, mapping_tier, mapping_basis FROM services_found "
+        "WHERE mapping_tier != 'вне профиля'"))
+    total = len(rows)
+    good = sum(1 for tag, tier, basis in rows
+               if contours.get(tag) in _PROFILE_CONTOURS
+               or tier == 'на разметке'
+               or 'агрегат' in (basis or ''))
+    return (good / total if total else 1.0), good, total
 
 
 def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
+    # ── СМЫСЛОВОЙ ГЕЙТ (разбор заказчика 2026-08-26, п.4): доля профильных
+    # строк ниже порога → таблица НЕ выпускается, разбираться дальше ──
+    import yaml as _yaml
+    qcfg = _yaml.safe_load(pathlib.Path("config/thresholds.yaml")
+                           .read_text(encoding="utf-8")).get("quality", {})
+    share_min = float(qcfg.get("profile_share_min", 0.70))
+    share, good, total = profile_share(db)
+    if total and share < share_min:
+        raise RuntimeError(
+            f"⛔ ТАБЛИЦА НЕ ВЫПУЩЕНА: доля профильных строк {share:.0%} "
+            f"({good}/{total}) ниже порога {share_min:.0%} "
+            f"(quality.profile_share_min) — разбор продолжается")
+
     wb = openpyxl.Workbook()
     day = datetime.date.today().isoformat()
 
@@ -81,9 +120,12 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
     ws = wb.create_sheet("Сводка")
     r = _sheet(ws, "Распределение маппинга по обработанным клиникам.", ["Показатель", "Значение"], [56, 40])
     q = lambda sql: db.execute(sql).fetchone()[0]  # noqa: E731
-    total = q("SELECT COUNT(*) FROM services_found")
+    total = q("SELECT COUNT(*) FROM services_found WHERE mapping_tier != 'вне профиля'")
     stats = [
-        ("Всего строк услуг", total),
+        ("ДОЛЯ ПРОФИЛЬНЫХ СТРОК (гейт ≥70%)", f"{share:.0%} ({good}/{total})"),
+        ("Всего строк услуг (без «вне профиля»)", total),
+        ("Отсечено вторым фильтром (нет профильного якоря)",
+         q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='вне профиля'")),
         ("Смаплено кодом (ступень 1, точное совпадение)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='код'")),
         ("Размечено вручную (Claude Code, ступень 2)", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='разметка'")),
         ("Ожидает разметки", q("SELECT COUNT(*) FROM services_found WHERE mapping_tier='на разметке'")),
@@ -100,18 +142,29 @@ def export_intermediate(city: str, db: sqlite3.Connection) -> pathlib.Path:
     ws = wb.create_sheet("По_клиникам")
     r = _sheet(ws, "Итог по каждой обработанной клинике: ворота, тип, флаги, грейд. "
                    "Тип до слияния разметки — ПРЕДВАРИТЕЛЬНЫЙ (см. «Статус типа»).",
-               ["ИД", "Клиника", "Домен", "Ворота", "Причина", "Тип", "Статус типа",
+               ["ИД", "Клиника", "Форма собственности", "Домен", "Ворота", "Причина", "Тип", "Статус типа",
                 "Правило", "Грейд", "Эстетические маркеры", "Несмежные",
                 "Флаг: единств. несмежное", "Флаг: удаление вне дерм-контура",
                 "Флаг: сайт недоступен", "Примечание доступности", "Уровень каскада",
                 "Пакеты", "ИНН", "Статус ИНН", "Разделы"],
-               [14, 26, 20, 14, 24, 14, 22, 10, 8, 24, 24, 12, 14, 12, 30, 10, 8, 14, 24, 26])
+               [14, 26, 18, 20, 14, 24, 14, 22, 10, 8, 24, 24, 12, 14, 12, 30, 10, 8, 14, 24, 26])
     for row in db.execute(
-            "SELECT clinic_id, title, domain, gate, gate_reason, type, type_status, "
+            "SELECT clinic_id, title, ownership_form, domain, gate, gate_reason, "
+            "type, type_status, "
             "rule, grade, esthetic_markers, nonadjacent, flag_single_nonadjacent, "
             "flag_removal_outside_derm, flag_site_unreachable, unreachable_note, "
             "fetch_level, has_packages, inn, inn_status, sections_found "
             "FROM clinics ORDER BY clinic_id"):
+        _put(ws, r, list(row)); r += 1
+
+    ws = wb.create_sheet("Отсечено_фильтром_позиции")
+    r = _sheet(ws, "Строки, отсечённые ВТОРЫМ уровнем фильтра (нет профильного якоря в названии) — "
+                   "на выборочную проверку: профильная услуга здесь = дефект якорного словаря.",
+               ["ИД клиники", "Клиника", "Название с сайта", "Цена", "URL"],
+               [16, 26, 50, 12, 34])
+    for row in db.execute("SELECT clinic_id, clinic_title, name_raw, price, page_url "
+                          "FROM services_found WHERE mapping_tier='вне профиля' "
+                          "ORDER BY clinic_id, name_raw"):
         _put(ws, r, list(row)); r += 1
 
     ws = wb.create_sheet("07_Качество")

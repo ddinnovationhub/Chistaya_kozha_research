@@ -154,6 +154,7 @@ def ensure_stage6_tables(db: sqlite3.Connection):
     db.executescript("""
     CREATE TABLE IF NOT EXISTS clinics (
         clinic_id TEXT PRIMARY KEY, title TEXT, title_source TEXT,
+        ownership_form TEXT,
         domain TEXT, url TEXT,
         gate TEXT, gate_reason TEXT, type TEXT, type_status TEXT, rule TEXT,
         grade TEXT, esthetic_markers TEXT, nonadjacent TEXT,
@@ -180,7 +181,8 @@ def ensure_stage6_tables(db: sqlite3.Connection):
                      ("title_source", "TEXT"), ("nonprofile_excluded", "INTEGER"),
                      ("crawl_pages_found", "INTEGER"),
                      ("crawl_pages_fetched", "INTEGER"),
-                     ("crawl_cap_hit", "INTEGER")):
+                     ("crawl_cap_hit", "INTEGER"),
+                     ("ownership_form", "TEXT")):
         try:
             db.execute(f"ALTER TABLE clinics ADD COLUMN {col} {typ}")
         except sqlite3.OperationalError:
@@ -238,17 +240,20 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # только если прошла — извлекать услуги в таблицу)
     data = extract_pages(pages, form_index)
 
-    # ── Имя организации (п.4): og:site_name → шапка → discovery → title ──
+    # ── Имя организации (п.4 + разбор 2026-08-26): заголовок страницы —
+    # НЕ имя. Порядок: og:site_name → шапка → юрлицо из реквизитов →
+    # карточка discovery (если не заголовкоподобна) → домен с «Уточнить»
+    from src.extract_site import looks_like_headline
     if data["site_name"] and data["site_name"].strip().lower() == city.strip().lower():
         data["site_name"] = None   # из шапки взялся переключатель города
-    if data["site_name"]:
+    if data["site_name"] and not looks_like_headline(data["site_name"]):
         title, title_source = data["site_name"], data["site_name_source"]
-    elif cand.get("title"):
+    elif data["requisites"]["legal_name"]:
+        title, title_source = data["requisites"]["legal_name"], "юрлицо из реквизитов сайта"
+    elif cand.get("title") and not looks_like_headline(cand["title"]):
         title, title_source = cand["title"], "карточка discovery"
-    elif data["page_title"]:
-        title, title_source = data["page_title"], "title страницы — Уточнить"
     else:
-        title, title_source = dom, "домен — Уточнить"
+        title, title_source = dom, "домен — Уточнить (название-заголовок отвергнуто)"
 
     # ── Ступень 1 (код) + маршрутизация по профилю ──────────────────────
     # В таблицу собираются ТОЛЬКО услуги профиля (дерматология, дермато-
@@ -256,21 +261,24 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # признаков чужого профиля. Косметология — агрегатом (тег в классификацию,
     # позицией не пишется); венерология — ищем, не собираем; непрофильные
     # (вакцинация, ЭКГ, справки, несмежные специальности) — не собираются.
-    from src.extract_site import (BRAND_INJECTABLE_RE, NONADJ_PAGE_URL_RE,
-                                  NONPROFILE_SERVICE_RE, PACKAGE_RE,
-                                  VENEREOLOGY_RE, _esthetic_keywords,
-                                  is_esthetic_line, is_zone_or_junk_name)
-    cfg_map = yaml.safe_load(pathlib.Path("config/thresholds.yaml")
-                             .read_text(encoding="utf-8")).get("mapping", {})
-    fuzzy_cutoff = float(cfg_map.get("fuzzy_threshold", 0)) or None
+    from src.extract_site import (BRAND_INJECTABLE_RE, DESCRIPTIVE_TEXT_RE,
+                                  NONADJ_PAGE_URL_RE, NONPROFILE_SERVICE_RE,
+                                  PACKAGE_RE, PROFILE_ANCHOR_RE, VENEREOLOGY_RE,
+                                  _esthetic_keywords, is_esthetic_line,
+                                  is_zone_or_junk_name)
+    from src.mapper import normalize_service_name
+    cfg_all = yaml.safe_load(pathlib.Path("config/thresholds.yaml").read_text(encoding="utf-8"))
+    fuzzy_cutoff = float(cfg_all.get("mapping", {}).get("fuzzy_threshold", 0)) or None
+    g2cfg = cfg_all.get("gate2", {})
     esth_kws = _esthetic_keywords()
-    mapped, to_markup, brand_rows = [], [], []
+    mapped, to_markup, brand_rows, esth_rows, off_profile = [], [], [], [], []
     marker_tags = set()          # теги для классификации без строки в таблице
-    skipped_nonprofile, skipped_vener, skipped_esth = [], 0, 0
+    skipped_nonprofile, skipped_vener = [], 0
     for s in data["services"]:
         name = s["name"]
-        # порядок такта 3: чужой профиль/венерология/пакеты → словарь
-        # (с guard'ом на эстетический конфликт) → зоны → эстетика → разметка
+        # порядок: чужой профиль/венерология/пакеты → словарь (с guard'ом
+        # на эстетический конфликт) → эстетика (класс-свёртка) → зоны/
+        # описания → ЯКОРЬ ПРОФИЛЯ (второй уровень фильтра) → разметка
         if NONPROFILE_SERVICE_RE.search(name):
             skipped_nonprofile.append(name)
             continue
@@ -288,8 +296,10 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             c = contours.get(m1["tag"])
             if c in ("cosm_est", "cosm_med") or m1["tag"] in ("std_consult", "std_lab"):
                 marker_tags.add(m1["tag"])
-                skipped_esth += int(c in ("cosm_est", "cosm_med"))
                 skipped_vener += int(m1["tag"] in ("std_consult", "std_lab"))
+                if c in ("cosm_est", "cosm_med"):
+                    esth_rows.append(s)
+                    data["esthetic_cosmetology_present"] = True
             elif is_esthetic_line(name, esth_kws):
                 # конфликт: словарный мед-тег при эстетическом маркере в полном
                 # названии («Фототерапия (фотоэпиляция бедра)» → phototherapy) —
@@ -303,53 +313,105 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             brand_rows.append(s)   # мера 2: свёртка, не потеря
             data["esthetic_cosmetology_present"] = True
             continue
-        if is_zone_or_junk_name(name):
-            continue   # «Щеки», «Бакенбарды», «Один импульс», «Цена…» — не услуги
         if is_esthetic_line(name, esth_kws):
-            skipped_esth += 1
+            esth_rows.append(s)
             data["esthetic_cosmetology_present"] = True
             continue
+        if is_zone_or_junk_name(name) or DESCRIPTIVE_TEXT_RE.search(name):
+            continue   # зоны, служебные строки, описательные предложения
         if NONADJ_PAGE_URL_RE.search(s.get("page_url") or ""):
             # страница несмежного раздела: без словарного совпадения профиля
             # строка не собирается («Лечение кариеса» с /uslugi-stomatologii)
             skipped_nonprofile.append(f"{name} [страница несмежного раздела]")
             continue
+        # ── ВТОРОЙ УРОВЕНЬ (архитектурный разбор 2026-08-26): позиция без
+        # профильного якоря не попадает в таблицу услуг, какой бы профильной
+        # ни была клиника («Выезд медсестры на дом», «Приём фтизиатра»)
+        if not PROFILE_ANCHOR_RE.search(name):
+            off_profile.append(s)
+            continue
         to_markup.append(s)
 
-    # ── Мера 2 (заказчик 2026-08-26): агрегатные строки вместо потери ──
+    # ── Свёртка КАК КЛАСС (заказчик 2026-08-26): позиции, различающиеся
+    # только препаратом/зоной/объёмом/длительностью, — одна строка на семейство
+    def _family_key(nm: str) -> str:
+        base = re.sub(r"[A-Za-z0-9+]+", " ", normalize_service_name(nm))
+        return " ".join(base.split()[:4])
+
+    def _agg_row(rows, family_name, tag, basis):
+        prices = []
+        names = []
+        for b in rows:
+            if b.get("price"):
+                digits = re.sub(r"\D", "", b["price"])
+                if digits:
+                    prices.append(int(digits))
+            if b["name"] not in names:
+                names.append(b["name"])
+        return {"name": f"{family_name} — {len(rows)} позиций (агрегат)",
+                "description": "; ".join(names[:10]),
+                "price": (f"от {min(prices)} до {max(prices)} ₽" if prices else None),
+                "page_url": rows[0]["page_url"], "tag": tag, "code_804n": None,
+                "basis": basis, "tier": "код", "confidence": "высокая"}
+
     if brand_rows:
-        import re as _re
         brands = []
         for b in brand_rows:
-            m = _re.search(r"[A-Za-z][A-Za-z0-9+\- ]{2,}", b["name"])
+            m = re.search(r"[A-Za-z][A-Za-z0-9+\- ]{2,}", b["name"])
             if m and m.group(0).strip() not in brands:
                 brands.append(m.group(0).strip())
-        prices = [int(_re.sub(r"\D", "", b["price"])) for b in brand_rows
-                  if b.get("price") and _re.sub(r"\D", "", b["price"])]
         marker_tags.add("contour_filler")
-        mapped.append({
-            "name": f"Инъекционная эстетика (филлеры/биоревитализанты) — "
-                    f"{len(brand_rows)} позиций (агрегат)",
-            "description": "бренды: " + ", ".join(brands[:15]),
-            "price": (f"от {min(prices)} до {max(prices)} ₽" if prices else None),
-            "page_url": brand_rows[0]["page_url"],
-            "tag": "contour_filler", "code_804n": None,
-            "basis": "агрегат брендов инъекционной эстетики (мера 2, решение заказчика 2026-08-26)",
-            "tier": "код", "confidence": "высокая"})
-    if skipped_esth:
-        mapped.append({
-            "name": f"Эстетическая косметология — {skipped_esth} позиций (агрегат)",
-            "description": "позиции свёрнуты; состав тегов — колонка «Эстетические маркеры»",
-            "price": None, "page_url": url,
-            "tag": "hardware_rejuvenation", "code_804n": None,
-            "basis": "агрегат эстетических позиций (эстетика не разбирается построчно; мера 2)",
-            "tier": "код", "confidence": "высокая"})
+        row = _agg_row(brand_rows, "Инъекционная эстетика (филлеры/биоревитализанты)",
+                       "contour_filler",
+                       "агрегат брендов инъекционной эстетики (мера 2, решение заказчика 2026-08-26)")
+        row["description"] = "бренды: " + ", ".join(brands[:15])
+        mapped.append(row)
+    if esth_rows:
+        groups: dict[str, list] = {}
+        for srow in esth_rows:
+            groups.setdefault(_family_key(srow["name"]), []).append(srow)
+        rest = []
+        for fam, rows in sorted(groups.items()):
+            if len(rows) >= 3:
+                mapped.append(_agg_row(
+                    rows, rows[0]["name"][:60].rstrip(" ,;:-"),
+                    "hardware_rejuvenation",
+                    "агрегат однотипного эстетического семейства (свёртка как класс, 2026-08-26)"))
+            else:
+                rest.extend(rows)
+        if rest:
+            mapped.append(_agg_row(
+                rest, "Эстетическая косметология — прочее",
+                "hardware_rejuvenation",
+                "агрегат эстетических позиций (эстетика не разбирается построчно; мера 2)"))
     profile_tags = ({m["tag"] for m in mapped} | marker_tags) & set(contours)
 
-    # ── Ворота: стоп-лист организаций (п.1) → G1 (ужесточён) → G2 ───────
+    # ── Ворота: стоп-лист организаций (п.1) → G1 (ужесточён) → G2-МЕРА ──
+    # G2 меряет ДОЛЮ, не факт (архитектурный разбор 2026-08-26): «Альфа
+    # Технологии» — ортопедия с 3 дерм-позициями из 38 (8%) — не конкурент.
+    # Пороги (config/thresholds.yaml gate2, обоснование там же):
+    #   дерм-контур: (позиций ≥2 И доля ≥10%) ИЛИ позиций ≥5 (полноценное
+    #   отделение в большом прайсе) ИЛИ (доля ≥50% И позиций ≥1 — профильный
+    #   лендинг типа kosmeta);  косметологический контур: эстетических
+    #   единиц ≥2 (Тип 1 косм. — наш рынок по классификатору).
     doctor_visit = data["doctor_visit_line"]
-    g2 = bool(profile_tags or data["profile_markers_found"]
-              or data["esthetic_cosmetology_present"])
+    derm_rows_n = len(mapped_profile := [m for m in mapped
+                                         if contours.get(m.get("tag")) in
+                                         ("derm", "oncoderm", "trich", "dermsurg")]) \
+        + len(to_markup)
+    routed_total = (derm_rows_n + len(off_profile) + len(skipped_nonprofile)
+                    + len(esth_rows) + len(brand_rows) + skipped_vener)
+    derm_share = derm_rows_n / routed_total if routed_total else 0.0
+    esth_units = len(esth_rows) + len(brand_rows)
+    g2_min_rows = int(g2cfg.get("min_rows", 2))
+    g2_min_share = float(g2cfg.get("min_share", 0.10))
+    g2_abs = int(g2cfg.get("abs_override", 5))
+    g2_solo = float(g2cfg.get("solo_share", 0.50))
+    g2_derm = ((derm_rows_n >= g2_min_rows and derm_share >= g2_min_share)
+               or derm_rows_n >= g2_abs
+               or (derm_rows_n >= 1 and derm_share >= g2_solo))
+    g2_esth = esth_units >= 2
+    g2 = g2_derm or g2_esth
     if data["org_stoplist_type"] and not doctor_visit:
         # стоп-лист проверяется ДО маркеров: «косметолог» на сайте салона
         # найдётся всегда; приём врача в прайсе снимает стоп-лист
@@ -366,18 +428,23 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     elif not g2:
         fact = ", ".join(data["doctor_specialties"][:4])
         gate = "Исключён"
-        reason = ("нет релевантного профиля"
-                  + (f" (фактический: {fact})" if fact else ""))
+        if derm_rows_n or esth_units:
+            reason = (f"нет релевантного профиля (профильных позиций {derm_rows_n} "
+                      f"из {routed_total}, {derm_share:.0%} — ниже порога"
+                      + (f"; фактический: {fact}" if fact else "") + ")")
+        else:
+            reason = ("нет релевантного профиля"
+                      + (f" (фактический: {fact})" if fact else ""))
     elif not mapped and not to_markup and not marker_tags:
         gate, reason = "Требует проверки", "профильные слова есть, услуг на страницах не найдено"
     else:
-        gate, reason = "Включён", "G1-G2 пройдены"
+        gate, reason = "Включён", f"G1-G2 пройдены (профильных позиций {derm_rows_n}, доля {derm_share:.0%}, эстетики {esth_units})"
 
     found_tags = set(profile_tags)
     if data["esthetic_cosmetology_present"]:
         found_tags.add("hardware_rejuvenation")  # агрегатный эстетический маркер
     if gate != "Включён":
-        mapped, to_markup = [], []   # ТЕСТ заказчика: Исключён → ноль строк услуг
+        mapped, to_markup, off_profile = [], [], []  # Исключён → ноль строк услуг
 
     nonadj = sorted({n["direction"] for n in data["nonadjacent_signs"]})
     if gate == "Включён" and found_tags:
@@ -405,6 +472,7 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                           + (", формат ОГРН" if validate_ogrn(raw_inn) else ""))
 
     db.execute("INSERT OR REPLACE INTO clinics (clinic_id, title, title_source, "
+               "ownership_form, "
                "domain, url, gate, "
                "gate_reason, type, type_status, rule, grade, esthetic_markers, "
                "nonadjacent, flag_single_nonadjacent, flag_removal_outside_derm, "
@@ -412,8 +480,9 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                "nonprofile_excluded, crawl_pages_found, crawl_pages_fetched, "
                "crawl_cap_hit, "
                "has_packages, specialists_count, inn, inn_status, legal_name, "
-               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-               (clinic_id, title, title_source, dom, url, gate, reason,
+               "sections_found, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+               (clinic_id, title, title_source, data["ownership_form"],
+                dom, url, gate, reason,
                 cls["type"], type_status, cls.get("rule"), grade,
                 "; ".join(cls["esthetic_markers_found"]) or None,
                 "; ".join(nonadj) or None,
@@ -443,6 +512,17 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                      "в названии — решает разметчик") if s.get("conflict")
                     else "ступень 1: точного совпадения со справочником нет",
                     "на разметке", None, None))
+    for s in off_profile:
+        # второй уровень фильтра: НЕ в таблицу услуг (экспорт исключает
+        # этот tier), но сохраняется для контроля — тихий выброс запрещён
+        db.execute("INSERT INTO services_found (clinic_id, clinic_title, name_raw, "
+                   "description_raw, page_url, price, tag, code_804n, mapping_basis, "
+                   "mapping_tier, confidence, client_has) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
+                   (clinic_id, title, s["name"], s.get("description"),
+                    s["page_url"], s.get("price"), None, None,
+                    "нет профильного якоря в названии — вне таблицы услуг "
+                    "(второй уровень фильтра, 2026-08-26)",
+                    "вне профиля", None, None))
     # ── Доказательства: каждый факт с цитатой и URL (такт 3, Верификатор) ──
     db.execute("DELETE FROM clinic_evidence WHERE clinic_id=?", (clinic_id,))
     ev = []
@@ -480,7 +560,9 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
             "services": len(mapped) + len(to_markup),
             "tier1_mapped": len(mapped), "to_markup": len(to_markup),
             "skipped_nonprofile": len(skipped_nonprofile),
-            "skipped_venereology": skipped_vener, "skipped_esthetic": skipped_esth,
+            "skipped_venereology": skipped_vener, "skipped_esthetic": esth_units,
+            "off_profile": len(off_profile), "derm_rows": derm_rows_n,
+            "derm_share": round(derm_share, 2),
             "price_lines_on_pages": price_lines_on_pages,
             "price_rows_written": price_rows_written,
             "dirty_names_rejected": data["dirty_names_rejected"],
