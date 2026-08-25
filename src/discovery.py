@@ -29,7 +29,16 @@ AGGREGATOR_DOMAINS = {
     "prodoctorov.ru", "napopravku.ru", "zoon.ru", "2gis.ru", "yandex.ru",
     "maps.yandex.ru", "vk.com", "avito.ru", "flamp.ru", "yell.ru",
     "docdoc.ru", "sberhealth.ru", "irecommend.ru", "otzovik.com",
+    "kiberis.ru",   # мед-справочник; вскрыт тактом 3 пачки 2026-08-26
 }
+
+
+def is_aggregator_domain(domain: str | None) -> bool:
+    """Матч ПО СУФФИКСУ: nsk.docdoc.ru — тот же агрегатор, что docdoc.ru
+    (такт 3, 2026-08-26: поддомен прошёл в этап 6 как сайт клиники)."""
+    if not domain:
+        return False
+    return any(domain == a or domain.endswith("." + a) for a in AGGREGATOR_DOMAINS)
 
 
 def parse_yandex_xml(xml_text: str) -> list[dict]:
@@ -57,7 +66,7 @@ class CandidateQueue:
     @staticmethod
     def dedup_key(cand: dict) -> str:
         domain = cand.get("domain")
-        if domain and domain in AGGREGATOR_DOMAINS:
+        if is_aggregator_domain(domain):
             path = (cand.get("url") or "").split("://")[-1]
             return f"agg:{path.rstrip('/')}"
         if domain:
@@ -73,7 +82,7 @@ class CandidateQueue:
             "INSERT INTO candidates (dedup_key, title, url, domain, kind, "
             "discovered_by_query, source_id, discovered_at) VALUES (?,?,?,?,?,?,?,?)",
             (key, cand.get("title"), cand.get("url"), cand.get("domain"),
-             "aggregator" if (cand.get("domain") in AGGREGATOR_DOMAINS) else "site",
+             "aggregator" if is_aggregator_domain(cand.get("domain")) else "site",
              query_id, source_id, datetime.date.today().isoformat()))
         return True
 

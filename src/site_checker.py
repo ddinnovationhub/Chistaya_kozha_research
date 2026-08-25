@@ -142,8 +142,22 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                    min_bytes: int = 3000) -> dict:
     dom = cand["domain"]
     clinic_id = f"КЛН-{dom}"
-    url = cand["url"] if cand["url"].startswith("http") else f"https://{dom}"
+    # Обход С КОРНЯ домена (такт 3: discovery даёт глубокие URL — новость
+    # sharmnsk.ru была запрещена robots, и запрет ошибочно закрывал весь сайт;
+    # плюс og:site_name и шапка живут на главной)
+    url = f"https://{dom}"
     pages, fetch_meta = crawl_site(url, city, form_index, db=db, min_bytes=min_bytes)
+    disc_url = cand.get("url") or ""
+    if pages and disc_url.startswith("http") \
+            and normalize_domain(disc_url) == dom \
+            and disc_url.rstrip("/") != url.rstrip("/") and disc_url not in pages:
+        from src.fetch_cascade import fetch_cascade
+        time.sleep(RATE_DELAY_SEC)
+        extra, _ = fetch_cascade(disc_url, dom, form_index, db=db,
+                                 min_bytes=min_bytes,
+                                 max_level=max(fetch_meta["level"] or 2, 2))
+        if extra:
+            pages[disc_url] = extra
     now = datetime.datetime.now().isoformat(timespec="seconds")
 
     if not pages:
@@ -160,8 +174,9 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                     "Требует проверки", "Сайт недоступен", "Не классифицировано", None,
                     None, "C", 1, note, None, "Сайт недоступен", now))
         db.commit()
-        return {"clinic_id": clinic_id, "gate": "Требует проверки", "grade": "C",
-                "services": 0, "tier1_mapped": 0, "to_markup": 0,
+        return {"clinic_id": clinic_id, "title": cand["title"],
+                "gate": "Требует проверки", "reason": "Сайт недоступен",
+                "grade": "C", "services": 0, "tier1_mapped": 0, "to_markup": 0,
                 "fetch_level": None, "unreachable": True, "domain": dom}
 
     # Экстракция — анализ страниц в памяти; ЗАПИСЬ строк услуг — только
@@ -170,6 +185,8 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     data = extract_pages(pages, form_index)
 
     # ── Имя организации (п.4): og:site_name → шапка → discovery → title ──
+    if data["site_name"] and data["site_name"].strip().lower() == city.strip().lower():
+        data["site_name"] = None   # из шапки взялся переключатель города
     if data["site_name"]:
         title, title_source = data["site_name"], data["site_name_source"]
     elif cand.get("title"):
@@ -185,14 +202,40 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
     # признаков чужого профиля. Косметология — агрегатом (тег в классификацию,
     # позицией не пишется); венерология — ищем, не собираем; непрофильные
     # (вакцинация, ЭКГ, справки, несмежные специальности) — не собираются.
-    from src.extract_site import (NONPROFILE_SERVICE_RE, VENEREOLOGY_RE,
-                                  _esthetic_keywords, is_esthetic_line)
+    from src.extract_site import (NONPROFILE_SERVICE_RE, PACKAGE_RE,
+                                  VENEREOLOGY_RE, _esthetic_keywords,
+                                  is_esthetic_line, is_zone_or_junk_name)
     esth_kws = _esthetic_keywords()
     mapped, to_markup = [], []
     marker_tags = set()          # теги для классификации без строки в таблице
     skipped_nonprofile, skipped_vener, skipped_esth = [], 0, 0
     for s in data["services"]:
-        m1 = map_tier1(s["name"], form_index)
+        name = s["name"]
+        # порядок: чужой профиль/пакет/зона/эстетика — ДО словаря (такт 3:
+        # «Фототерапия (фотоэпиляция бедра)» мапилась в мед-тег phototherapy,
+        # потому что нормализация выбрасывала скобочное уточнение)
+        if NONPROFILE_SERVICE_RE.search(name):
+            skipped_nonprofile.append(name)
+            continue
+        if VENEREOLOGY_RE.search(name):
+            skipped_vener += 1   # венерология: ищем, но не собираем
+            m1 = map_tier1(name, form_index)
+            if m1 and m1["tag"] in ("std_consult", "std_lab"):
+                marker_tags.add(m1["tag"])
+            continue
+        if PACKAGE_RE.search(name):
+            data["has_packages"] = True   # пакеты флагом, состав не разбираем
+            continue
+        if is_zone_or_junk_name(name):
+            continue   # «Щеки», «Один импульс», «Цена…» — не услуги
+        if is_esthetic_line(name, esth_kws):
+            skipped_esth += 1
+            data["esthetic_cosmetology_present"] = True
+            m1 = map_tier1(name, form_index)
+            if m1 and contours.get(m1["tag"]) in ("cosm_est", "cosm_med"):
+                marker_tags.add(m1["tag"])   # состав маркеров для Типа 2
+            continue
+        m1 = map_tier1(name, form_index)
         if m1:
             c = contours.get(m1["tag"])
             if c in ("cosm_est", "cosm_med") or m1["tag"] in ("std_consult", "std_lab"):
@@ -201,16 +244,6 @@ def process_clinic(cand: dict, db: sqlite3.Connection, contours: dict,
                 skipped_vener += int(m1["tag"] in ("std_consult", "std_lab"))
             else:
                 mapped.append({**s, **m1})
-            continue
-        if NONPROFILE_SERVICE_RE.search(s["name"]):
-            skipped_nonprofile.append(s["name"])
-            continue
-        if VENEREOLOGY_RE.search(s["name"]):
-            skipped_vener += 1
-            continue
-        if is_esthetic_line(s["name"], esth_kws):
-            skipped_esth += 1
-            data["esthetic_cosmetology_present"] = True
             continue
         to_markup.append(s)
     profile_tags = ({m["tag"] for m in mapped} | marker_tags) & set(contours)
