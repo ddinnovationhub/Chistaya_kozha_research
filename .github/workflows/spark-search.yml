@@ -1,0 +1,83 @@
+# Поисковая достройка сайтов очерченного круга СПАРК (решение заказчика
+# 2026-08-26): «{название} {город}» → тройная проверка ИНН/адрес → фаза 1
+# по новонайденным сайтам → пересчёт суждения Б → выгрузка → коммит.
+# Ключи — в Secrets; из песочницы Claude Code этот шаг не выполняется.
+name: spark-search
+
+on:
+  workflow_dispatch:
+    inputs:
+      budget_rub:
+        description: "Потолок расходов на поиск, ₽ (0.52 ₽/запрос)"
+        required: false
+        default: "2000"
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: spark-search
+  cancel-in-progress: false
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    env:
+      YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+      YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      SEARCH_BUDGET_RUB: ${{ github.event.inputs.budget_rub }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: pip install -r requirements.txt
+
+      - name: Быстрые проверки
+        run: python -m pytest tests/test_spark_flow.py tests/test_validators.py -q
+
+      - name: Поисковая достройка сайтов (~1494 компании, тройная проверка)
+        run: python -m src.search_sites 17000
+
+      - name: Фаза 1 по новонайденным сайтам (дешёвые уровни)
+        run: python -m src.phase1 2400
+
+      - name: Пересчёт суждения Б по позициям
+        run: python -m src.phase1 rejudge
+
+      - name: Выгрузка фазы 1
+        run: python -m src.export_phase1
+
+      - name: Чекпойнт как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: spark-search-${{ github.run_id }}
+          path: |
+            data/osint.db
+            output/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Коммит результатов
+        if: always()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/ data/ PROGRESS.md
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "spark-search: достройка сайтов поиском $(date +%F) (run ${{ github.run_id }})"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

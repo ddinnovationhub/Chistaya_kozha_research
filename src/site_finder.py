@@ -107,6 +107,173 @@ def probe_domain(domain: str, timeout: float = 12) -> tuple[str, str | None, str
     return "unreachable", None, None
 
 
+# ── ТРОЙНАЯ ПРОВЕРКА связи «компания ↔ сайт» (разбор дефектов фазы 1,
+# 2026-08-26, с корректировками заказчика) ────────────────────────────────
+# Лестница признаков:
+#   1. ИНН компании на сайте — сильнейший, однозначен (закон о ЗПП велит
+#      публиковать; ищем на главной, /kontakty, /contacts, /rekvizity, /about);
+#   2. АДРЕС организации в городе компании — только адрес в контакт-блоке
+#      или подвале (город в связке с адресными маркерами), НЕ упоминание
+#      города в тексте (сайт федеральной сети перечисляет все города —
+#      корректировка заказчика №1); >3 городов на странице = федеральная
+#      сеть, город перестаёт различать, подтверждение только по ИНН;
+#   3. Название — НЕ признак вообще (источник исходного дефекта).
+
+_ADDR_MARKER_RE = re.compile(
+    r"\bг\.|\bул\.|улиц|просп|проезд|переул|шоссе|бульвар|офис|стр\.|корп"
+    r"|\bадрес|обособленн", re.IGNORECASE)
+
+_CITY_ROOTS = {
+    "Уфа": ["уфа", "уфе", "уфы"], "Пермь": ["пермь", "перми"],
+    "Самара": ["самар"], "Казань": ["казан"], "Красноярск": ["красноярск"],
+    "Нижний Новгород": ["новгород"], "Тюмень": ["тюмен"],
+    "Челябинск": ["челябинск"], "Ростов-на-Дону": ["ростов"],
+    "Новосибирск": ["новосибирск"], "Екатеринбург": ["екатеринбург"],
+    "Краснодар": ["краснодар"], "Воронеж": ["воронеж"], "Саратов": ["саратов"],
+    "Махачкала": ["махачкал"], "Омск": ["омск"], "Барнаул": ["барнаул"],
+    "Волгоград": ["волгоград"],
+}
+_ALL_CITY_ROOTS = sorted({r for v in _CITY_ROOTS.values() for r in v})
+
+_CONTACT_PATHS = ("", "/kontakty", "/contacts", "/rekvizity", "/kontakty/",
+                  "/o-nas", "/about")
+
+
+def _addr_in_city(text: str, city_roots: list[str]) -> bool:
+    """Город в СВЯЗКЕ с адресным маркером (окно ±150 символов) —
+    признак адреса организации, а не упоминания города в тексте."""
+    low = text.lower()
+    for rt in city_roots:
+        for m in re.finditer(re.escape(rt), low):
+            window = low[max(0, m.start() - 150):m.end() + 150]
+            if _ADDR_MARKER_RE.search(window):
+                return True
+    return False
+
+
+def count_cities_mentioned(text: str) -> int:
+    low = text.lower()
+    return sum(1 for rt in _ALL_CITY_ROOTS if rt in low)
+
+
+def fetch_contact_texts(domain: str) -> list[str]:
+    """Главная + контактные/реквизитные страницы (до 3 удачных)."""
+    texts = []
+    for path in _CONTACT_PATHS:
+        try:
+            r = httpx.get(f"https://{domain}{path}", timeout=10,
+                          headers=BROWSER_HEADERS, follow_redirects=True)
+            if r.status_code < 400 and len(r.text) > 200:
+                texts.append(r.text[:200000])
+        except Exception:  # noqa: BLE001
+            if path == "":
+                break
+        if len(texts) >= 3:
+            break
+    return texts
+
+
+def triple_check(domain: str, inn: str, city: str,
+                 pages_hint: list[str] | None = None) -> dict:
+    """Проверка связи компания↔домен. Возвращает
+    {'verdict': 'ИНН'|'адрес'|None, 'fed_network': bool, 'evidence': str,
+     'reachable': bool}. pages_hint — уже скачанные тексты (сети/тесты)."""
+    texts = pages_hint if pages_hint is not None else fetch_contact_texts(domain)
+    if not texts:
+        return {"verdict": None, "fed_network": False,
+                "evidence": "сайт недоступен", "reachable": False}
+    full = "\n".join(texts)
+    if re.search(rf"(?<!\d){re.escape(inn)}(?!\d)", full):
+        return {"verdict": "ИНН", "fed_network": False,
+                "evidence": f"ИНН {inn} найден на сайте", "reachable": True}
+    fed = count_cities_mentioned(full) > 3
+    if fed:
+        return {"verdict": None, "fed_network": True,
+                "evidence": "федеральная сеть (>3 городов на сайте) — "
+                            "подтверждение только по ИНН, ИНН не найден",
+                "reachable": True}
+    roots = _CITY_ROOTS.get(city, [city.lower()[:8]])
+    if _addr_in_city(full, roots):
+        return {"verdict": "адрес", "fed_network": False,
+                "evidence": f"адрес организации в городе {city} "
+                            f"(контакт-блок/подвал)", "reachable": True}
+    return {"verdict": None, "fed_network": False,
+            "evidence": "ни ИНН, ни адрес в городе не найдены",
+            "reachable": True}
+
+
+def annul_translit_and_prior(db: sqlite3.Connection) -> dict:
+    """Аннулирование name-based назначений (заказчик, 2026-08-26):
+    650 транслитерации + 42 прежней базы. Сайт, суждения, позиции связи —
+    в NULL; статус «сайт не найден» до поисковой достройки."""
+    n = {"транслит": 0, "прежняя база": 0}
+    for src_like, key in (("транслитерация названия", "транслит"),
+                          ("прежняя база discovery", "прежняя база")):
+        n[key] = db.execute(
+            "UPDATE companies SET site=NULL, site_status=NULL, "
+            "site_source='аннулирован: назначение по названию (дефект 1)', "
+            "med_judgment=NULL, med_basis=NULL, profile_judgment=NULL, "
+            "profile_matches_n=NULL, profile_matches=NULL, positions_seen=NULL, "
+            "price_file_url=NULL, fetch_status='сайт не найден', "
+            "fetch_level=NULL, pages_seen=NULL "
+            "WHERE site_source=?", (src_like,)).rowcount
+    db.commit()
+    return n
+
+
+def recheck_spark_sites(db: sqlite3.Connection, budget_sec: float = 500,
+                        workers: int = 12) -> dict:
+    """Тройная перепроверка СПАРК-сайтов (не аннулируются заранее —
+    источник реестровый; получают грейд подтверждения). Идемпотентно:
+    берёт только домены без грейда тройной проверки."""
+    rows = list(db.execute(
+        "SELECT inn, name, city, site FROM companies WHERE site IS NOT NULL "
+        "AND site_source LIKE 'СПАРК%' "
+        "AND site_status NOT LIKE 'подтверждён%' "
+        "AND site_status NOT LIKE 'СПАРК, не подтверждён%'"))
+    by_dom: dict[str, list] = {}
+    for r in rows:
+        by_dom.setdefault(r[3], []).append(r)
+    t0 = time.time()
+    stats = {"ИНН": 0, "адрес": 0, "не подтверждён": 0, "федеральная сеть": 0,
+             "недоступен": 0, "done": 0}
+
+    def work(dom):
+        # домен скачивается один раз; каждая компания домена проверяется
+        # отдельно по своим ИНН/городу (сети — легитимный случай)
+        texts = fetch_contact_texts(dom)
+        return dom, [(inn, triple_check(dom, inn, city, pages_hint=texts))
+                     for inn, name, city, _d in by_dom[dom]]
+
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        doms = list(by_dom)
+        chunk = workers * 3
+        for i in range(0, len(doms), chunk):
+            if time.time() - t0 > budget_sec:
+                break
+            futs = {ex.submit(work, d): d for d in doms[i:i + chunk]}
+            for fut in cf.as_completed(futs):
+                dom, results = fut.result()
+                for inn, chk in results:
+                    if not chk["reachable"]:
+                        st, key = "СПАРК, не подтверждён (сайт недоступен при проверке)", "недоступен"
+                    elif chk["verdict"] == "ИНН":
+                        st, key = "подтверждён ИНН", "ИНН"
+                    elif chk["verdict"] == "адрес":
+                        st, key = "подтверждён адресом в городе", "адрес"
+                    elif chk["fed_network"]:
+                        st, key = "СПАРК, не подтверждён (федеральная сеть, ИНН не найден)", "федеральная сеть"
+                    else:
+                        st, key = "СПАРК, не подтверждён (ни ИНН, ни адрес)", "не подтверждён"
+                    stats[key] += 1
+                    db.execute("UPDATE companies SET site_status=? WHERE inn=?",
+                               (st, inn))
+                stats["done"] += 1
+                db.commit()
+    stats["left"] = len(by_dom) - stats["done"]
+    return stats
+
+
 # ── Шаг 2.1: проверка сайтов, указанных в СПАРК ──────────────────────────
 
 def verify_spark_sites(db: sqlite3.Connection, budget_sec: float = 500,
@@ -194,9 +361,11 @@ def match_prior_base(db: sqlite3.Connection) -> int:
 
 def build_sites_by_translit(db: sqlite3.Connection, budget_sec: float = 500,
                             workers: int = 12) -> dict:
-    """Компании без сайта: пробуем домены из названия. Подтверждение —
-    содержимое соответствует названию (не просто ответ 200). Идемпотентно:
-    site_source='транслит: не найден' помечает уже испробованных."""
+    """[ВЫВЕДЕНА ИЗ ФЛОУ — решение заказчика 2026-08-26, разбор дефектов
+    фазы 1]: вероятность ошибки — свойство метода (82 домена достались 218
+    компаниям разных городов; название — не признак). Все её назначения
+    аннулированы (annul_translit_and_prior). Замена — поисковая достройка
+    src/search_sites.py с тройной проверкой ИНН/адрес. Код сохранён."""
     # «Нерабочий или чужой — пометить, отправить на достройку»: компании
     # с отбитым СПАРК-сайтом ('СПАРК, отбит') тоже достраиваются
     rows = list(db.execute(
