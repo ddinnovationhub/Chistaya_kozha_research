@@ -1,4 +1,6 @@
-"""Discovery-исполнитель (этап 5) — реализация утверждённого промпта
+"""[ЧАСТИЧНО ВЫВЕДЕН — promt_spark_krug, 2026-08-25] Поисковый discovery отключён (вход — СПАРК, src/spark_import.py); open_db/CandidateQueue и таблица candidates живут — по ней работает шаг 2.3 достройки сайтов.
+
+Discovery-исполнитель (этап 5) — реализация утверждённого промпта
 prompts/05_discovery_executor.md (утв. заказчиком 2026-08-24).
 
 Producer из схемы producer/consumer: исполняет запросы, пишет кандидатов
