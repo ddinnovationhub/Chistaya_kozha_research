@@ -185,6 +185,11 @@ def test_a_markup_only_for_similar_or_undefined_profile():
     from src.phase1 import ensure_phase1_tables, export_a_markup
     from src.spark_import import ensure_companies_table
     import json, pathlib
+    import os, tempfile
+    cwd = os.getcwd()
+    tmp = tempfile.mkdtemp()
+    os.makedirs(os.path.join(tmp, "output"))
+    os.chdir(tmp)   # тест не должен трогать боевой output/ (такт 3)
     db = sq.connect(":memory:")
     ensure_companies_table(db)
     ensure_phase1_tables(db)
@@ -202,4 +207,4 @@ def test_a_markup_only_for_similar_or_undefined_profile():
     payload = json.loads(pathlib.Path(out).read_text(encoding="utf-8"))
     inns = {c["inn"] for c in payload["companies"]}
     assert inns == {"2000000001", "2000000002"}, inns
-    pathlib.Path(out).unlink()
+    os.chdir(cwd)
