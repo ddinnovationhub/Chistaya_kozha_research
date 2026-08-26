@@ -157,9 +157,11 @@ def run_phase1(db: sqlite3.Connection, budget_sec: float = 500,
     form_index = build_formulation_index()
     contours = load_contours()
     ck_index = load_ck_price_index()
+    # берутся все компании с рабочим/кандидатным сайтом: подтверждённые СПАРК,
+    # транслит (probe уже был), прежняя база (доступность проверит каскад)
     rows = list(db.execute(
         "SELECT inn, name, site FROM companies WHERE site IS NOT NULL "
-        "AND site_status LIKE 'ok%' AND fetch_status IS NULL"))
+        "AND fetch_status IS NULL"))
     by_dom: dict[str, list] = {}
     for inn, name, dom in rows:
         by_dom.setdefault(dom, []).append(inn)

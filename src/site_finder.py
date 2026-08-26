@@ -196,10 +196,11 @@ def build_sites_by_translit(db: sqlite3.Connection, budget_sec: float = 500,
     """Компании без сайта: пробуем домены из названия. Подтверждение —
     содержимое соответствует названию (не просто ответ 200). Идемпотентно:
     site_source='транслит: не найден' помечает уже испробованных."""
+    # «Нерабочий или чужой — пометить, отправить на достройку»: компании
+    # с отбитым СПАРК-сайтом ('СПАРК, отбит') тоже достраиваются
     rows = list(db.execute(
         "SELECT inn, name FROM companies WHERE site IS NULL "
-        "AND (site_source IS NULL OR site_source NOT LIKE 'транслит%') "
-        "AND (site_source IS NULL OR site_source != 'СПАРК, отбит')"))
+        "AND (site_source IS NULL OR site_source NOT LIKE 'транслит%')"))
     t0 = time.time()
     stats = {"found": 0, "tried": 0}
 
@@ -222,7 +223,9 @@ def build_sites_by_translit(db: sqlite3.Connection, budget_sec: float = 500,
             stats["tried"] += 1
             if dom:
                 stats["found"] += 1
-                db.execute("UPDATE companies SET site=?, site_status='не проверен', "
+                # probe уже подтвердил доступность и соответствие названию
+                db.execute("UPDATE companies SET site=?, "
+                           "site_status='ok (транслитерация, подтверждён содержимым)', "
                            "site_source='транслитерация названия' WHERE inn=?",
                            (dom, inn))
             else:
