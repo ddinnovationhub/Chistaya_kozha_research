@@ -50,6 +50,9 @@ def normalize_site_domain(url: str | None) -> str | None:
     if not url:
         return None
     u = str(url).strip().lower()
+    # СПАРК может отдать несколько сайтов через запятую/точку с запятой —
+    # берётся первый (такт 3: «helix72.ru, azbykamed.ru» давал домен с запятой)
+    u = re.split(r"[,;\s]+", u)[0]
     u = re.sub(r"^https?://", "", u).split("/")[0].split("?")[0]
     if u.startswith("www."):
         u = u[4:]

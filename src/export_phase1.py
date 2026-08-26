@@ -47,8 +47,11 @@ def recall_vs_spark(db: sqlite3.Connection) -> list[dict]:
                          .read_text(encoding="utf-8"))
     from src.site_finder import name_tokens
     from src.spark_import import normalize_site_domain
-    comps = list(db.execute("SELECT inn, name, site_spark, site, revenue_2025 "
-                            "FROM companies WHERE city='Новосибирск'"))
+    # поиск по ВСЕЙ выборке (такт 3: Skinerica найдена юрлицом «ЛАЗЕР БЬЮТИ»
+    # в Ростове — риск «юрадрес ≠ место деятельности» реален и виден только
+    # при поиске без фильтра города); город юрлица выводится в отчёт
+    comps = list(db.execute("SELECT inn, name, site_spark, site, revenue_2025, "
+                            "city FROM companies"))
     out = []
     for cl in ref["clinics"]:
         found, how = None, None
@@ -64,22 +67,24 @@ def recall_vs_spark(db: sqlite3.Connection) -> list[dict]:
             if row:
                 found, how = row, "по домену"
         if not found:
-            toks = set(name_tokens(cl["name"]))
+            # общий значимый токен ≥5 букв (такт 3: «Эликс» ↔ «КЛИНИКА ЭЛИКС» —
+            # строгий subset пропускал); пометка «проверить» — матч мягкий
+            toks = {t for t in name_tokens(cl["name"]) if len(t) >= 5}
             row = next((c for c in comps
-                        if toks and toks <= set(name_tokens(c[1]))), None)
+                        if toks & set(name_tokens(c[1]))), None)
             if row:
-                found, how = row, "по названию"
+                found, how = row, "по общему токену названия (проверить)"
+        city_note = ""
+        if found and found[5] != "Новосибирск":
+            city_note = f" — юрлицо в городе {found[5]} (риск «юрадрес ≠ место деятельности»)"
         out.append({"name": cl["name"], "site": cl.get("site"),
                     "inn": cl.get("inn"),
-                    "found": bool(found), "how": how,
+                    "found": bool(found), "how": (how + city_note) if how else None,
                     "matched": found[1] if found else None,
                     "reason_if_missing": None if found else
-                    "не установлено по имеющимся данным: ИП, юрлицо вне "
-                    "Новосибирска или выручка ниже порога (в файле recall "
-                    "нет ИНН/выручки для точной причины)"
-                    if not cl.get("inn") else
-                    "ИНН известен, в выборке отсутствует — юрлицо вне города "
-                    "или выручка ниже порога"})
+                    "в выборке СПАРК отсутствует: ИП, юрлицо под другим "
+                    "названием/городом или выручка ниже порога 20 млн "
+                    "(точную причину установит этап 7 по ИНН)"})
     return out
 
 
