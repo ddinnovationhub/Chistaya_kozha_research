@@ -82,10 +82,29 @@ def judge_company(pages: dict, form_index: dict, contours: dict,
         else:
             med, basis = "не медорганизация", "медицинских признаков на сайте нет (лицензия, врачи, приёмы отсутствуют)"
 
-    # ── Суждение Б: профиль похож — совпадения с прайсом ЧК и дерм-тегами ──
+    # ── Суждение Б: профиль похож — по позициям (см. judge_profile) ──
+    prof = judge_profile(data["services"], form_index, contours, ck_index,
+                         fuzzy_cutoff=fuzzy_cutoff)
+    return {"med": med, "med_basis": basis[:400],
+            "services": data["services"], **prof}
+
+
+def judge_profile(services: list[dict], form_index: dict, contours: dict,
+                  ck_index: dict, fuzzy_cutoff: float | None = 0.92) -> dict:
+    """Суждение Б — ПЕРЕСЧИТЫВАЕМОЕ по сохранённым позициям (без обхода).
+
+    Совпадение (такт 3, кейс alfa-clinic/alleya: точный матч со словарём
+    занижал — «Удаление невуса лазером» не совпадает дословно ни с прайсом
+    ЧК, ни со справочником): позиция профильная, если
+      точное/нечёткое совпадение с прайсом ЧК ИЛИ словарный дерм-тег ИЛИ
+      профильный якорь в названии (та же мера, которой меряют ворота этапа 6).
+    Порог — ФОРМУЛА ВОРОТ, принятая заказчиком: доля ≥30%, ЛИБО ≥15 позиций
+    при доле ≥15%, ЛИБО приём профильного врача в прайсе."""
+    from src.extract_site import (PROFILE_ANCHOR_RE,
+                                  profile_doctor_visit_in_services)
     matches = []
     seen = set()
-    for s in data["services"]:
+    for s in services:
         key = normalize_service_name(s["name"])
         if not key or key in seen:
             continue
@@ -94,18 +113,24 @@ def judge_company(pages: dict, form_index: dict, contours: dict,
             matches.append(s["name"])
             continue
         m1 = map_tier1(s["name"], form_index, fuzzy_cutoff=fuzzy_cutoff)
-        if m1 and contours.get(m1["tag"]) in _DERM:
+        if m1:
+            if contours.get(m1["tag"]) in _DERM:
+                matches.append(s["name"])
+            continue
+        if PROFILE_ANCHOR_RE.search(s["name"]):
             matches.append(s["name"])
     n, total = len(matches), len(seen)
+    doctor = profile_doctor_visit_in_services([s["name"] for s in services])
+    share = n / total if total else 0.0
     if total == 0:
         profile = "не определено"
-    elif n >= 15 or (total and n / total >= 0.30):
+    elif share >= 0.30 or (n >= 15 and share >= 0.15) or doctor:
         profile = "похож"
     else:
         profile = "не похож"
-    return {"med": med, "med_basis": basis[:400],
-            "profile": profile, "matches_n": n,
-            "matches": "; ".join(matches[:30]),
+    return {"profile": profile, "matches_n": n,
+            "matches": ("приём профильного врача: " + doctor[:80] + "; "
+                        if doctor else "") + "; ".join(matches[:30]),
             "positions_seen": total}
 
 
@@ -150,10 +175,21 @@ def crawl_light(domain: str, form_index: dict, max_extra: int = 4) -> tuple[dict
     return pages, info
 
 
+def ensure_phase1_tables(db: sqlite3.Connection):
+    """Позиции фазы 1 — СБОР (разделение сбора и суждений, 2026-08-25):
+    суждение Б пересчитывается по этой таблице без повторного обхода."""
+    db.execute("""CREATE TABLE IF NOT EXISTS phase1_positions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        domain TEXT, name_raw TEXT, price TEXT, page_url TEXT)""")
+    db.commit()
+
+
 def run_phase1(db: sqlite3.Connection, budget_sec: float = 500,
                workers: int = 8) -> dict:
     """Порция фазы 1 с чекпоинтом (fetch_status IS NULL = не обработан).
-    Один домен обходится один раз, результат — всем ИНН домена."""
+    Один домен обходится один раз, результат — всем ИНН домена.
+    Бюджет ограничивает ИСПОЛНЕНИЕ (подача пачками), не только подачу."""
+    ensure_phase1_tables(db)
     form_index = build_formulation_index()
     contours = load_contours()
     ck_index = load_ck_price_index()
@@ -167,7 +203,6 @@ def run_phase1(db: sqlite3.Connection, budget_sec: float = 500,
         by_dom.setdefault(dom, []).append(inn)
     doms = list(by_dom)
     t0 = time.time()
-    now = datetime.datetime.now().isoformat(timespec="seconds")
     stats = {"domains_done": 0, "companies_done": 0, "unreachable": 0}
 
     def work(dom):
@@ -176,17 +211,13 @@ def run_phase1(db: sqlite3.Connection, budget_sec: float = 500,
             return dom, None, info
         return dom, judge_company(pages, form_index, contours, ck_index), info
 
-    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
-        futs = []
-        for dom in doms:
-            if time.time() - t0 > budget_sec:
-                break
-            futs.append(ex.submit(work, dom))
-        for fut in cf.as_completed(futs):
+    def flush(fut_map):
+        for fut in cf.as_completed(fut_map):
             try:
                 dom, judged, info = fut.result()
             except Exception:  # noqa: BLE001 — домен не роняет порцию
                 continue
+            now = datetime.datetime.now().isoformat(timespec="seconds")
             inns = by_dom[dom]
             if judged is None:
                 stats["unreachable"] += 1
@@ -196,6 +227,11 @@ def run_phase1(db: sqlite3.Connection, budget_sec: float = 500,
                         "fetch_level=NULL, pages_seen=0, checked_at=? WHERE inn=?",
                         (now, inn))
             else:
+                db.execute("DELETE FROM phase1_positions WHERE domain=?", (dom,))
+                for s in judged["services"]:
+                    db.execute("INSERT INTO phase1_positions (domain, name_raw, "
+                               "price, page_url) VALUES (?,?,?,?)",
+                               (dom, s["name"], s.get("price"), s["page_url"]))
                 for inn in inns:
                     db.execute(
                         "UPDATE companies SET fetch_status='ok', fetch_level=?, "
@@ -210,13 +246,45 @@ def run_phase1(db: sqlite3.Connection, budget_sec: float = 500,
             stats["domains_done"] += 1
             stats["companies_done"] += len(inns)
             db.commit()
+
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        chunk = workers * 3
+        for i in range(0, len(doms), chunk):
+            if time.time() - t0 > budget_sec:
+                break
+            flush({ex.submit(work, d): d for d in doms[i:i + chunk]})
     stats["domains_left"] = len(doms) - stats["domains_done"]
     return stats
+
+
+def recompute_profile_judgments(db: sqlite3.Connection) -> int:
+    """Пересчёт суждения Б по сохранённым позициям — без обхода."""
+    ensure_phase1_tables(db)
+    form_index = build_formulation_index()
+    contours = load_contours()
+    ck_index = load_ck_price_index()
+    n = 0
+    for (dom,) in db.execute("SELECT DISTINCT domain FROM phase1_positions"):
+        services = [{"name": r[0], "price": r[1], "page_url": r[2]}
+                    for r in db.execute("SELECT name_raw, price, page_url "
+                                        "FROM phase1_positions WHERE domain=?",
+                                        (dom,))]
+        prof = judge_profile(services, form_index, contours, ck_index)
+        db.execute("UPDATE companies SET profile_judgment=?, profile_matches_n=?, "
+                   "profile_matches=?, positions_seen=? WHERE site=?",
+                   (prof["profile"], prof["matches_n"], prof["matches"],
+                    prof["positions_seen"], dom))
+        n += 1
+    db.commit()
+    return n
 
 
 if __name__ == "__main__":
     import sys
     con = sqlite3.connect("data/osint.db")
     con.execute("PRAGMA busy_timeout=15000")
-    budget = float(sys.argv[1]) if len(sys.argv) > 1 else 500
-    print("фаза 1:", run_phase1(con, budget))
+    if len(sys.argv) > 1 and sys.argv[1] == "rejudge":
+        print("пересчёт суждения Б:", recompute_profile_judgments(con))
+    else:
+        budget = float(sys.argv[1]) if len(sys.argv) > 1 else 500
+        print("фаза 1:", run_phase1(con, budget))

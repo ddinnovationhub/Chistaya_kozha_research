@@ -74,6 +74,23 @@ def test_phase1_judgments_med_and_profile():
     assert "Лицензия" in j["med_basis"] or "лицензия" in j["med_basis"]
     assert j["profile"] == "похож"        # 3 из 3 = 100% ≥ 30%
     assert j["matches_n"] >= 3 and "Дерматоскопия" in j["matches"]
+    assert j["services"]                  # позиции возвращаются для персиста
+
+
+def test_phase1_anchor_counts_like_gate():
+    """Такт 3 (кейс alfa-clinic): «Удаление невуса лазером» не совпадает
+    дословно ни с ЧК, ни со словарём — но это профильная позиция (якорь);
+    приём профильного врача делает профиль похожим по формуле ворот."""
+    from src.classify import load_contours
+    from src.phase1 import judge_profile
+    services = [{"name": "Удаление невуса лазером", "price": "900", "page_url": "u"},
+                {"name": "Приём врача-дерматовенеролога", "price": "1700", "page_url": "u"},
+                {"name": "Общий массаж спины", "price": "1500", "page_url": "u"},
+                {"name": "Приём терапевта", "price": "1500", "page_url": "u"}]
+    p = judge_profile(services, FORM_INDEX, load_contours(), {})
+    assert p["matches_n"] >= 2            # невус (якорь) + приём (словарь)
+    assert p["profile"] == "похож"        # 50% ≥ 30%, плюс профильный врач
+    assert "невуса" in p["matches"].lower()
 
 
 def test_phase1_judgments_nonmed_and_dissimilar():
