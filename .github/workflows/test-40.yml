@@ -1,0 +1,93 @@
+# ТЕСТ 20-40 СТРОК обновлённой базы (заказчик, 2026-08-27): весь конвейер
+# одной кнопкой — реестр лицензий РЗН → гибкая проверка сайтов из ячейки →
+# поисковая достройка (ключи из Secrets) → обход+паспорта+суждения → Excel.
+# Параметры: путь к файлу базы (лежит в data/) и число строк.
+name: test-40
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_file:
+        description: "Файл базы в репозитории (9 колонок пилота)"
+        required: true
+        default: "data/Выборка_компаний_V2.xlsx"
+      rows:
+        description: "Сколько первых строк взять"
+        required: true
+        default: "40"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-40
+  cancel-in-progress: false
+
+jobs:
+  t40:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    env:
+      YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+      YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Быстрые проверки
+        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py -q
+
+      - name: Импорт первых N строк
+        run: python -m src.test40 import "${{ inputs.base_file }}" "${{ inputs.rows }}"
+
+      - name: Реестр лицензий РЗН (по ИНН, пауза 3 с)
+        run: python -m src.test40 rzn 3600
+
+      - name: Сайты из ячейки СПАРК (гибкая навигация, бесплатно)
+        run: python -m src.test40 sites 3600
+
+      - name: Поисковая достройка ненайденных
+        run: python -m src.test40 search
+
+      - name: Обход + паспорта + суждения
+        run: python -m src.test40 judge 6000
+
+      - name: Выгрузка
+        run: python -m src.test40 export "${{ inputs.base_file }}"
+
+      - name: Чекпойнт как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-40-${{ github.run_id }}
+          path: |
+            data/osint.db
+            output/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Коммит результатов
+        if: always()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/ data/ PROGRESS.md
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "test-40: конвейер $(date +%F) (run ${{ github.run_id }})"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
