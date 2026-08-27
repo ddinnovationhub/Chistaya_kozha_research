@@ -43,13 +43,20 @@ def ensure_t40_tables(db: sqlite3.Connection):
         med_judgment TEXT, med_basis TEXT, mgmt_network TEXT,
         profile_judgment TEXT, profile_matches_n INTEGER,
         profile_matches TEXT, positions_seen INTEGER,
-        site_specialties TEXT, passport TEXT, checked_at TEXT);
+        site_specialties TEXT, passport TEXT, checked_at TEXT,
+        manual_site TEXT, manual_med TEXT, manual_profile TEXT,
+        manual_basis TEXT);
     CREATE TABLE IF NOT EXISTS t40_positions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         inn TEXT, domain TEXT, name_raw TEXT, price TEXT, page_url TEXT);
     CREATE TABLE IF NOT EXISTS t40_page_texts (
         inn TEXT, url TEXT, text_gz BLOB, PRIMARY KEY (inn, url));
     """)
+    # миграция 2026-08-27: эталонные колонки ручной разметки заказчика из V2
+    cols = {r[1] for r in db.execute("PRAGMA table_info(t40_companies)")}
+    for c in ("manual_site", "manual_med", "manual_profile", "manual_basis"):
+        if c not in cols:
+            db.execute(f"ALTER TABLE t40_companies ADD COLUMN {c} TEXT")
     db.commit()
 
 
@@ -67,6 +74,10 @@ def import_t40(path: str, db: sqlite3.Connection,
         if not r[1]:
             continue
         num, name, ogrn, sites, inn, region, industry, marker, revenue = r[:9]
+        # колонки 10-13 файла V2 — ручная разметка заказчика (эталон для
+        # сверки; в сам файл ничего не пишется — читаем и храним отдельно)
+        manual = [str(v).strip() if v not in (None, "") else None
+                  for v in (list(r[9:13]) + [None] * 4)[:4]]
         inn = str(inn).strip()
         stats["total"] += 1
         if not validate_inn(inn):
@@ -74,15 +85,19 @@ def import_t40(path: str, db: sqlite3.Connection,
             continue
         if split_site_cell(sites):
             stats["with_sites"] += 1
+        # OR IGNORE, не OR REPLACE: повторный импорт при перезапуске упавшего
+        # прогона НЕ затирает уже добытые сайты/суждения (требование
+        # заказчика: после краша продолжать с места, не с нуля)
         db.execute(
-            "INSERT OR REPLACE INTO t40_companies (row_no, inn, ogrn, name, "
-            "sites_raw, region, city, industry, okved_marker, revenue_2025) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?)",
+            "INSERT OR IGNORE INTO t40_companies (row_no, inn, ogrn, name, "
+            "sites_raw, region, city, industry, okved_marker, revenue_2025, "
+            "manual_site, manual_med, manual_profile, manual_basis) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (int(num) if num else i, inn, str(ogrn) if ogrn else None,
              str(name).strip(), str(sites) if sites else None, region,
              REGION_CITY.get(region, region), industry,
              str(marker) if marker is not None else None,
-             str(revenue) if revenue is not None else None))
+             str(revenue) if revenue is not None else None, *manual))
     db.commit()
     return stats
 
@@ -300,8 +315,9 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                 "РЗН: мед-лицензия", "РЗН: специальности из приложений",
                 "РЗН: адресов", "Найденный сайт", "Чем подтверждён",
                 "Суждение А (по сайту)", "Основание А",
-                "Суждение Б", "Специальности на сайте", "Статус"],
-           (6, 30, 13, 12, 16, 45, 9, 22, 20, 22, 50, 16, 30, 24))
+                "Суждение Б", "Специальности на сайте", "Статус",
+                "Вручную: мед?", "Вручную: профиль"],
+           (6, 30, 13, 12, 16, 45, 9, 22, 20, 22, 50, 16, 30, 24, 14, 22))
     r = 2
     for row in db.execute(
             "SELECT c.row_no, c.name, c.inn, c.city, "
@@ -312,7 +328,8 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             " WHERE l.inn=c.inn AND l.is_med=1), "
             "c.found_site, c.grade, c.med_judgment, c.med_basis, "
             "c.profile_judgment, c.site_specialties, "
-            "COALESCE(c.fetch_status, c.search_status, c.site_source, '—') "
+            "COALESCE(c.fetch_status, c.search_status, c.site_source, '—'), "
+            "c.manual_med, c.manual_profile "
             "FROM t40_companies c LEFT JOIN rzn_checked k ON k.inn=c.inn "
             "ORDER BY c.row_no"):
         vals = list(row)

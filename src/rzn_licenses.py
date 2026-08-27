@@ -63,10 +63,20 @@ SPECIALTY_ROOTS = [
 _MED_NUM_RE = re.compile(r"^Л041|^ЛО-")
 
 
-def make_client() -> httpx.Client:
+def make_client(retries: int = 3) -> httpx.Client | None:
+    """Клиент с кукой сессии. Сбой сети/прокси не роняет прогон:
+    3 попытки с паузой 20 с, затем None (батч фиксирует «запрос не удался»
+    и продолжается с этого места при следующем запуске)."""
     c = httpx.Client(headers=_HEADERS, timeout=40, follow_redirects=True)
-    c.get(RZN_URL, headers={"Accept": "text/html"})   # кука сессии
-    return c
+    for att in range(retries):
+        try:
+            c.get(RZN_URL, headers={"Accept": "text/html"})
+            return c
+        except Exception as e:  # noqa: BLE001 — прокси 502, таймаут, DNS
+            print(f"⚠ РЗН: сессия не открылась (попытка {att + 1}/{retries}): "
+                  f"{type(e).__name__}")
+            time.sleep(20)
+    return None
 
 
 def _lbl(row: dict, col: str) -> str | None:
@@ -189,6 +199,9 @@ def batch(db: sqlite3.Connection, table: str = "pilot_companies",
         f"SELECT c.inn FROM {table} c LEFT JOIN rzn_checked k ON k.inn=c.inn "
         f"WHERE k.inn IS NULL OR k.status='запрос не удался'")]
     client = make_client()
+    if client is None:
+        return {"стоп": "РЗН недоступен (сессия не открылась после ретраев) — "
+                        "прогон продолжится со следующего запуска"}
     t0 = time.time()
     stats = {"done": 0, "с лицензиями": 0, "с мед-лицензией": 0,
              "без лицензий": 0, "ошибок": 0}
@@ -196,6 +209,11 @@ def batch(db: sqlite3.Connection, table: str = "pilot_companies",
         if time.time() - t0 > budget_sec:
             break
         lics = fetch_licenses(inn, client)
+        if lics is None:   # разовый сбой: возможно, сессия протухла — новая
+            nc = make_client(retries=1)
+            if nc is not None:
+                client = nc
+                lics = fetch_licenses(inn, client)
         res = save_licenses(db, inn, lics)
         stats["done"] += 1
         if lics is None:

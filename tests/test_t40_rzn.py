@@ -124,3 +124,25 @@ def test_pdf_url_extraction():
     m = re.search(r"downloadlic=(\d+)", label)
     assert f"{RZN_URL}?downloadlic={m.group(1)}&pdf=1" == \
         "https://roszdravnadzor.gov.ru/services/licenses?downloadlic=753079&pdf=1"
+
+
+def test_import_resume_does_not_clobber(tmp_path):
+    """Краш-перезапуск: повторный импорт НЕ затирает добытые результаты."""
+    import openpyxl
+
+    from src.test40 import import_t40
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["№", "Наименование", "Рег", "Сайт", "ИНН", "Регион",
+               "Вид", "Маркер", "Выручка"])
+    ws.append([1, "КОМПАНИЯ, ООО", "1", "a.ru", "0273028277",
+               "Башкортостан (Республика)", "Мед", "1", 1])
+    f = tmp_path / "b.xlsx"
+    wb.save(f)
+    db = sqlite3.connect(":memory:")
+    import_t40(str(f), db, 40)
+    db.execute("UPDATE t40_companies SET found_site='a.ru', "
+               "med_judgment='медорганизация'")
+    import_t40(str(f), db, 40)   # перезапуск шага импорта
+    assert db.execute("SELECT found_site, med_judgment FROM t40_companies"
+                      ).fetchone() == ("a.ru", "медорганизация")
