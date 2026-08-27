@@ -65,10 +65,10 @@ PROVIDERS = {
         "url": "https://api.llm7.io/v1/chat/completions",
         "key_env": "LLM7_API_KEY",            # опционален (token.llm7.io)
         "keyless_ok": True,
-        "model": "minimax-m2.7",
-        # рассуждающая модель: «размышления» тарифицируются в max_tokens;
-        # 700 съедалось reasoning'ом и контент приходил пустым (тест-40)
-        "max_tokens": 4000,
+        # НЕ minimax (рассуждает вместо JSON) и НЕ gemini (401 без токена):
+        # без ключа стабильно отвечают mistral-Nemo и codestral (тест-40)
+        "model": "mistral-Nemo-Instruct-2407",
+        "max_tokens": 1500,
     },
     "groq": {
         "url": "https://api.groq.com/openai/v1/chat/completions",
@@ -107,26 +107,32 @@ def _parse_judge_json(text: str) -> dict | None:
 
 
 def judge_openai_compat(provider: str, name: str, city: str,
-                        passport: str) -> dict | None:
+                        passport: str, _retried: bool = False) -> dict | None:
     cfg = PROVIDERS[provider]
     key = os.environ.get(cfg["key_env"]) if cfg["key_env"] else None
     if not key and cfg["key_env"] and not cfg.get("keyless_ok"):
         print(f"⛔ {provider}: нет ключа {cfg['key_env']} в окружении")
         return None
-    r = httpx.post(cfg["url"], timeout=90,
-                   headers={"Authorization": f"Bearer {key}"} if key else {},
-                   json={"model": cfg["model"], "temperature": 0,
-                         "max_tokens": cfg.get("max_tokens", 700),
-                         "messages": [{"role": "user", "content":
-                                       JUDGE_PROMPT.format(
-                                           name=name, city=city,
-                                           passport=passport[:12000])}]})
+    try:
+        r = httpx.post(cfg["url"], timeout=90,
+                       headers={"Authorization": f"Bearer {key}"} if key else {},
+                       json={"model": cfg["model"], "temperature": 0,
+                             "max_tokens": cfg.get("max_tokens", 700),
+                             "messages": [{"role": "user", "content":
+                                           JUDGE_PROMPT.format(
+                                               name=name, city=city,
+                                               passport=passport[:12000])}]})
+    except Exception as e:  # noqa: BLE001 — таймаут/прокси не валят прогон
+        print(f"⚠ {provider}: сеть ({type(e).__name__}) — пропуск, "
+              f"строка останется на повторный заход")
+        return None
     if r.status_code in (401, 403):
         print(f"⛔ {provider}: ключ не подходит (код {r.status_code})")
         return None
-    if r.status_code == 429:
-        print(f"⚠ {provider}: лимит, жду 30 с"); time.sleep(30)
-        return judge_openai_compat(provider, name, city, passport)
+    if r.status_code in (429, 503) and not _retried:
+        print(f"⚠ {provider}: код {r.status_code} (лимит/перегруз), жду 30 с")
+        time.sleep(30)
+        return judge_openai_compat(provider, name, city, passport, _retried=True)
     if r.status_code != 200:
         print(f"⚠ {provider}: код {r.status_code}")
         return None
