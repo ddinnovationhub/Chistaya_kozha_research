@@ -138,6 +138,59 @@ _ALL_CITY_ROOTS = sorted({r for v in _CITY_ROOTS.values() for r in v})
 _CONTACT_PATHS = ("", "/kontakty", "/contacts", "/rekvizity", "/kontakty/",
                   "/o-nas", "/about")
 
+# ── ГИБКАЯ НАВИГАЦИЯ (заказчик, 2026-08-27: «нужно ориентироваться на
+# каждом сайте, а не тупо херачить по заранее подготовленным маршрутам»).
+# Эмпирика scratchpad/flexible_probe_test.py: на 27 доменах пилота, где
+# жёсткие пути дали НОЛЬ, выбор ссылок ПО ТЕКСТУ с главной подтвердил 8
+# (+30%). Сайт сам говорит, где его контакты: тексты ссылок «контакты /
+# реквизиты / о нас / политика конфиденциальности / оферта» ведут к
+# страницам с ИНН и адресом независимо от структуры URL. ─────────────────
+
+_CONTACT_LINK_RE = re.compile(
+    r"контакт|реквизит|о нас|о компании|о клинике|о центре|о заводе"
+    r"|политик|конфиденциальн|оферт|правовая информ|лиценз"
+    r"|documents|contacts|about|privacy|requisit", re.IGNORECASE)
+
+
+def flexible_contact_texts(domain: str, max_pages: int = 6,
+                           pause: float = 3.0) -> list[str]:
+    """Главная + страницы, выбранные по ТЕКСТУ ссылок главной (и по href как
+    резерв). Пауза между запросами внутри домена — правовой режим ≤1/3с."""
+    from urllib.parse import urljoin
+
+    from src.html_text import _soup, looks_like_html
+
+    def _get(url):
+        try:
+            r = httpx.get(url, timeout=10, headers=BROWSER_HEADERS,
+                          follow_redirects=True)
+            return r.text[:200000] if r.status_code < 400 and len(r.text) > 200 else None
+        except Exception:  # noqa: BLE001
+            return None
+
+    home = _get(f"https://{domain}") or _get(f"http://{domain}")
+    if not home:
+        return []
+    texts = [home]
+    if not looks_like_html(home):
+        return texts
+    links, seen = [], set()
+    for a in _soup(home).find_all("a", href=True):
+        label = a.get_text(" ", strip=True) or ""
+        if _CONTACT_LINK_RE.search(label) or _CONTACT_LINK_RE.search(a["href"]):
+            u = urljoin(f"https://{domain}/", a["href"]).split("#")[0]
+            if u not in seen and domain in u:
+                seen.add(u)
+                links.append(u)
+    for u in links:
+        if len(texts) >= max_pages:
+            break
+        time.sleep(pause)
+        t = _get(u)
+        if t:
+            texts.append(t)
+    return texts
+
 
 def _addr_in_city(text: str, city_roots: list[str]) -> bool:
     """Город в СВЯЗКЕ с адресным маркером (окно ±150 символов) —
