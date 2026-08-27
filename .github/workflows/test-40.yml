@@ -71,12 +71,13 @@ jobs:
               отсутствие ключа провайдера — пропуск с сообщением, не отказ)
         continue-on-error: true
         run: |
+          python -m src.llm_judge run kilo || true
+          python -m src.llm_judge run llm7 || true
           python -m src.llm_judge run yandexgpt || true
           python -m src.llm_judge run groq || true
           python -m src.llm_judge run openrouter || true
           python -m src.llm_judge run cerebras || true
-          python -m src.llm_judge gate yandexgpt || true
-          python -m src.llm_judge gate groq || true
+          for p in kilo llm7 yandexgpt groq; do python -m src.llm_judge gate $p || true; done
 
       - name: Выгрузка
         run: python -m src.test40 export "${{ inputs.base_file }}"

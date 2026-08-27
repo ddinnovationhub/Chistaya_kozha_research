@@ -51,7 +51,22 @@ JUDGE_PROMPT = """Ты — аналитик разведки рынка меди
 {passport}"""
 
 PROVIDERS = {
-    # OpenAI-совместимый chat.completions; модели — бесплатные тиры
+    # OpenAI-совместимый chat.completions; модели — бесплатные тиры.
+    # keyless: работают ВООБЩЕ без ключа (проверено живьём 2026-08-27:
+    # kilo-auto/free и llm7 minimax-m2.7 ответили 200 с корректным JSON
+    # из песочницы) — общие пулы с плавающими лимитами, поэтому пауза
+    # больше и обязателен гейт на эталоне.
+    "kilo": {
+        "url": "https://api.kilo.ai/api/gateway/chat/completions",
+        "key_env": None,                      # ключ не нужен
+        "model": "kilo-auto/free",
+    },
+    "llm7": {
+        "url": "https://api.llm7.io/v1/chat/completions",
+        "key_env": "LLM7_API_KEY",            # опционален (token.llm7.io)
+        "keyless_ok": True,
+        "model": "minimax-m2.7",
+    },
     "groq": {
         "url": "https://api.groq.com/openai/v1/chat/completions",
         "key_env": "GROQ_API_KEY",
@@ -91,13 +106,15 @@ def _parse_judge_json(text: str) -> dict | None:
 def judge_openai_compat(provider: str, name: str, city: str,
                         passport: str) -> dict | None:
     cfg = PROVIDERS[provider]
-    key = os.environ.get(cfg["key_env"])
-    if not key:
+    key = os.environ.get(cfg["key_env"]) if cfg["key_env"] else None
+    if not key and cfg["key_env"] and not cfg.get("keyless_ok"):
         print(f"⛔ {provider}: нет ключа {cfg['key_env']} в окружении")
         return None
     r = httpx.post(cfg["url"], timeout=90,
-                   headers={"Authorization": f"Bearer {key}"},
+                   headers={"Authorization": f"Bearer {key}"} if key else {},
                    json={"model": cfg["model"], "temperature": 0,
+                         "max_tokens": 700,   # JSON-ответ короткий; без лимита
+                                              # рассуждающие модели думают минутами
                          "messages": [{"role": "user", "content":
                                        JUDGE_PROMPT.format(
                                            name=name, city=city,
@@ -179,7 +196,8 @@ def run_provider(db: sqlite3.Connection, provider: str,
                     datetime.datetime.now().isoformat(timespec="seconds")))
         db.commit()
         stats["done"] += 1
-        time.sleep(2)
+        # бесключевые — общие пулы: пауза больше, чтобы не выжигать лимит
+        time.sleep(5 if provider in ("kilo", "llm7") else 2)
     return stats
 
 
@@ -212,4 +230,5 @@ if __name__ == "__main__":
         prov = sys.argv[2]
         gate_report(con, prov)
     else:
-        print("команды: run <yandexgpt|groq|openrouter|cerebras> | gate <провайдер>")
+        print("команды: run <kilo|llm7|yandexgpt|groq|openrouter|cerebras> | "
+              "gate <провайдер>  (kilo и llm7 — без ключа)")
