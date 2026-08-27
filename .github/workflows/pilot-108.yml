@@ -1,0 +1,73 @@
+# ПИЛОТ 108 (заказчик, 2026-08-26): поисковая достройка + обход + суждения
+# + выгрузка для 108 компаний без мед-ОКВЭД. Одна кнопка; ключи из Secrets.
+name: pilot-108
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pilot-108
+  cancel-in-progress: false
+
+jobs:
+  pilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    env:
+      YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+      YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Быстрые проверки
+        run: python -m pytest tests/test_spark_flow.py tests/test_pilot108.py -q
+
+      - name: Поисковая достройка (только строки без подтверждённого сайта)
+        run: python -m src.pilot108 search
+
+      - name: Обход найденных поиском + суждения
+        run: python -m src.pilot108 judge 6000
+
+      - name: Выгрузка пилота
+        run: python -m src.pilot108 export
+
+      - name: Чекпойнт как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pilot-108-${{ github.run_id }}
+          path: |
+            data/osint.db
+            output/
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Коммит результатов
+        if: always()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/ data/ PROGRESS.md
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "pilot-108: поиск+суждения $(date +%F) (run ${{ github.run_id }})"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
