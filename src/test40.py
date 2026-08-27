@@ -262,11 +262,26 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                         res = _check_candidates_flex(inn, name, city, extra,
                                                      license_addrs=addrs)
         if res is None:
-            # слой 3 (запасной): карточки карт
+            # слой 3 (запасной): карточки карт — прямые URL, а если ключ
+            # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
+            # сайт бренда достраивается веб-поиском; принадлежность юрлица
+            # к сайту сети подтверждает адрес лицензии
             from src.map_candidates import map_candidates
+            cards = map_candidates(name, city)
             maps = []
-            for u in map_candidates(name, city):
+            for u in cards["urls"]:
                 _add(u, into=maps)
+            if not maps and cards["brands"]:
+                brand = cards["brands"][0]
+                resp3 = yandex_search_raw(
+                    f"{brand} {city} официальный сайт", n=10)
+                if handle_api_response(resp3, "Яндекс Search API") is not None:
+                    stats["spent_rub"] += SEARCH_COST_RUB
+                    for r in parse_yandex_xml(base64.b64decode(
+                            resp3.json()["rawData"]).decode("utf-8")):
+                        _add(r.get("url"), into=maps)
+                        if len(maps) >= 4:
+                            break
             if maps:
                 res = _check_candidates_flex(inn, name, city, maps,
                                              license_addrs=addrs)

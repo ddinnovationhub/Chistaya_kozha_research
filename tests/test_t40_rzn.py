@@ -165,3 +165,19 @@ def test_license_addr_confirmation():
                        license_addrs=addrs)
     assert chk["verdict"] == "адрес лицензии"
     assert "дачная, 24" in chk["evidence"]
+
+
+def test_gis2_parse_urls_and_brands():
+    """Карточка 2ГИС: сайт из контактов; без разрешения contact_groups —
+    бренд/организация (обходной путь для демо-ключа, 2026-08-27)."""
+    from src.map_candidates import parse_gis2_items
+    full = [{"contact_groups": [{"contacts": [
+                {"type": "website", "url": "https://invitro.ru"},
+                {"type": "phone", "value": "+7..."}]}],
+             "brand": {"name": "ИНВИТРО"}}]
+    urls, brands = parse_gis2_items(full)
+    assert urls == ["https://invitro.ru"] and brands == ["ИНВИТРО"]
+    # демо-ключ: contact_groups вырезаны сервером, бренд остаётся
+    demo = [{"brand": {"name": "ИНВИТРО"}, "org": {"name": "ООО Инвитро-Т"}}]
+    urls2, brands2 = parse_gis2_items(demo)
+    assert urls2 == [] and brands2 == ["ИНВИТРО", "ООО Инвитро-Т"]

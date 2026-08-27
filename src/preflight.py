@@ -85,11 +85,18 @@ def check_maps() -> bool:
     else:
         _row("Яндекс Геопоиск (карты)", SKIP, "нет YANDEX_GEOSEARCH_API_KEY")
     if os.environ.get("DGIS_API_KEY"):
-        from src.map_candidates import gis2_urls
-        urls = gis2_urls("Инвитро", "Казань")
-        fail |= _row("2ГИС Каталог (карты)", OK if urls else FAIL,
-                     f"карточка вернула URL: {urls[0]}" if urls
-                     else "карточек с URL не вернулось")
+        from src.map_candidates import gis2_cards
+        cards = gis2_cards("Инвитро", "Казань")
+        if cards["urls"]:
+            _row("2ГИС Каталог (карты)", OK,
+                 f"карточка вернула URL: {cards['urls'][0]}")
+        elif cards["brands"]:
+            _row("2ГИС Каталог (карты)", OK,
+                 f"URL нет (ключ без разрешения contact_groups), но бренд "
+                 f"есть: {cards['brands'][0]} — обходной путь работает")
+        else:
+            fail |= _row("2ГИС Каталог (карты)", FAIL,
+                         "ни URL, ни брендов (лог выше)")
     else:
         _row("2ГИС Каталог (карты)", SKIP, "нет DGIS_API_KEY")
     return fail
