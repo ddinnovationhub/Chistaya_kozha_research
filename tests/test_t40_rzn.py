@@ -146,3 +146,22 @@ def test_import_resume_does_not_clobber(tmp_path):
     import_t40(str(f), db, 40)   # перезапуск шага импорта
     assert db.execute("SELECT found_site, med_judgment FROM t40_companies"
                       ).fetchone() == ("a.ru", "медорганизация")
+
+
+def test_license_addr_confirmation():
+    """Адрес точки из лицензии РЗН подтверждает сайт без ИНН (2026-08-27)."""
+    from src.site_finder import (license_addr_in_text, license_addr_patterns,
+                                 triple_check)
+    addrs = ["443013, Самарская область, г. Самара, Ленинский район, "
+             "улица Дачная, дом 24, 6 этаж, нежилое помещение № 33",
+             "443112, Самарская область, г. Самара, ул. Георгия Димитрова, "
+             "д. 90, 1 этаж, квартира 39"]
+    pats = license_addr_patterns(addrs)
+    assert ("дачная", "24") in pats and ("георгия димитрова", "90") in pats
+    page = "Наши клиники: г. Самара, ул. Дачная, 24. Телефон +7..."
+    assert license_addr_in_text(page, pats) == ("дачная", "24")
+    assert license_addr_in_text("ул. Дачная — история улицы", pats) is None
+    chk = triple_check("x.ru", "6315023806", "Самара", pages_hint=[page],
+                       license_addrs=addrs)
+    assert chk["verdict"] == "адрес лицензии"
+    assert "дачная, 24" in chk["evidence"]

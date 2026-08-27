@@ -53,8 +53,10 @@ def ensure_t40_tables(db: sqlite3.Connection):
         inn TEXT, url TEXT, text_gz BLOB, PRIMARY KEY (inn, url));
     """)
     # миграция 2026-08-27: эталонные колонки ручной разметки заказчика из V2
+    # + журнал кандидатов поиска (разбор «почему не нашли» — по логу)
     cols = {r[1] for r in db.execute("PRAGMA table_info(t40_companies)")}
-    for c in ("manual_site", "manual_med", "manual_profile", "manual_basis"):
+    for c in ("manual_site", "manual_med", "manual_profile", "manual_basis",
+              "search_candidates"):
         if c not in cols:
             db.execute(f"ALTER TABLE t40_companies ADD COLUMN {c} TEXT")
     db.commit()
@@ -103,19 +105,42 @@ def import_t40(path: str, db: sqlite3.Connection,
 
 
 def _check_candidates_flex(inn: str, name: str, city: str,
-                           candidates: list[str]) -> tuple[str, str, str] | None:
-    """Лестница пилота (ИНН → адрес в городе + соответствие названию),
-    но страницы собираются ГИБКОЙ навигацией по тексту ссылок —
-    эмпирика 2026-08-27: +8 подтверждений из 27 отказов жёстких путей."""
+                           candidates: list[str],
+                           license_addrs: list[str] | None = None
+                           ) -> tuple[str, str, str] | None:
+    """Лестница: ИНН → адрес точки из лицензии РЗН (заказчик, 2026-08-27:
+    у клиник без ИНН на сайте адреса лицензии есть в контактах — кейс
+    А2МЕД САМАРА) → адрес в городе + соответствие названию. Страницы —
+    гибкой навигацией по тексту ссылок (+8/27 к жёстким путям)."""
+    from src.html_text import html_to_text
     from src.site_finder import (content_matches_name, flexible_contact_texts,
                                  triple_check)
     for dom in candidates:
         texts = flexible_contact_texts(dom)
         if not texts:
             continue
-        chk = triple_check(dom, inn, city, pages_hint=texts)
+        # SPA-эскалация (кейс a2med.ru, 2026-08-27): httpx видит пустую
+        # JS-оболочку без адресов — тонкого кандидата добирают Jina
+        # (рендерит JS; с JINA_API_KEY работает и с датацентровых IP),
+        # затем Playwright
+        if sum(len(html_to_text(t)) for t in texts) < 2500:
+            try:
+                from src.fetch_cascade import _level1_jina, _level3_headless
+                t1 = _level1_jina(f"https://{dom}")[0]
+                if t1:
+                    texts.append(t1)
+                else:
+                    t3 = _level3_headless(f"https://{dom}")[0]
+                    if t3:
+                        texts.append(t3)
+            except Exception:  # noqa: BLE001 — эскалация не валит проверку
+                pass
+        chk = triple_check(dom, inn, city, pages_hint=texts,
+                           license_addrs=license_addrs)
         if chk["verdict"] == "ИНН":
             return dom, "подтверждён ИНН", chk["evidence"]
+        if chk["verdict"] == "адрес лицензии":
+            return dom, "подтверждён адресом лицензии", chk["evidence"]
         if chk["verdict"] == "адрес" and content_matches_name(
                 " ".join(texts), name):
             return dom, "подтверждён адресом", (
@@ -134,10 +159,14 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
     t0 = time.time()
     stats = {"confirmed_inn": 0, "confirmed_addr": 0, "no": 0}
 
+    from src.rzn_licenses import license_addresses
+    addrs = {r[0]: license_addresses(db, r[0]) for r in rows}
+
     def work(item):
         inn, name, city, sites = item
         return inn, _check_candidates_flex(inn, name, city,
-                                           split_site_cell(sites)[:3])
+                                           split_site_cell(sites)[:3],
+                                           license_addrs=addrs.get(inn))
 
     with cf.ThreadPoolExecutor(max_workers=workers) as ex:
         chunk = workers * 2
@@ -173,6 +202,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     from src.dedup import normalize_domain
     from src.discovery import is_aggregator_domain, parse_yandex_xml
     from src.pilot108 import SEARCH_COST_RUB
+    from src.rzn_licenses import license_addresses
     rows = list(db.execute(
         "SELECT inn, name, city FROM t40_companies WHERE found_site IS NULL "
         "AND search_status IS NULL"))
@@ -196,7 +226,9 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                 cands.append(dom)
             if len(cands) >= 5:
                 break
-        res = _check_candidates_flex(inn, name, city, cands)
+        res = _check_candidates_flex(inn, name, city, cands,
+                                     license_addrs=license_addresses(db, inn))
+        cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
         if res:
             dom, grade, ev = res
             key = "found_inn" if "ИНН" in grade else "found_addr"
@@ -204,12 +236,13 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
             db.execute("UPDATE t40_companies SET found_site=?, grade=?, "
                        "grade_evidence=?, site_source='поиск (название+город, "
                        "гибкая навигация)', search_attempts=?, "
-                       "search_status='найден' WHERE inn=?",
-                       (dom, grade, ev[:300], len(cands), inn))
+                       "search_candidates=?, search_status='найден' WHERE inn=?",
+                       (dom, grade, ev[:300], len(cands), cand_log, inn))
         else:
             stats["not_found"] += 1
             db.execute("UPDATE t40_companies SET search_status='сайт не найден', "
-                       "search_attempts=? WHERE inn=?", (len(cands), inn))
+                       "search_attempts=?, search_candidates=? WHERE inn=?",
+                       (len(cands), cand_log, inn))
         stats["done"] += 1
         db.commit()
         time.sleep(1)

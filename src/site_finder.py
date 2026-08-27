@@ -192,6 +192,48 @@ def flexible_contact_texts(domain: str, max_pages: int = 6,
     return texts
 
 
+# ── Адрес места деятельности ИЗ ЛИЦЕНЗИИ РЗН (заказчик, 2026-08-27):
+# «улица + дом» из приложения лицензии, найденные на сайте, подтверждают
+# связь компания↔сайт не хуже ИНН — у многих клиник ИНН на сайте нет,
+# а адреса точек в контактах есть (кейс А2МЕД САМАРА). ─────────────────────
+
+_LIC_STREET_RE = re.compile(
+    r"(?:ул\.?|улица|просп\w*|пр-т|пер\.?|переулок|шоссе|ш\.|б-р|бульвар"
+    r"|наб\.?|набережная|проезд|линия|тракт|дорога)\s*\.?\s*"
+    r"([А-ЯЁ][А-ЯЁа-яё0-9\- .]{2,40}?)\s*,")
+_LIC_HOUSE_RE = re.compile(r"\b(?:д\.?|дом)\s*(\d+\s*[а-яА-Я]?(?:\s*/\s*\d+)?)")
+
+
+def license_addr_patterns(addresses: list[str]) -> list[tuple[str, str]]:
+    """Адреса лицензии → пары (улица, дом) для поиска на сайте."""
+    out, seen = [], set()
+    for a in addresses:
+        sm = _LIC_STREET_RE.search(a)
+        hm = _LIC_HOUSE_RE.search(a)
+        if not (sm and hm):
+            continue
+        street = sm.group(1).strip(" .").lower()
+        house = re.sub(r"\s+", "", hm.group(1)).lower()
+        if len(street) >= 4 and (street, house) not in seen:
+            seen.add((street, house))
+            out.append((street, house))
+    return out
+
+
+def license_addr_in_text(text: str, patterns: list[tuple[str, str]]
+                         ) -> tuple[str, str] | None:
+    """Первая пара «улица + дом» из лицензии, найденная на странице:
+    улица дословно, номер дома в окне ±120 символов от неё."""
+    low = text.lower()
+    for street, house in patterns:
+        for m in re.finditer(re.escape(street), low):
+            window = low[max(0, m.start() - 120):m.end() + 120]
+            h = house.replace("/", r"\s*/\s*")
+            if re.search(rf"\b{h}\b", window):
+                return street, house
+    return None
+
+
 def _addr_in_city(text: str, city_roots: list[str]) -> bool:
     """Город в СВЯЗКЕ с адресным маркером (окно ±150 символов) —
     признак адреса организации, а не упоминания города в тексте."""
@@ -227,10 +269,13 @@ def fetch_contact_texts(domain: str) -> list[str]:
 
 
 def triple_check(domain: str, inn: str, city: str,
-                 pages_hint: list[str] | None = None) -> dict:
+                 pages_hint: list[str] | None = None,
+                 license_addrs: list[str] | None = None) -> dict:
     """Проверка связи компания↔домен. Возвращает
-    {'verdict': 'ИНН'|'адрес'|None, 'fed_network': bool, 'evidence': str,
-     'reachable': bool}. pages_hint — уже скачанные тексты (сети/тесты)."""
+    {'verdict': 'ИНН'|'адрес лицензии'|'адрес'|None, 'fed_network': bool,
+     'evidence': str, 'reachable': bool}. pages_hint — уже скачанные тексты;
+    license_addrs — адреса мест деятельности из лицензий РЗН (сигнал
+    уровня ИНН: точный адрес точки, работает и для федеральных сетей)."""
     texts = pages_hint if pages_hint is not None else fetch_contact_texts(domain)
     if not texts:
         return {"verdict": None, "fed_network": False,
@@ -239,6 +284,13 @@ def triple_check(domain: str, inn: str, city: str,
     if re.search(rf"(?<!\d){re.escape(inn)}(?!\d)", full):
         return {"verdict": "ИНН", "fed_network": False,
                 "evidence": f"ИНН {inn} найден на сайте", "reachable": True}
+    if license_addrs:
+        hit = license_addr_in_text(full, license_addr_patterns(license_addrs))
+        if hit:
+            return {"verdict": "адрес лицензии", "fed_network": False,
+                    "evidence": f"адрес места деятельности из лицензии РЗН "
+                                f"(«{hit[0]}, {hit[1]}») найден на сайте",
+                    "reachable": True}
     fed = count_cities_mentioned(full) > 3
     if fed:
         return {"verdict": None, "fed_network": True,

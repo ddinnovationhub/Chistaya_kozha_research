@@ -190,6 +190,23 @@ def save_licenses(db: sqlite3.Connection, inn: str,
     return {"status": "проверен", "licenses": len(lics), "med": med_n}
 
 
+def license_addresses(db: sqlite3.Connection, inn: str) -> list[str]:
+    """Адреса мест деятельности из приложений лицензий ИНН (мед — первыми).
+    Сигнал для подтверждения сайта (заказчик, 2026-08-27: у клиник без ИНН
+    на сайте адреса точек из лицензии — в контактах)."""
+    out, seen = [], set()
+    for is_med, raw in db.execute(
+            "SELECT is_med, raw_gz FROM rzn_licenses WHERE inn=? "
+            "ORDER BY is_med DESC", (inn,)):
+        lic = json.loads(zlib.decompress(raw))
+        for o in lic.get("objects", []):
+            a = (o.get("address") or "").strip()
+            if a and a not in seen:
+                seen.add(a)
+                out.append(a)
+    return out
+
+
 def batch(db: sqlite3.Connection, table: str = "pilot_companies",
           budget_sec: float = 3600) -> dict:
     """Массовый прогон по ИНН таблицы (идемпотентно: пропускает проверенные;
