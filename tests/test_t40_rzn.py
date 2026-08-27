@@ -181,3 +181,20 @@ def test_gis2_parse_urls_and_brands():
     demo = [{"brand": {"name": "ИНВИТРО"}, "org": {"name": "ООО Инвитро-Т"}}]
     urls2, brands2 = parse_gis2_items(demo)
     assert urls2 == [] and brands2 == ["ИНВИТРО", "ООО Инвитро-Т"]
+
+
+def test_foreign_inn_blocks_address_confirmation():
+    """Кейс АДРЕМ→smitra.ru (заказчик, 2026-08-27): чужой ИНН на сайте
+    блокирует адресные подтверждения — соседняя клиника не сливается."""
+    from src.site_finder import triple_check
+    page = ("Клиника Смитра, г. Новосибирск, ул. Геодезическая, 2/1. "
+            "Реквизиты: ООО «Смитра», ИНН 5403334455")
+    chk = triple_check("smitra.ru", "5404465184", "Новосибирск",
+                       pages_hint=[page],
+                       license_addrs=["г. Новосибирск, ул. Геодезическая, д. 2/1"])
+    assert chk["verdict"] is None
+    assert "другого юрлица" in chk["evidence"]
+    # свой ИНН на сайте — подтверждение работает как раньше
+    chk2 = triple_check("x.ru", "5404465184", "Новосибирск",
+                        pages_hint=["ИНН 5404465184, ул. Геодезическая, 2/1"])
+    assert chk2["verdict"] == "ИНН"

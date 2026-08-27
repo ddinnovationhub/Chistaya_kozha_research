@@ -284,6 +284,21 @@ def triple_check(domain: str, inn: str, city: str,
     if re.search(rf"(?<!\d){re.escape(inn)}(?!\d)", full):
         return {"verdict": "ИНН", "fed_network": False,
                 "evidence": f"ИНН {inn} найден на сайте", "reachable": True}
+    # ОТРИЦАТЕЛЬНЫЙ ПРИЗНАК (заказчик, 2026-08-27, кейс АДРЕМ→smitra.ru):
+    # на сайте опубликованы реквизиты ДРУГОГО юрлица, нашего ИНН нет —
+    # адресные подтверждения блокируются (соседняя клиника на той же улице
+    # проходит по адресу; «пустая ячейка честнее неверной»)
+    foreign = None
+    for m in re.finditer(r"ИНН[:\s№]{0,4}(\d[\d\s]{8,12}\d)", full):
+        digits = re.sub(r"\s", "", m.group(1))
+        if len(digits) in (10, 12) and digits != inn:
+            foreign = digits
+            break
+    if foreign:
+        return {"verdict": None, "fed_network": False,
+                "evidence": f"на сайте реквизиты другого юрлица (ИНН {foreign}"
+                            f") — адресные признаки не применяются",
+                "reachable": True}
     if license_addrs:
         hit = license_addr_in_text(full, license_addr_patterns(license_addrs))
         if hit:
