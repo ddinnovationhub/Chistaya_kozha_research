@@ -73,6 +73,28 @@ def check_yandex_search() -> bool:
     return _row("Яндекс Search API", FAIL, f"код {r.status_code}")
 
 
+def check_maps() -> bool:
+    """Карточные каналы (Яндекс Геопоиск / 2ГИС) — кандидаты сайтов из карт."""
+    fail = False
+    if os.environ.get("YANDEX_GEOSEARCH_API_KEY"):
+        from src.map_candidates import yandex_map_urls
+        urls = yandex_map_urls("Инвитро", "Казань")
+        fail |= _row("Яндекс Геопоиск (карты)", OK if urls else FAIL,
+                     f"карточка вернула URL: {urls[0]}" if urls
+                     else "карточек с URL не вернулось")
+    else:
+        _row("Яндекс Геопоиск (карты)", SKIP, "нет YANDEX_GEOSEARCH_API_KEY")
+    if os.environ.get("DGIS_API_KEY"):
+        from src.map_candidates import gis2_urls
+        urls = gis2_urls("Инвитро", "Казань")
+        fail |= _row("2ГИС Каталог (карты)", OK if urls else FAIL,
+                     f"карточка вернула URL: {urls[0]}" if urls
+                     else "карточек с URL не вернулось")
+    else:
+        _row("2ГИС Каталог (карты)", SKIP, "нет DGIS_API_KEY")
+    return fail
+
+
 def check_playwright() -> bool:
     try:
         from playwright.sync_api import sync_playwright
@@ -92,6 +114,7 @@ def main() -> int:
     failures += check_rzn()
     failures += check_yandex_search()
     failures += check_jina()
+    failures += check_maps()
     failures += check_playwright()
     for prov in ("kilo", "llm7", "yandexgpt", "groq", "openrouter", "cerebras"):
         failures += check_judge(prov)
