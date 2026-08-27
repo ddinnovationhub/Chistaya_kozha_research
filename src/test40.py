@@ -349,8 +349,8 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                 "РЗН: адресов", "Найденный сайт", "Чем подтверждён",
                 "Суждение А (по сайту)", "Основание А",
                 "Суждение Б", "Специальности на сайте", "Статус",
-                "Вручную: мед?", "Вручную: профиль"],
-           (6, 30, 13, 12, 16, 45, 9, 22, 20, 22, 50, 16, 30, 24, 14, 22))
+                "Вручную: мед?", "Вручную: профиль", "Консенсус контуров"],
+           (6, 30, 13, 12, 16, 45, 9, 22, 20, 22, 50, 16, 30, 24, 14, 22, 30))
     r = 2
     for row in db.execute(
             "SELECT c.row_no, c.name, c.inn, c.city, "
@@ -369,6 +369,26 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
         n_med = vals[4]
         vals[4] = ("нет данных" if n_med is None
                    else f"есть ({n_med})" if n_med else "нет")
+        # Консенсус НЕЗАВИСИМЫХ контуров (реестр / судьи по сайту): контуры
+        # не смешиваются в суждении (независимость — ценность), сходимость
+        # считается постфактум и прозрачно
+        inn = vals[2]
+        judges = [j[0] for j in db.execute(
+            "SELECT judgment FROM llm_judgments WHERE inn=?", (inn,))]
+        med_votes = sum(1 for j in judges if j == "медорганизация")
+        reg_med = bool(n_med)
+        if judges and reg_med and med_votes == len(judges):
+            cons = f"единогласно мед (реестр + {len(judges)} судьи)"
+        elif judges and not reg_med and med_votes == 0:
+            cons = f"единогласно НЕ мед (реестр + {len(judges)} судьи)"
+        elif not judges:
+            cons = ("только реестр: мед-лицензия есть" if reg_med
+                    else "только реестр: лицензий нет" if n_med is not None
+                    else "данных нет")
+        else:
+            cons = (f"РАСХОЖДЕНИЕ: реестр {'мед' if reg_med else 'не мед'}, "
+                    f"судьи мед {med_votes}/{len(judges)} — на ручную")
+        vals.append(cons)
         for c, v in enumerate(vals, 1):
             cell = ws.cell(r, c, v if v is not None else "")
             cell.font = ARIAL
