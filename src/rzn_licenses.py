@@ -88,6 +88,11 @@ def fetch_licenses(inn: str, client: httpx.Client) -> list[dict] | None:
         return None
     out = []
     for row in data:
+        # такт 3: q_no ищет и по номеру лицензии, и по названию — чужая
+        # строка с совпавшими цифрами отбрасывается сверкой ИНН ответа
+        row_inn = ((row.get("col7") or {}).get("label") or "").strip()
+        if row_inn and row_inn != inn:
+            continue
         objs = []
         for o in row.get("objects") or []:
             objs.append({
