@@ -31,6 +31,9 @@ jobs:
       YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
       YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
       JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,6 +66,17 @@ jobs:
 
       - name: Обход + паспорта + суждения
         run: python -m src.test40 judge 6000
+
+      - name: Судьи-нейронки по паспортам (обязательное условие заказчика;
+              отсутствие ключа провайдера — пропуск с сообщением, не отказ)
+        continue-on-error: true
+        run: |
+          python -m src.llm_judge run yandexgpt || true
+          python -m src.llm_judge run groq || true
+          python -m src.llm_judge run openrouter || true
+          python -m src.llm_judge run cerebras || true
+          python -m src.llm_judge gate yandexgpt || true
+          python -m src.llm_judge gate groq || true
 
       - name: Выгрузка
         run: python -m src.test40 export "${{ inputs.base_file }}"

@@ -103,3 +103,24 @@ def test_import_t40_first_n(tmp_path):
     assert db.execute("SELECT COUNT(*) FROM t40_companies").fetchone()[0] == 3
     assert db.execute("SELECT city FROM t40_companies LIMIT 1"
                       ).fetchone()[0] == "Уфа"
+
+
+def test_parse_judge_json():
+    from src.llm_judge import _parse_judge_json
+    ok = _parse_judge_json('Вот ответ: {"суждение_А": "медорганизация", '
+                           '"профиль": ["дерматология"], "основание": "Приём '
+                           'дерматолога — 1 500 ₽"}')
+    assert ok["суждение_А"] == "медорганизация"
+    assert ok["профиль"] == ["дерматология"]
+    # невалидный исход отбрасывается, а не пишется
+    assert _parse_judge_json('{"суждение_А": "наверное клиника"}') is None
+    assert _parse_judge_json("не json") is None
+
+
+def test_pdf_url_extraction():
+    from src.rzn_licenses import RZN_URL
+    import re
+    label = ('<a class="getfile" href="?downloadlic=753079&pdf=1">PDF</a>')
+    m = re.search(r"downloadlic=(\d+)", label)
+    assert f"{RZN_URL}?downloadlic={m.group(1)}&pdf=1" == \
+        "https://roszdravnadzor.gov.ru/services/licenses?downloadlic=753079&pdf=1"

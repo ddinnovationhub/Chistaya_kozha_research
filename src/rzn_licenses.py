@@ -102,7 +102,13 @@ def fetch_licenses(inn: str, client: httpx.Client) -> list[dict] | None:
                 "activity": (o.get("activity") or "").strip(),
             })
         num = _lbl(row, "col1") or _lbl(row, "col9")
+        # col19 — ссылка на официальную выписку (ZIP: PDF + .sig, ЭЦП);
+        # работает прямым GET без сессии — первоисточник для выборочной
+        # проверки заказчика (решение 2026-08-27)
+        m = re.search(r"downloadlic=(\d+)", (row.get("col19") or {}).get("label") or "")
+        pdf_url = (f"{RZN_URL}?downloadlic={m.group(1)}&pdf=1" if m else None)
         out.append({
+            "pdf_url": pdf_url,
             "number": num,
             "date": _lbl(row, "col2"),
             "licensee": _lbl(row, "col3"),
@@ -132,6 +138,11 @@ def ensure_tables(db: sqlite3.Connection):
         is_med INTEGER, objects_n INTEGER, specialties TEXT,
         raw_gz BLOB, source_url TEXT, checked_at TEXT,
         PRIMARY KEY (inn, number));
+    """)
+    cols = {r[1] for r in db.execute("PRAGMA table_info(rzn_licenses)")}
+    if "pdf_url" not in cols:   # миграция 2026-08-27: ссылка на выписку
+        db.execute("ALTER TABLE rzn_licenses ADD COLUMN pdf_url TEXT")
+    db.executescript("""
     CREATE TABLE IF NOT EXISTS rzn_checked (
         inn TEXT PRIMARY KEY, status TEXT, licenses_n INTEGER,
         med_licenses_n INTEGER, checked_at TEXT);
@@ -154,13 +165,15 @@ def save_licenses(db: sqlite3.Connection, inn: str,
         if lic["is_med"]:
             med_n += 1
         db.execute(
-            "INSERT OR REPLACE INTO rzn_licenses VALUES "
-            "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            "INSERT OR REPLACE INTO rzn_licenses (inn, number, date, licensee, "
+            "authority, ogrn, valid_to, annulled, terminated, is_med, "
+            "objects_n, specialties, raw_gz, source_url, checked_at, pdf_url) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (inn, lic["number"], lic["date"], lic["licensee"], lic["authority"],
              lic["ogrn"], lic["valid_to"], lic["annulled"], lic["terminated"],
              int(lic["is_med"]), len(lic["objects"]), ", ".join(specs),
              zlib.compress(json.dumps(lic, ensure_ascii=False).encode("utf-8")),
-             RZN_URL, now))
+             RZN_URL, now, lic.get("pdf_url")))
     db.execute("INSERT OR REPLACE INTO rzn_checked VALUES (?,?,?,?,?)",
                (inn, "проверен", len(lics), med_n, now))
     db.commit()

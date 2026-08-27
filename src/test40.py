@@ -325,22 +325,35 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         r += 1
 
-    # ── Лицензии РЗН: по одной строке на лицензию ──
+    # ── Лицензии РЗН: по одной строке на лицензию; последняя колонка —
+    # гиперссылка на официальную выписку (ZIP: PDF + ЭЦП) для выборочной
+    # проверки первоисточника (заказчик, 2026-08-27) ──
     ws = wb.create_sheet("Лицензии_РЗН")
     _sheet(ws, ["ИНН", "Компания (лицензиат)", "Номер", "Дата", "Мед",
                 "Действие", "Аннулирована", "Прекращена", "Адресов",
-                "Специальности из приложений", "Орган"],
-           (13, 32, 24, 11, 6, 12, 14, 14, 9, 60, 30))
+                "Специальности из приложений", "Орган",
+                "Выписка (первоисточник)"],
+           (13, 32, 24, 11, 6, 12, 14, 14, 9, 60, 30, 26))
     r = 2
     for row in db.execute(
             "SELECT inn, licensee, number, date, "
             "CASE is_med WHEN 1 THEN 'да' ELSE '' END, valid_to, annulled, "
-            "terminated, objects_n, specialties, authority FROM rzn_licenses "
+            "terminated, objects_n, specialties, authority, pdf_url "
+            "FROM rzn_licenses "
             "WHERE inn IN (SELECT inn FROM t40_companies) ORDER BY inn"):
-        for c, v in enumerate(row, 1):
+        for c, v in enumerate(row[:-1], 1):
             cell = ws.cell(r, c, v if v is not None else "")
             cell.font = ARIAL
             cell.alignment = Alignment(vertical="top", wrap_text=True)
+        link = ws.cell(r, 12)
+        if row[-1]:
+            link.value = "скачать выписку (PDF+ЭЦП)"
+            link.hyperlink = row[-1]
+            link.font = Font(name="Arial", size=10, color="0563C1",
+                             underline="single")
+        else:
+            link.value = "ссылка не сохранена (сбор до 2026-08-27)"
+            link.font = ARIAL
         r += 1
 
     # ── Паспорта сайтов: сырьё для ручной проверки суждений ──
@@ -356,6 +369,26 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             cell.font = ARIAL
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         r += 1
+
+    # ── Судьи-нейронки: суждения провайдеров рядом с правилами ──
+    if db.execute("SELECT name FROM sqlite_master WHERE name='llm_judgments'"
+                  ).fetchone():
+        ws = wb.create_sheet("Судьи_нейронки")
+        _sheet(ws, ["№", "Название", "ИНН", "Судья", "Суждение А (судья)",
+                    "Суждение А (правила)", "Профиль (судья)",
+                    "Основание судьи (цитата)"],
+               (6, 28, 13, 12, 22, 22, 30, 70))
+        r = 2
+        for row in db.execute(
+                "SELECT c.row_no, c.name, c.inn, j.provider, j.judgment, "
+                "c.med_judgment, j.profile, j.basis FROM llm_judgments j "
+                "JOIN t40_companies c ON c.inn=j.inn "
+                "ORDER BY c.row_no, j.provider"):
+            for c, v in enumerate(row, 1):
+                cell = ws.cell(r, c, v if v is not None else "")
+                cell.font = ARIAL
+                cell.alignment = Alignment(vertical="top", wrap_text=True)
+            r += 1
 
     # ── Полные колонки: 9 исходных + все рабочие ──
     src_wb = openpyxl.load_workbook(src_path, read_only=True, data_only=True)
