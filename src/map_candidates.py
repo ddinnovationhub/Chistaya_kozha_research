@@ -56,14 +56,25 @@ def gis2_urls(name: str, city: str, n: int = 3) -> list[str]:
         return []
     try:
         r = httpx.get("https://catalog.api.2gis.com/3.0/items",
-                      params={"q": f"{name} {city}",
+                      params={"q": f"{name} {city}", "page_size": 5,
                               "fields": "items.contact_groups", "key": key},
                       timeout=20)
         if r.status_code != 200:
-            print(f"⚠ 2ГИС: код {r.status_code}")
+            print(f"⚠ 2ГИС: код {r.status_code}: {r.text[:200]}")
             return []
+        data = r.json()
+        # диагностика (preflight 2026-08-27: «карточек не вернулось» без
+        # причины): 2ГИС кладёт ошибку в meta при HTTP 200
+        meta = data.get("meta") or {}
+        if meta.get("error"):
+            print(f"⚠ 2ГИС meta.error: "
+                  f"{str(meta['error'])[:250]}")
+            return []
+        items = (data.get("result") or {}).get("items", [])
+        if not items:
+            print(f"⚠ 2ГИС: items пуст; meta={str(meta)[:200]}")
         out = []
-        for item in (r.json().get("result") or {}).get("items", []):
+        for item in items:
             for grp in item.get("contact_groups") or []:
                 for c in grp.get("contacts") or []:
                     if c.get("type") == "website":
@@ -72,6 +83,10 @@ def gis2_urls(name: str, city: str, n: int = 3) -> list[str]:
                             out.append(url)
             if len(out) >= n:
                 break
+        if items and not out:
+            # карточки есть, а сайтов нет — показать, что реально пришло
+            print(f"⚠ 2ГИС: {len(items)} карточек без website; ключи первой: "
+                  f"{sorted(items[0].keys())[:12]}")
         return out[:n]
     except Exception as e:  # noqa: BLE001
         print(f"⚠ 2ГИС: {type(e).__name__}")
