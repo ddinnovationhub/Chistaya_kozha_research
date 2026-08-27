@@ -66,6 +66,9 @@ PROVIDERS = {
         "key_env": "LLM7_API_KEY",            # опционален (token.llm7.io)
         "keyless_ok": True,
         "model": "minimax-m2.7",
+        # рассуждающая модель: «размышления» тарифицируются в max_tokens;
+        # 700 съедалось reasoning'ом и контент приходил пустым (тест-40)
+        "max_tokens": 4000,
     },
     "groq": {
         "url": "https://api.groq.com/openai/v1/chat/completions",
@@ -113,8 +116,7 @@ def judge_openai_compat(provider: str, name: str, city: str,
     r = httpx.post(cfg["url"], timeout=90,
                    headers={"Authorization": f"Bearer {key}"} if key else {},
                    json={"model": cfg["model"], "temperature": 0,
-                         "max_tokens": 700,   # JSON-ответ короткий; без лимита
-                                              # рассуждающие модели думают минутами
+                         "max_tokens": cfg.get("max_tokens", 700),
                          "messages": [{"role": "user", "content":
                                        JUDGE_PROMPT.format(
                                            name=name, city=city,
@@ -128,7 +130,12 @@ def judge_openai_compat(provider: str, name: str, city: str,
     if r.status_code != 200:
         print(f"⚠ {provider}: код {r.status_code}")
         return None
-    return _parse_judge_json(r.json()["choices"][0]["message"]["content"])
+    content = r.json()["choices"][0]["message"]["content"] or ""
+    res = _parse_judge_json(content)
+    if res is None:   # диагностика: молчаливый отказ парсера скрывал причину
+        print(f"⚠ {provider}: ответ не распознан ({len(content)} симв.): "
+              f"{content[:120]!r}")
+    return res
 
 
 def judge_yandexgpt(name: str, city: str, passport: str) -> dict | None:
