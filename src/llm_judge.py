@@ -73,7 +73,10 @@ PROVIDERS = {
     "groq": {
         "url": "https://api.groq.com/openai/v1/chat/completions",
         "key_env": "GROQ_API_KEY",
-        "model": "llama-3.3-70b-versatile",
+        # llama-3.3-70b выведена Groq 2026-08-16 (404 в тест-40);
+        # актуальный ID из каталога free-coding-models
+        "model": "openai/gpt-oss-120b",
+        "max_tokens": 2000,
     },
     "openrouter": {
         "url": "https://openrouter.ai/api/v1/chat/completions",
