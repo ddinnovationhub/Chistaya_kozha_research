@@ -136,7 +136,12 @@ def judge_openai_compat(provider: str, name: str, city: str,
     if r.status_code != 200:
         print(f"⚠ {provider}: код {r.status_code}")
         return None
-    content = r.json()["choices"][0]["message"]["content"] or ""
+    try:   # 200 с телом-ошибкой без 'content' не валит прогон (kilo, тест-40)
+        content = (r.json().get("choices") or [{}])[0].get(
+            "message", {}).get("content") or ""
+    except Exception:  # noqa: BLE001
+        print(f"⚠ {provider}: 200, но тело не разобрать: {r.text[:120]!r}")
+        return None
     res = _parse_judge_json(content)
     if res is None:   # диагностика: молчаливый отказ парсера скрывал причину
         print(f"⚠ {provider}: ответ не распознан ({len(content)} симв.): "
