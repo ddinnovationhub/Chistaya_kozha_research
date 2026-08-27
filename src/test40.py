@@ -215,33 +215,35 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
         addrs = license_addresses(db, inn)
         cands, seen = [], set()
 
-        def _add(url_or_dom):
+        def _add(url_or_dom, into=None):
+            """Кандидат в слой into (и всегда в cands — сквозной журнал)."""
             dom = normalize_domain(url_or_dom or "")
             if dom and dom not in seen and not is_aggregator_domain(dom):
                 seen.add(dom)
                 cands.append(dom)
+                if into is not None:
+                    into.append(dom)
 
-        # 1) КАРТОЧКИ КАРТ — первыми (заказчик, 2026-08-27: сайт из карточки
-        # Яндекс.Карт/2ГИС; берём только URL, подтверждение — лестницей;
-        # кейс франчайзи: сайт бренда подтверждается адресом лицензии)
-        from src.map_candidates import map_candidates
-        for u in map_candidates(name, city):
-            _add(u)
-        # 2) веб-поиск «{название} {город}»
+        # ПОРЯДОК СЛОЁВ (заказчик, 2026-08-27: «карты внедряем только в тот
+        # слой, где ранее оговоренными методами сайт найти не удалось»):
+        # 1) веб-поиск «{название} {город}» → 2) веб-запрос по адресу
+        # лицензии → 3) КАРТОЧКИ КАРТ (Яндекс Геопоиск / 2ГИС) — последний
+        # запасной слой; из карточки берётся только URL, подтверждение той
+        # же лестницей (кейс франчайзи: сайт бренда + адрес лицензии)
         resp = yandex_search_raw(f"{name} {city}", n=10)
         if handle_api_response(resp, "Яндекс Search API") is None:
             continue
         stats["spent_rub"] += SEARCH_COST_RUB
         for r in parse_yandex_xml(
                 base64.b64decode(resp.json()["rawData"]).decode("utf-8")):
-            if len(cands) >= 8:
+            if len(cands) >= 5:
                 break
             _add(r.get("url"))
-        res = _check_candidates_flex(inn, name, city, cands[:8],
+        res = _check_candidates_flex(inn, name, city, list(cands),
                                      license_addrs=addrs)
-        # 3) не нашлось — запасной веб-запрос по АДРЕСУ ЛИЦЕНЗИИ: клиника
-        # может зваться на сайте иначе, чем юрлицо, а адрес точки уникален
         if res is None and addrs:
+            # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
+            # а адрес точки из лицензии уникален
             from src.site_finder import license_addr_patterns
             pats = license_addr_patterns(addrs)
             if pats:
@@ -253,16 +255,21 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                     extra = []
                     for r in parse_yandex_xml(base64.b64decode(
                             resp2.json()["rawData"]).decode("utf-8")):
-                        dom = normalize_domain(r.get("url") or "")
-                        if dom and dom not in seen and not is_aggregator_domain(dom):
-                            seen.add(dom)
-                            extra.append(dom)
+                        _add(r.get("url"), into=extra)
                         if len(extra) >= 4:
                             break
                     if extra:
                         res = _check_candidates_flex(inn, name, city, extra,
                                                      license_addrs=addrs)
-                        cands.extend(extra)
+        if res is None:
+            # слой 3 (запасной): карточки карт
+            from src.map_candidates import map_candidates
+            maps = []
+            for u in map_candidates(name, city):
+                _add(u, into=maps)
+            if maps:
+                res = _check_candidates_flex(inn, name, city, maps,
+                                             license_addrs=addrs)
         cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
         if res:
             dom, grade, ev = res
