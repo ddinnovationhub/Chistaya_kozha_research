@@ -1,0 +1,31 @@
+# ПРЕДПОЛЁТНАЯ ПРОВЕРКА ключей и инструментов (заказчик, 2026-08-27).
+# Одна кнопка, ~2 мин, стоимость ~0.52 ₽ (1 запрос Яндекс-поиска).
+# Печатает таблицу: инструмент | работает/нет | деталь. Ключи не печатаются.
+name: preflight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+      YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Зависимости
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+      - name: Предполётная проверка
+        run: python -m src.preflight
