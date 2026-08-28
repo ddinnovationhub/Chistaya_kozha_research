@@ -172,6 +172,20 @@ def sitemap_price_urls(domain: str, delay: float, cap: int = 10) -> list[str]:
     return urls
 
 
+def html_to_text(html: str) -> str:
+    """Видимый текст страницы построчно. Парсер работает ТОЛЬКО по нему:
+    в сыром HTML название и цена разделены тегами (дефект обкатки №1 —
+    навигатор находил /price, а парсер брал 0-1 позицию из исходника)."""
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+        for tag in soup(["script", "style", "noscript"]):
+            tag.decompose()
+        return soup.get_text("\n")
+    except Exception:  # noqa: BLE001
+        return html
+
+
 def page_links(html: str, base_url: str) -> list[tuple[str, str]]:
     """(текст, абсолютный href) всех ссылок; шапка/меню/футер естественно
     попадают — они в HTML любой страницы."""
@@ -200,12 +214,12 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
         queue.append((85, 0, u, "sitemap"))
     visited, files, price_pages, route = set(), [], [], []
     ts = time.strftime("%Y-%m-%d %H:%M")
-    host = domain.lower().lstrip("www.")
+    host = re.sub(r"^www\.", "", domain.lower())
     while queue and len(visited) < max_pages:
         queue.sort(key=lambda x: -x[0])
         score, depth, url, label = queue.pop(0)
-        if url in visited or urlparse(url).netloc.lower().lstrip(
-                "www.") != host:
+        if url in visited or re.sub(
+                r"^www\.", "", urlparse(url).netloc.lower()) != host:
             continue
         visited.add(url)
         r = polite_get(url, delay)
@@ -215,8 +229,8 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
         if not r:
             continue
         route.append({"url": url[:300], "label": label[:80], "depth": depth})
-        text_prices = len(_PRICE_LINE.findall(r.text))
-        if text_prices >= 30 and url not in price_pages:
+        text_prices = len(_PRICE_LINE.findall(html_to_text(r.text)))
+        if text_prices >= 15 and url not in price_pages:
             price_pages.append(url)               # страница-прайс найдена
         for lbl, href in page_links(r.text, url):
             s = link_scent(lbl, href)
@@ -369,7 +383,11 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         if not r:
             continue
         METER["files_downloaded"] += 1
-        got = parse_price_file(r.content, f.rsplit(".", 1)[-1][:4])
+        try:                                       # кривой файл ≠ смерть
+            got = parse_price_file(r.content, f.rsplit(".", 1)[-1][:4])
+        except Exception as e:  # noqa: BLE001
+            print(f"    ⚠ файл {f[:80]}: {type(e).__name__} — пропущен")
+            continue
         if len(got) > len(items):
             items, src_url, level = got, f, "P2:документ"
     if not items:                                  # P3 — страница
@@ -378,7 +396,7 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         from src.fetch_cascade import _level1_jina
         for pu in pages[:3]:
             r = polite_get(pu, delay)
-            got = parse_price_text(r.text) if r else []
+            got = parse_price_text(html_to_text(r.text)) if r else []
             if len(got) < 20:                      # детектор полноты → Jina
                 jt, _, _ = _level1_jina(pu)
                 METER["jina_requests"] += 1
@@ -418,8 +436,11 @@ def run_batch(db: sqlite3.Connection, limit: int = 40) -> list[dict]:
         "AND NOT EXISTS (SELECT 1 FROM price_recipes r "
         "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе')) "
         "ORDER BY c.row_no LIMIT ?", (limit,)).fetchall()
-    out = []
+    out, seen_domains = [], set()
     for inn, site in rows:
+        if site in seen_domains:                   # один домен — один разбор
+            continue
+        seen_domains.add(site)
         t0 = time.time()
         res = run_company(db, inn, site)
         print(f"  {site}: {res['status']} ({res.get('items', 0)} позиций, "
