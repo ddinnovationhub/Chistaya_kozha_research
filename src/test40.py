@@ -51,6 +51,12 @@ def ensure_t40_tables(db: sqlite3.Connection):
         inn TEXT, domain TEXT, name_raw TEXT, price TEXT, page_url TEXT);
     CREATE TABLE IF NOT EXISTS t40_page_texts (
         inn TEXT, url TEXT, text_gz BLOB, PRIMARY KEY (inn, url));
+    -- ручные отклонения заказчика (2026-08-28, кейс АДРЕМ→smitra.ru
+    -- переподтвердился после сброса): пара ИНН↔домен из этого списка
+    -- НИКОГДА не подтверждается повторно, никаким признаком
+    CREATE TABLE IF NOT EXISTS manual_rejects (
+        inn TEXT, domain TEXT, reason TEXT, rejected_at TEXT,
+        PRIMARY KEY (inn, domain));
     """)
     # миграция 2026-08-27: эталонные колонки ручной разметки заказчика из V2
     # + журнал кандидатов поиска (разбор «почему не нашли» — по логу)
@@ -104,6 +110,17 @@ def import_t40(path: str, db: sqlite3.Connection,
     return stats
 
 
+def _rejected_domains(inn: str) -> set[str]:
+    db = sqlite3.connect("data/osint.db")
+    try:
+        return {r[0] for r in db.execute(
+            "SELECT domain FROM manual_rejects WHERE inn=?", (inn,))}
+    except sqlite3.OperationalError:   # таблицы ещё нет (тесты в :memory:)
+        return set()
+    finally:
+        db.close()
+
+
 def _check_candidates_flex(inn: str, name: str, city: str,
                            candidates: list[str],
                            license_addrs: list[str] | None = None
@@ -115,7 +132,10 @@ def _check_candidates_flex(inn: str, name: str, city: str,
     from src.html_text import html_to_text
     from src.site_finder import (content_matches_name, flexible_contact_texts,
                                  triple_check)
+    rejected = _rejected_domains(inn)
     for dom in candidates:
+        if dom in rejected:
+            continue   # отклонён заказчиком вручную — не переподтверждаем
         texts = flexible_contact_texts(dom)
         if not texts:
             continue
