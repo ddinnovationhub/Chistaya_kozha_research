@@ -45,7 +45,7 @@ _SCENT_HIGH = re.compile(
     r"прайс|price|цены|цена|стоимост|тариф|платн\w{0,3}\s+услуг", re.I)
 _SCENT_MID = re.compile(r"пациент|услуг|оплат|посетител|клиент", re.I)
 _URL_HIGH = re.compile(
-    r"/price|/ceny|/cens|/tarif|/stoimost|/platn|/oplata|price-?list", re.I)
+    r"/price|/ceny|/cens|/pra[ij]s|/tarif|/stoimost|/platn|/oplata|price-?list", re.I)
 _FILE_EXT = re.compile(r"\.(pdf|xlsx?|docx?)([?#]|$)", re.I)
 _SKIP_URL = re.compile(
     r"\.(jpe?g|png|gif|svg|webp|css|js|ico|mp4|zip)([?#]|$)"
@@ -53,7 +53,7 @@ _SKIP_URL = re.compile(
 
 _PRICE_LINE = re.compile(r"(\d[\d\s ]{1,9})\s*(?:руб|₽|р\.)", re.I)
 _PRICE_ONLY = re.compile(
-    r"^[\d\s .,]*(?:у\.?\s?е\.?[\s/]*)?[\d\s .,]+\s*"
+    r"^(?:от|до)?\s*[\d\s .,]*(?:у\.?\s?е\.?[\s/]*)?[\d\s .,]+\s*"
     r"(?:руб\.?|₽|р\.)\s*$", re.I)
 _CODE_LINE = re.compile(r"^[A-ZА-Я]{2,10}[\d.-]{1,8}$")
 _FROM_RANGE = re.compile(r"\bот\b|\bдо\b|[-–—]\s*\d", re.I)
@@ -196,8 +196,8 @@ def page_links(html: str, base_url: str) -> list[tuple[str, str]]:
         return []
     out, seen = [], set()
     for a in soup.find_all("a", href=True):
-        href = urljoin(base_url, a["href"])
-        if href in seen:
+        href = urljoin(base_url, a["href"]).split("#", 1)[0]
+        if not href or href in seen:
             continue
         seen.add(href)
         out.append((a.get_text(" ", strip=True)[:120], href))
@@ -315,7 +315,10 @@ def parse_price_text(text: str) -> list[dict]:
                               "price_value": val, "currency": cur})
             pending_code = pending_name = None
         elif has_name:
-            pending_name = ln                      # кандидат пары/триплета
+            if pending_name and len(ln) < 20 and not _CODE_LINE.match(ln):
+                pending_name = f"{pending_name}, {ln}"  # уточнение («1 зуба»)
+            else:
+                pending_name = ln                  # кандидат пары/триплета
     return items
 
 
