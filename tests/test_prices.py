@@ -94,3 +94,20 @@ def test_price_value_parsing():
     assert parse_price_value("1500 ₽")[0] == 1500
     assert parse_price_value("от 1 000 руб")[0] is None      # вилка
     assert parse_price_value("1000-2000 руб")[0] is None     # диапазон
+
+
+def test_parse_html_tables_naked_prices():
+    """Кейс azbuka-samara (заказчик, пачка 1): таблица «Услуга | Цена» с
+    голыми числами без «руб»; телефоны не принимаются за цены."""
+    from src.prices import parse_html_tables
+    html = """<table>
+    <tr><th>Услуга</th><th>Цена</th></tr>
+    <tr><td>Прием дерматовенеролога первичный</td><td>1 200</td></tr>
+    <tr><td>Удаление новообразований</td><td>от 200 до 800</td></tr>
+    <tr><td>Регистратура</td><td>8 (846) 231-27-04</td></tr>
+    </table>"""
+    items = parse_html_tables(html)
+    assert len(items) == 2                       # телефон отброшен
+    assert items[0]["price_value"] == 1200
+    assert items[1]["price_value"] is None       # вилка — дословно
+    assert "от 200 до 800" in items[1]["price_raw"]

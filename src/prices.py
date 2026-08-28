@@ -229,15 +229,23 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
         if not r:
             continue
         route.append({"url": url[:300], "label": label[:80], "depth": depth})
-        text_prices = len(_PRICE_LINE.findall(html_to_text(r.text)))
-        if text_prices >= 15 and url not in price_pages:
+        text_prices = (len(_PRICE_LINE.findall(html_to_text(r.text)))
+                       + len(parse_html_tables(r.text)))
+        if text_prices >= 8 and url not in price_pages:
             price_pages.append(url)               # страница-прайс найдена
+        on_services = bool(re.search(r"/uslugi|/servic|/napravlen", url, re.I))
         for lbl, href in page_links(r.text, url):
             s = link_scent(lbl, href)
+            # кейс azbuka-samara (заказчик): цены живут на подстраницах
+            # раздела «Услуги» без прайс-слов в якорях — детям раздела
+            # услуг даётся минимальный запах, чтобы обход туда спустился
+            if (s == 0 and on_services
+                    and re.search(r"/uslugi|/servic|/napravlen", href, re.I)):
+                s = 20
             if s >= 100:
                 if href not in files:
                     files.append(href)            # документ — терминал
-            elif s >= 30 and depth + 1 <= max_depth and href not in visited:
+            elif s >= 20 and depth + 1 <= max_depth and href not in visited:
                 queue.append((s, depth + 1, href, lbl))
         if files:
             break                                  # документ первичен
@@ -311,39 +319,108 @@ def parse_price_text(text: str) -> list[dict]:
     return items
 
 
+def _table_row(items: list, section: str, row: tuple) -> str:
+    """Одна строка таблицы (xlsx/xls/таблица PDF) → позиция или раздел.
+    Возвращает актуальный раздел."""
+    cells = [c for c in row if c is not None and str(c).strip()]
+    texts = [str(c).strip() for c in cells if not isinstance(c, (int, float))]
+    nums = [c for c in cells if isinstance(c, (int, float))]
+    if not nums:                        # цена бывает текстом «1 500 руб»
+        for t in list(texts):
+            v, _ = parse_price_value(t)
+            if v is not None and _PRICE_ONLY.match(t):
+                nums.append(v)
+                texts.remove(t)
+    if len(texts) == 1 and not nums and len(texts[0]) > 7:
+        return texts[0][:200]
+    if texts and nums:
+        name = max(texts, key=len)
+        if re.search(r"[а-яА-ЯёЁ]{4}", name):
+            items.append({"section": section, "code": "", "name": name[:300],
+                          "price_raw": str(nums[-1])[:60],
+                          "price_value": float(nums[-1]), "currency": "RUB"})
+    return section
+
+
+_NAKED_PRICE = re.compile(r"^\d{2,7}$")
+_NAKED_RANGE = re.compile(r"^(?:от\s*)?\d[\d\s ]{0,8}(?:[-–—]|до)\s*"
+                          r"\d[\d\s ]{0,8}(?:руб\.?|₽)?$", re.I)
+
+
+def parse_html_tables(html: str) -> list[dict]:
+    """Таблицы «Услуга | Цена» с ГОЛЫМИ числами без «руб» (кейс
+    azbuka-samara, заказчик: «от 200 до 800», «100-500»). Голые числа
+    безопасны только в табличном контексте; телефоны отсекаются длиной
+    (≤7 цифр) и форматом."""
+    try:
+        from bs4 import BeautifulSoup
+        soup = BeautifulSoup(html, "html.parser")
+    except Exception:  # noqa: BLE001
+        return []
+    items = []
+    for table in soup.find_all("table"):
+        for tr in table.find_all("tr"):
+            cells = [td.get_text(" ", strip=True)
+                     for td in tr.find_all(["td", "th"])]
+            cells = [c for c in cells if c]
+            if len(cells) < 2:
+                continue
+            names = [c for c in cells if re.search(r"[а-яА-ЯёЁ]{4}", c)
+                     and not _PRICE_LINE.search(c)]
+            prices = []
+            for c in cells:
+                flat = re.sub(r"[\s ]", "", c)
+                if (_NAKED_PRICE.match(flat) or _NAKED_RANGE.match(c)
+                        or _PRICE_ONLY.match(c)):
+                    prices.append(c)
+            if names and prices:
+                raw = prices[-1]
+                flat = re.sub(r"[\s ]", "", raw)
+                val = (float(flat) if _NAKED_PRICE.match(flat)
+                       else parse_price_value(raw)[0])
+                items.append({"section": "", "code": "",
+                              "name": max(names, key=len)[:300],
+                              "price_raw": raw[:60], "price_value": val,
+                              "currency": "RUB"})
+    return items
+
+
 def parse_price_file(data: bytes, ext: str) -> list[dict]:
-    """PDF/XLSX → позиции. .doc честно отдаётся в лабораторию."""
+    """PDF/XLSX/.xls → позиции. .doc честно отдаётся в лабораторию."""
+    import io
     ext = ext.lower().lstrip(".")
     if ext == "pdf":
-        import io
         import pdfplumber
-        text = []
+        text, items, section = [], [], ""
         with pdfplumber.open(io.BytesIO(data)) as pdf:
             for page in pdf.pages[:80]:
                 text.append(page.extract_text() or "")
-        return parse_price_text("\n".join(text))
+            got = parse_price_text("\n".join(text))
+            if len(got) >= 10:
+                return got
+            # текстовый слой слаб (кейс avicenna72: 1 позиция) → таблицы PDF
+            for page in pdf.pages[:80]:
+                for tbl in page.extract_tables() or []:
+                    for row in tbl:
+                        section = _table_row(items, section, tuple(row))
+        return items if len(items) > len(got) else got
     if ext in ("xlsx", "xls"):
-        import io
+        items, section = [], ""
+        if data[:4] == b"\xd0\xcf\x11\xe0":        # старый .xls (OLE), не zip
+            import xlrd                             # кейс avismed (заказчик)
+            book = xlrd.open_workbook(file_contents=data)
+            for sh in book.sheets():
+                for i in range(sh.nrows):
+                    row = tuple(c if str(c).strip() != "" else None
+                                for c in sh.row_values(i))
+                    section = _table_row(items, section, row)
+            return items
         import openpyxl
         wb = openpyxl.load_workbook(io.BytesIO(data), read_only=True,
                                     data_only=True)
-        items, section = [], ""
         for ws in wb.worksheets:
             for row in ws.iter_rows(values_only=True):
-                cells = [c for c in row if c is not None]
-                texts = [str(c).strip() for c in cells
-                         if isinstance(c, str) and str(c).strip()]
-                nums = [c for c in cells if isinstance(c, (int, float))]
-                if len(texts) == 1 and not nums and len(texts[0]) > 7:
-                    section = texts[0][:200]
-                elif texts and nums:
-                    name = max(texts, key=len)
-                    if re.search(r"[а-яА-ЯёЁ]{4}", name):
-                        items.append({"section": section, "code": "",
-                                      "name": name[:300],
-                                      "price_raw": str(nums[-1]),
-                                      "price_value": float(nums[-1]),
-                                      "currency": "RUB"})
+                section = _table_row(items, section, row)
         return items
     return []
 
@@ -390,13 +467,16 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
             continue
         if len(got) > len(items):
             items, src_url, level = got, f, "P2:документ"
-    if not items:                                  # P3 — страница
+    if not items:                                  # P3 — страницы (сумма!)
         pages = nav["price_pages"] or [f"https://{domain}/price/",
                                        f"https://{domain}/ceny/"]
         from src.fetch_cascade import _level1_jina
-        for pu in pages[:3]:
-            r = polite_get(pu, delay)
+        seen_keys = set()                          # прайс бывает размазан по
+        for pu in pages[:6]:                       # страницам (кейс azbuka) —
+            r = polite_get(pu, delay)              # суммируем, не берём одну
             got = parse_price_text(html_to_text(r.text)) if r else []
+            if r:                                  # + таблицы с голыми числами
+                got.extend(parse_html_tables(r.text))
             if len(got) < 20:                      # детектор полноты → Jina
                 jt, _, _ = _level1_jina(pu)
                 METER["jina_requests"] += 1
@@ -405,8 +485,13 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                 if len(got2) > len(got):
                     got = got2
                     level = "P3:jina"
-            if len(got) > len(items):
-                items, src_url = got, pu
+            fresh = [g for g in got
+                     if (g["name"], g["price_raw"]) not in seen_keys]
+            for g in fresh:
+                seen_keys.add((g["name"], g["price_raw"]))
+            if fresh:
+                items.extend(fresh)
+                src_url = src_url or pu
                 level = level or "P3:статика"
     if items:
         _save_items(db, inn, domain, src_url, items)
@@ -430,9 +515,17 @@ def run_batch(db: sqlite3.Connection, limit: int = 40) -> list[dict]:
     """Обкатка: первые N компаний с найденным сайтом (потом — по фильтру
     заказчика). Чекпойнт подомённо, перезапуск продолжает с места."""
     ensure_price_tables(db)
+    # ФИЛЬТР ЗАКАЗЧИКА (2026-08-28, разбор пачки 1): в прайс-контур идут
+    # ТОЛЬКО компании, в чьей мед-лицензии есть дерматовенерология и/или
+    # онкология и/или косметология. Искать прайсы заведомо непрофильных —
+    # бессмысленная трата времени и лимитов (130 из 200 в пачке 1).
     rows = db.execute(
         "SELECT c.inn, c.found_site FROM t40_companies c "
         "WHERE c.found_site IS NOT NULL AND c.found_site<>'' "
+        "AND EXISTS (SELECT 1 FROM rzn_licenses l WHERE l.inn=c.inn "
+        "  AND l.is_med=1 AND (l.specialties LIKE '%дерматовенерологи%' "
+        "  OR l.specialties LIKE '%онкологи%' "
+        "  OR l.specialties LIKE '%косметологи%')) "
         "AND NOT EXISTS (SELECT 1 FROM price_recipes r "
         "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе')) "
         "ORDER BY c.row_no LIMIT ?", (limit,)).fetchall()
@@ -455,6 +548,44 @@ def run_batch(db: sqlite3.Connection, limit: int = 40) -> list[dict]:
     return out
 
 
+def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
+    """Выгрузка: Рецепты_доменов / Позиции / Выбросы_на_проверку."""
+    import openpyxl
+    from openpyxl.styles import Font
+    wb = openpyxl.Workbook()
+    bold = Font(bold=True)
+    ws = wb.active
+    ws.title = "Рецепты_доменов"
+    ws.append(["Домен", "ИНН", "Уровень каскада", "Статус",
+               "Страница/файл прайса", "Позиций", "Разделов", "Примечание"])
+    for c in ws[1]:
+        c.font = bold
+    for r in db.execute("SELECT domain, inn, level, status, price_page_url, "
+                        "items_n, sections_n, note FROM price_recipes "
+                        "ORDER BY status, domain"):
+        ws.append(r)
+    ws2 = wb.create_sheet("Позиции")
+    ws2.append(["ИНН", "Домен", "Раздел", "Код", "Название (дословно)",
+                "Цена (дословно)", "Цена, руб", "URL источника", "Дата"])
+    for c in ws2[1]:
+        c.font = bold
+    for r in db.execute("SELECT inn, domain, section, code, name_raw, "
+                        "price_raw, price_value, url, checked_at "
+                        "FROM price_items ORDER BY domain, id"):
+        ws2.append(r)
+    ws3 = wb.create_sheet("Выбросы_на_проверку")
+    ws3.append(["Домен", "Название", "Цена дословно", "Цена, руб", "URL"])
+    for c in ws3[1]:
+        c.font = bold
+    for r in db.execute("SELECT domain, name_raw, price_raw, price_value, url "
+                        "FROM price_items WHERE price_value<50 "
+                        "OR price_value>1000000 ORDER BY price_value"):
+        ws3.append(r)
+    path = path or f"output/Прайсы_{time.strftime('%Y-%m-%d')}.xlsx"
+    wb.save(path)
+    return path
+
+
 if __name__ == "__main__":
     import sys
     db = sqlite3.connect("data/osint.db")
@@ -462,6 +593,8 @@ if __name__ == "__main__":
     if cmd == "probe" and len(sys.argv) > 2:       # обкатка одного домена
         print(run_company(db, sys.argv[3] if len(sys.argv) > 3 else "",
                           sys.argv[2]))
+    elif cmd == "export":
+        print("файл:", export_prices(db))
     elif cmd == "run":
         n = int(sys.argv[2]) if len(sys.argv) > 2 else 40
         res = run_batch(db, n)

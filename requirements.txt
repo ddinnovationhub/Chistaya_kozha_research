@@ -7,3 +7,5 @@ openpyxl>=3.1      # выгрузки xlsx
 beautifulsoup4>=4.12  # этап 6: текст из DOM, не регулярки по HTML (заказчик 2026-08-26)
 lxml>=5.0          # быстрый парсер для BeautifulSoup
 # anthropic удалён (решение заказчика 2026-08-26, п.6): этап 6 без внешнего API
+pdfplumber>=0.11   # прайс-каскад P2: парсинг PDF-прайсов (контур prices, 2026-08-28)
+xlrd>=2.0          # прайс-каскад P2: старые .xls (OLE) — кейс avismed-nsk BadZipFile

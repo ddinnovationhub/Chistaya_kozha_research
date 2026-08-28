@@ -1,0 +1,64 @@
+# ПРАЙС-КАСКАД — отдельная кнопка (заказчик, 2026-08-28). НЕ трогает test-40.
+# Идёт ТОЛЬКО по компаниям, в чьей мед-лицензии есть дерматовенерология /
+# онкология / косметология (фильтр заказчика), с найденным сайтом.
+# Каналы бесплатные: HTTP + Jina Reader (ключ из Secrets снимает rate-limit).
+name: prices
+
+on:
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: "Сколько профильных компаний с сайтом взять"
+        required: true
+        default: "40"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  prices:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    env:
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Зависимости (без браузеров — Playwright тут не нужен)
+        run: pip install -r requirements.txt
+      - name: Быстрые проверки
+        run: python -m pytest tests/test_prices.py -q
+      - name: Прайс-каскад (чекпойнт подомённо, перезапуск продолжает)
+        run: python -m src.prices run "${{ inputs.rows }}"
+      - name: Выгрузка
+        run: python -m src.prices export
+      - name: Чекпойнт как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prices-${{ github.run_id }}
+          path: |
+            data/osint.db
+            output/
+          if-no-files-found: warn
+          retention-days: 30
+      - name: Коммит результатов
+        if: always()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add output/ data/
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "prices: прайс-каскад $(date +%F) (run ${{ github.run_id }})"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

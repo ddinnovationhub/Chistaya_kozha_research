@@ -224,3 +224,15 @@ def test_yandex_doublecheck_matching(monkeypatch):
     assert "РАСХОЖДЕНИЕ" in r and "a2med.ru" in r
     monkeypatch.setattr(mc, "yandex_map_urls", lambda name, city, n=5: [])
     assert "не найдена" in mc.yandex_doublecheck("X", "Самара", "smitra.ru")
+
+
+def test_catalog_minisites_are_aggregators():
+    """Мини-сайты каталогов (заказчик, пачка 1, 2026-08-28): clients.site и
+    inni.info публикуют ИНН организации — «подтверждён ИНН» срабатывал ложно.
+    9 строк из 200. Это агрегаторные карточки, не официальные сайты."""
+    from src.discovery import is_aggregator_domain
+    assert is_aggregator_domain("rpkavrora.clients.site")
+    assert is_aggregator_domain("avk-med.inni.info")
+    assert is_aggregator_domain("bananadent.clients.site")
+    assert not is_aggregator_domain("a2med.ru")
+    assert not is_aggregator_domain("smitra.ru")
