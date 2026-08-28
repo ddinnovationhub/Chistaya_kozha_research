@@ -6,6 +6,9 @@ name: preflight
 on:
   workflow_dispatch:
 
+permissions:
+  contents: write   # коммит счётчиков квот (сбой 128/403 в run 4)
+
 jobs:
   preflight:
     runs-on: ubuntu-latest
