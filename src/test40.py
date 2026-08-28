@@ -56,7 +56,7 @@ def ensure_t40_tables(db: sqlite3.Connection):
     # + журнал кандидатов поиска (разбор «почему не нашли» — по логу)
     cols = {r[1] for r in db.execute("PRAGMA table_info(t40_companies)")}
     for c in ("manual_site", "manual_med", "manual_profile", "manual_basis",
-              "search_candidates"):
+              "search_candidates", "map_check"):
         if c not in cols:
             db.execute(f"ALTER TABLE t40_companies ADD COLUMN {c} TEXT")
     db.commit()
@@ -384,6 +384,31 @@ def crawl_judge(db: sqlite3.Connection, budget_sec: float = 2400,
     return stats
 
 
+def map_doublecheck(db: sqlite3.Connection, limit: int = 1000) -> dict:
+    """Даблчек найденных сайтов карточками Яндекс-Геопоиска (заказчик,
+    2026-08-28). Идемпотентно: только строки без map_check; квота
+    src.quota ограничивает сутки."""
+    from src.map_candidates import yandex_doublecheck
+    rows = list(db.execute(
+        "SELECT inn, name, city, found_site FROM t40_companies "
+        "WHERE found_site IS NOT NULL AND map_check IS NULL LIMIT ?", (limit,)))
+    stats = {"совпадает": 0, "расхождение": 0, "нет карточки": 0, "done": 0}
+    for inn, name, city, site in rows:
+        verdict = yandex_doublecheck(name, city, site)
+        db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
+                   (verdict, inn))
+        db.commit()
+        if "РАСХОЖДЕНИЕ" in verdict:
+            stats["расхождение"] += 1
+        elif "совпадает" in verdict:
+            stats["совпадает"] += 1
+        else:
+            stats["нет карточки"] += 1
+        stats["done"] += 1
+        time.sleep(1)
+    return stats
+
+
 def export_t40(db: sqlite3.Connection, src_path: str) -> str:
     from openpyxl.styles import Alignment, Font, PatternFill
     wb = openpyxl.Workbook()
@@ -406,8 +431,9 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                 "РЗН: адресов", "Найденный сайт", "Чем подтверждён",
                 "Суждение А (по сайту)", "Основание А",
                 "Суждение Б", "Специальности на сайте", "Статус",
-                "Вручную: мед?", "Вручную: профиль", "Консенсус контуров"],
-           (6, 30, 13, 12, 16, 45, 9, 22, 20, 22, 50, 16, 30, 24, 14, 22, 30))
+                "Вручную: мед?", "Вручную: профиль", "Карты: даблчек",
+                "Консенсус контуров"],
+           (6, 30, 13, 12, 16, 45, 9, 22, 20, 22, 50, 16, 30, 24, 14, 22, 26, 30))
     r = 2
     for row in db.execute(
             "SELECT c.row_no, c.name, c.inn, c.city, "
@@ -419,7 +445,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             "c.found_site, c.grade, c.med_judgment, c.med_basis, "
             "c.profile_judgment, c.site_specialties, "
             "COALESCE(c.fetch_status, c.search_status, c.site_source, '—'), "
-            "c.manual_med, c.manual_profile "
+            "c.manual_med, c.manual_profile, c.map_check "
             "FROM t40_companies c LEFT JOIN rzn_checked k ON k.inn=c.inn "
             "ORDER BY c.row_no"):
         vals = list(row)
@@ -573,6 +599,8 @@ if __name__ == "__main__":
     elif cmd == "judge":
         b = float(sys.argv[2]) if len(sys.argv) > 2 else 2400
         print("обход и суждения:", crawl_judge(con, b))
+    elif cmd == "mapcheck":
+        print("даблчек картами:", map_doublecheck(con))
     elif cmd == "export":
         print("выгрузка:", export_t40(con, sys.argv[2]))
     else:

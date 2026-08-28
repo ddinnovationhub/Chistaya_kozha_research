@@ -111,6 +111,28 @@ def gis2_urls(name: str, city: str, n: int = 3) -> list[str]:
     return gis2_cards(name, city, n)["urls"]
 
 
+def yandex_doublecheck(name: str, city: str, found_site: str) -> str:
+    """ДАБЛЧЕК найденного сайта карточкой Яндекс-Геопоиска (заказчик,
+    2026-08-28): совпадение — независимое подтверждение, расхождение —
+    флаг на ручную (карточка может устареть — наш результат НЕ затирается).
+    Возвращает строку для колонки «Карты: даблчек»."""
+    from src.dedup import normalize_domain
+    urls = yandex_map_urls(name, city, n=5)
+    if not urls:
+        return "карточка не найдена / без сайта"
+    ours = normalize_domain(found_site)
+    card_doms = [normalize_domain(u) for u in urls]
+    if ours in card_doms:
+        return "совпадает с карточкой"
+    # поддомены сетей: samara.a2med.ru vs a2med.ru — считаем совпадением
+    def _root(d):
+        parts = (d or "").split(".")
+        return ".".join(parts[-2:]) if len(parts) >= 2 else d
+    if _root(ours) in {_root(d) for d in card_doms if d}:
+        return "совпадает с карточкой (домен сети)"
+    return f"РАСХОЖДЕНИЕ: в карточке {card_doms[0]} — на ручную"
+
+
 def map_candidates(name: str, city: str) -> dict:
     """Карточные каналы → {'urls': [...], 'brands': [...]} без дублей.
     urls — прямые кандидаты; brands — имена брендов из карточек (сайт

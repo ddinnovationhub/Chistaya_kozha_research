@@ -81,6 +81,10 @@ jobs:
           python -m src.llm_judge run cerebras || true
           for p in kilo llm7 yandexgpt groq; do python -m src.llm_judge gate $p || true; done
 
+      - name: Даблчек найденных сайтов карточками Яндекс-Геопоиска
+        continue-on-error: true
+        run: python -m src.test40 mapcheck
+
       - name: Выгрузка
         run: python -m src.test40 export "${{ inputs.base_file }}"
 

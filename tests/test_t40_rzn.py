@@ -209,3 +209,18 @@ def test_quota_daily_limit(tmp_path, monkeypatch):
     assert q.spend("yandex_geosearch") is False      # 4-й не проходит
     used, lim = q.status("yandex_geosearch")
     assert (used, lim) == (3, 3)                     # отказ не расходует
+
+
+def test_yandex_doublecheck_matching(monkeypatch):
+    """Даблчек карточкой: совпадение, поддомен сети, расхождение — флаг."""
+    import src.map_candidates as mc
+    monkeypatch.setattr(mc, "yandex_map_urls",
+                        lambda name, city, n=5: ["https://a2med.ru/about"])
+    assert "совпадает" in mc.yandex_doublecheck("X", "Самара", "a2med.ru")
+    # поддомен сети считается совпадением
+    assert "домен сети" in mc.yandex_doublecheck("X", "Самара",
+                                                 "samara.a2med.ru")
+    r = mc.yandex_doublecheck("X", "Самара", "smitra.ru")
+    assert "РАСХОЖДЕНИЕ" in r and "a2med.ru" in r
+    monkeypatch.setattr(mc, "yandex_map_urls", lambda name, city, n=5: [])
+    assert "не найдена" in mc.yandex_doublecheck("X", "Самара", "smitra.ru")
