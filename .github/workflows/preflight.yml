@@ -31,3 +31,15 @@ jobs:
           python -m playwright install --with-deps chromium
       - name: Предполётная проверка
         run: python -m src.preflight
+
+      - name: Коммит счётчиков квот
+        if: always()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/osint.db
+          if git diff --cached --quiet; then echo "Изменений нет"; else
+            git commit -m "preflight: счётчики квот $(date +%F)"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

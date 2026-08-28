@@ -198,3 +198,14 @@ def test_foreign_inn_blocks_address_confirmation():
     chk2 = triple_check("x.ru", "5404465184", "Новосибирск",
                         pages_hint=["ИНН 5404465184, ул. Геодезическая, 2/1"])
     assert chk2["verdict"] == "ИНН"
+
+
+def test_quota_daily_limit(tmp_path, monkeypatch):
+    """Суточный счётчик: учёт до запроса, жёсткая отсечка на лимите."""
+    import src.quota as q
+    monkeypatch.setattr(q, "DB_PATH", str(tmp_path / "q.db"))
+    monkeypatch.setitem(q.LIMITS, "yandex_geosearch", 3)
+    assert all(q.spend("yandex_geosearch") for _ in range(3))
+    assert q.spend("yandex_geosearch") is False      # 4-й не проходит
+    used, lim = q.status("yandex_geosearch")
+    assert (used, lim) == (3, 3)                     # отказ не расходует

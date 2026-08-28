@@ -77,11 +77,43 @@ def check_maps() -> bool:
     """Карточные каналы (Яндекс Геопоиск / 2ГИС) — кандидаты сайтов из карт."""
     fail = False
     if os.environ.get("YANDEX_GEOSEARCH_API_KEY"):
-        from src.map_candidates import yandex_map_urls
-        urls = yandex_map_urls("Инвитро", "Казань")
-        fail |= _row("Яндекс Геопоиск (карты)", OK if urls else FAIL,
-                     f"карточка вернула URL: {urls[0]}" if urls
-                     else "карточек с URL не вернулось")
+        # однозапросная проверка триала (заказчик, 2026-08-28): работает ли
+        # ключ и тянутся ли нужные поля; печатаем URL и ФАКТ наличия полей
+        # (не содержимое — данные карточек не сохраняем)
+        import httpx as _hx
+
+        from src.quota import spend, status
+        if spend("yandex_geosearch"):
+            try:
+                r = _hx.get("https://search-maps.yandex.ru/v1/",
+                            params={"text": "Инвитро Казань", "type": "biz",
+                                    "lang": "ru_RU", "results": 1,
+                                    "apikey": os.environ["YANDEX_GEOSEARCH_API_KEY"]},
+                            timeout=20)
+                if r.status_code != 200:
+                    fail |= _row("Яндекс Геопоиск (карты)", FAIL,
+                                 f"код {r.status_code}: {r.text[:120]}")
+                else:
+                    feats = r.json().get("features", [])
+                    meta = (feats[0].get("properties") or {}).get(
+                        "CompanyMetaData") if feats else None
+                    if meta:
+                        fields = [k for k in ("name", "url", "address",
+                                              "Categories") if meta.get(k)]
+                        used, lim = status("yandex_geosearch")
+                        fail |= _row(
+                            "Яндекс Геопоиск (карты)",
+                            OK if meta.get("url") else FAIL,
+                            f"поля в карточке: {fields}; "
+                            f"URL: {meta.get('url', 'НЕТ')}; "
+                            f"счётчик: {used}/{lim} за сутки")
+                    else:
+                        fail |= _row("Яндекс Геопоиск (карты)", FAIL,
+                                     "карточек не вернулось")
+            except Exception as e:  # noqa: BLE001
+                fail |= _row("Яндекс Геопоиск (карты)", FAIL, type(e).__name__)
+        else:
+            _row("Яндекс Геопоиск (карты)", SKIP, "суточный лимит исчерпан")
     else:
         _row("Яндекс Геопоиск (карты)", SKIP, "нет YANDEX_GEOSEARCH_API_KEY")
     if os.environ.get("DGIS_API_KEY"):

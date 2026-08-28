@@ -23,9 +23,13 @@ import httpx
 
 
 def yandex_map_urls(name: str, city: str, n: int = 3) -> list[str]:
-    """URL сайтов из карточек Яндекс-Геопоиска (только URL, ничего более)."""
+    """URL сайтов из карточек Яндекс-Геопоиска (только URL, ничего более).
+    Триал: жёсткий суточный лимит через src.quota (заказчик, 2026-08-28)."""
     key = os.environ.get("YANDEX_GEOSEARCH_API_KEY")
     if not key:
+        return []
+    from src.quota import spend
+    if not spend("yandex_geosearch"):
         return []
     try:
         r = httpx.get("https://search-maps.yandex.ru/v1/",
