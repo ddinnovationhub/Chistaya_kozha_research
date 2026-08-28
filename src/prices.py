@@ -32,6 +32,13 @@ import httpx
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 
+# счётчик расхода по каналам (заказчик, 2026-08-28: «засекать расход по всем
+# каналам чтобы посчитать лимиты и цены»). Денежных каналов в контуре НЕТ:
+# HTTP бесплатен, Jina Reader бесплатна (ключ снимает rate-limit), парсинг
+# локален. Считаем запросы/байты/время — этим меряются лимиты.
+METER = {"http_requests": 0, "jina_requests": 0, "files_downloaded": 0,
+         "bytes": 0, "seconds_sleep": 0.0}
+
 # --- запах цены -------------------------------------------------------------
 
 _SCENT_HIGH = re.compile(
@@ -114,9 +121,13 @@ def polite_get(url: str, delay: float) -> httpx.Response | None:
         r = httpx.get(url, headers={"User-Agent": UA,
                                     "Accept-Language": "ru-RU,ru;q=0.9"},
                       timeout=25, follow_redirects=True)
+        METER["http_requests"] += 1
+        METER["bytes"] += len(r.content or b"")
+        METER["seconds_sleep"] += delay
         time.sleep(delay)
         return r if r.status_code == 200 else None
     except Exception:  # noqa: BLE001
+        METER["http_requests"] += 1
         return None
 
 
@@ -357,6 +368,7 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         r = polite_get(f, delay)
         if not r:
             continue
+        METER["files_downloaded"] += 1
         got = parse_price_file(r.content, f.rsplit(".", 1)[-1][:4])
         if len(got) > len(items):
             items, src_url, level = got, f, "P2:документ"
@@ -369,6 +381,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
             got = parse_price_text(r.text) if r else []
             if len(got) < 20:                      # детектор полноты → Jina
                 jt, _, _ = _level1_jina(pu)
+                METER["jina_requests"] += 1
+                METER["bytes"] += len(jt or "")
                 got2 = parse_price_text(jt or "")
                 if len(got2) > len(got):
                     got = got2
@@ -406,10 +420,17 @@ def run_batch(db: sqlite3.Connection, limit: int = 40) -> list[dict]:
         "ORDER BY c.row_no LIMIT ?", (limit,)).fetchall()
     out = []
     for inn, site in rows:
+        t0 = time.time()
         res = run_company(db, inn, site)
         print(f"  {site}: {res['status']} ({res.get('items', 0)} позиций, "
-              f"{res.get('level', '')})")
+              f"{res.get('level', '')}, {time.time() - t0:.0f} с)",
+              flush=True)
         out.append(res)
+    print(f"РАСХОД: HTTP {METER['http_requests']} зап. · "
+          f"Jina {METER['jina_requests']} зап. · "
+          f"файлов {METER['files_downloaded']} · "
+          f"{METER['bytes'] / 1e6:.1f} МБ · "
+          f"пауз вежливости {METER['seconds_sleep'] / 60:.0f} мин · 0 ₽")
     return out
 
 
