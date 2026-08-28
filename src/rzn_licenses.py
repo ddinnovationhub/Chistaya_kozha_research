@@ -190,6 +190,14 @@ def save_licenses(db: sqlite3.Connection, inn: str,
     return {"status": "проверен", "licenses": len(lics), "med": med_n}
 
 
+def license_numbers(db: sqlite3.Connection, inn: str) -> list[str]:
+    """Номера лицензий ИНН (мед — первыми). Приоритет 2 лестницы
+    подтверждения сайта (заказчик, 2026-08-28): номер уникален как ИНН."""
+    return [r[0] for r in db.execute(
+        "SELECT number FROM rzn_licenses WHERE inn=? AND number IS NOT NULL "
+        "AND number<>'' ORDER BY is_med DESC", (inn,))]
+
+
 def license_addresses(db: sqlite3.Connection, inn: str) -> list[str]:
     """Адреса мест деятельности из приложений лицензий ИНН (мед — первыми).
     Сигнал для подтверждения сайта (заказчик, 2026-08-27: у клиник без ИНН

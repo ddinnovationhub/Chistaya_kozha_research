@@ -114,16 +114,29 @@ def test_triple_check_inn_strongest():
     assert chk["verdict"] == "ИНН"
 
 
-def test_triple_check_city_mention_is_not_address():
-    """Корректировка №1: УПОМИНАНИЕ города в тексте — не признак; признак —
-    адрес организации (город в связке с адресными маркерами)."""
+def test_triple_check_city_address_removed():
+    """Лестница по приоритету (заказчик, 2026-08-28, разбор пачки 1):
+    ступень «адрес в городе» УДАЛЕНА — azbuka-samara подтвердилась двум
+    юрлицам, gastro74 чужому. Город + адресные маркеры БЕЗ улицы+дома из
+    лицензии больше НЕ подтверждают. Номер лицензии — новый приоритет 2."""
     from src.site_finder import triple_check
-    blog = ["<html>Наши статьи читают в городах: Новосибирск, доставка по России</html>"]
-    chk = triple_check("x.ru", "0000000000", "Новосибирск", pages_hint=blog)
-    assert chk["verdict"] is None
     addr = ["<html>Контакты: г. Новосибирск, ул. Ленина, д. 1, офис 5</html>"]
-    chk2 = triple_check("x.ru", "0000000000", "Новосибирск", pages_hint=addr)
-    assert chk2["verdict"] == "адрес"
+    chk = triple_check("x.ru", "0000000000", "Новосибирск", pages_hint=addr)
+    assert chk["verdict"] is None                      # города мало
+    lic = ["<html>Лицензия № Л041-01125-54/00563214 от 2021 г., "
+           "г. Новосибирск</html>"]
+    chk2 = triple_check("x.ru", "0000000000", "Новосибирск", pages_hint=lic,
+                        license_numbers=["Л041-01125-54/00563214"])
+    assert chk2["verdict"] == "номер лицензии"
+    # номер на сайте бывает с пробелами — сравнение без пробелов
+    lic2 = ["<html>Лицензия Л041-01125 - 54 / 00563214</html>"]
+    chk3 = triple_check("x.ru", "0000000000", "Новосибирск", pages_hint=lic2,
+                        license_numbers=["Л041-01125-54/00563214"])
+    assert chk3["verdict"] == "номер лицензии"
+    # чужой номер не подтверждает
+    chk4 = triple_check("x.ru", "0000000000", "Новосибирск", pages_hint=lic,
+                        license_numbers=["ЛО-54-01-999999"])
+    assert chk4["verdict"] is None
 
 
 def test_triple_check_federal_network_needs_inn():

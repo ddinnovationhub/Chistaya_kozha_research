@@ -270,12 +270,18 @@ def fetch_contact_texts(domain: str) -> list[str]:
 
 def triple_check(domain: str, inn: str, city: str,
                  pages_hint: list[str] | None = None,
-                 license_addrs: list[str] | None = None) -> dict:
-    """Проверка связи компания↔домен. Возвращает
-    {'verdict': 'ИНН'|'адрес лицензии'|'адрес'|None, 'fed_network': bool,
-     'evidence': str, 'reachable': bool}. pages_hint — уже скачанные тексты;
-    license_addrs — адреса мест деятельности из лицензий РЗН (сигнал
-    уровня ИНН: точный адрес точки, работает и для федеральных сетей)."""
+                 license_addrs: list[str] | None = None,
+                 license_numbers: list[str] | None = None) -> dict:
+    """Проверка связи компания↔домен ПО ПРИОРИТЕТУ (заказчик, 2026-08-28,
+    разбор пачки 1: azbuka-samara подтвердилась ДВУМ юрлицам, gastro74 —
+    чужому, потому что нижняя ступень принимала «любой адрес в городе»):
+      1. ИНН на сайте;
+      2. НОМЕР ЛИЦЕНЗИИ на сайте (уникален как ИНН; номера уже в rzn_licenses);
+      3. ПОЛНЫЙ адрес места деятельности из лицензии — улица И дом.
+    Ступень «адрес в городе» УДАЛЕНА: город+похожее название — не
+    доказательство. Возвращает {'verdict': 'ИНН'|'номер лицензии'|
+    'адрес лицензии'|None, 'fed_network': bool, 'evidence': str,
+    'reachable': bool}."""
     texts = pages_hint if pages_hint is not None else fetch_contact_texts(domain)
     if not texts:
         return {"verdict": None, "fed_network": False,
@@ -299,6 +305,16 @@ def triple_check(domain: str, inn: str, city: str,
                 "evidence": f"на сайте реквизиты другого юрлица (ИНН {foreign}"
                             f") — адресные признаки не применяются",
                 "reachable": True}
+    # приоритет 2: номер лицензии — уникальный идентификатор юрлица;
+    # сравнение без пробелов (на сайтах пишут «Л041-01162 / 63-00347183»)
+    if license_numbers:
+        flat = re.sub(r"[\s ]", "", full).upper()
+        for num in license_numbers:
+            n = re.sub(r"[\s ]", "", num or "").upper()
+            if len(n) >= 8 and n in flat:
+                return {"verdict": "номер лицензии", "fed_network": False,
+                        "evidence": f"номер лицензии {num} найден на сайте",
+                        "reachable": True}
     if license_addrs:
         hit = license_addr_in_text(full, license_addr_patterns(license_addrs))
         if hit:
@@ -312,13 +328,11 @@ def triple_check(domain: str, inn: str, city: str,
                 "evidence": "федеральная сеть (>3 городов на сайте) — "
                             "подтверждение только по ИНН, ИНН не найден",
                 "reachable": True}
-    roots = _CITY_ROOTS.get(city, [city.lower()[:8]])
-    if _addr_in_city(full, roots):
-        return {"verdict": "адрес", "fed_network": False,
-                "evidence": f"адрес организации в городе {city} "
-                            f"(контакт-блок/подвал)", "reachable": True}
+    # ступень «адрес в городе» удалена (заказчик, 2026-08-28): город плюс
+    # похожее название подтверждали чужие сайты (azbuka-samara, gastro74)
     return {"verdict": None, "fed_network": False,
-            "evidence": "ни ИНН, ни адрес в городе не найдены",
+            "evidence": "ни ИНН, ни номер лицензии, ни полный адрес "
+                        "лицензии (улица+дом) не найдены",
             "reachable": True}
 
 

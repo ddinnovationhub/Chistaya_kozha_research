@@ -123,15 +123,15 @@ def _rejected_domains(inn: str) -> set[str]:
 
 def _check_candidates_flex(inn: str, name: str, city: str,
                            candidates: list[str],
-                           license_addrs: list[str] | None = None
+                           license_addrs: list[str] | None = None,
+                           license_nums: list[str] | None = None
                            ) -> tuple[str, str, str] | None:
-    """Лестница: ИНН → адрес точки из лицензии РЗН (заказчик, 2026-08-27:
-    у клиник без ИНН на сайте адреса лицензии есть в контактах — кейс
-    А2МЕД САМАРА) → адрес в городе + соответствие названию. Страницы —
-    гибкой навигацией по тексту ссылок (+8/27 к жёстким путям)."""
+    """Лестница ПО ПРИОРИТЕТУ (заказчик, 2026-08-28): ИНН → номер лицензии →
+    полный адрес точки из лицензии РЗН (улица+дом). Ступень «адрес в
+    городе + название» удалена — она подтверждала чужие сайты (azbuka-samara
+    двум юрлицам, gastro74). Страницы — гибкой навигацией по тексту ссылок."""
     from src.html_text import html_to_text
-    from src.site_finder import (content_matches_name, flexible_contact_texts,
-                                 triple_check)
+    from src.site_finder import flexible_contact_texts, triple_check
     rejected = _rejected_domains(inn)
     for dom in candidates:
         if dom in rejected:
@@ -156,15 +156,14 @@ def _check_candidates_flex(inn: str, name: str, city: str,
             except Exception:  # noqa: BLE001 — эскалация не валит проверку
                 pass
         chk = triple_check(dom, inn, city, pages_hint=texts,
-                           license_addrs=license_addrs)
+                           license_addrs=license_addrs,
+                           license_numbers=license_nums)
         if chk["verdict"] == "ИНН":
             return dom, "подтверждён ИНН", chk["evidence"]
+        if chk["verdict"] == "номер лицензии":
+            return dom, "подтверждён номером лицензии", chk["evidence"]
         if chk["verdict"] == "адрес лицензии":
             return dom, "подтверждён адресом лицензии", chk["evidence"]
-        if chk["verdict"] == "адрес" and content_matches_name(
-                " ".join(texts), name):
-            return dom, "подтверждён адресом", (
-                chk["evidence"] + "; содержание соответствует названию")
     return None
 
 
@@ -179,14 +178,16 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
     t0 = time.time()
     stats = {"confirmed_inn": 0, "confirmed_addr": 0, "no": 0}
 
-    from src.rzn_licenses import license_addresses
+    from src.rzn_licenses import license_addresses, license_numbers
     addrs = {r[0]: license_addresses(db, r[0]) for r in rows}
+    nums = {r[0]: license_numbers(db, r[0]) for r in rows}
 
     def work(item):
         inn, name, city, sites = item
         return inn, _check_candidates_flex(inn, name, city,
                                            split_site_cell(sites)[:3],
-                                           license_addrs=addrs.get(inn))
+                                           license_addrs=addrs.get(inn),
+                                           license_nums=nums.get(inn))
 
     with cf.ThreadPoolExecutor(max_workers=workers) as ex:
         chunk = workers * 2
@@ -222,7 +223,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     from src.dedup import normalize_domain
     from src.discovery import is_aggregator_domain, parse_yandex_xml
     from src.pilot108 import SEARCH_COST_RUB
-    from src.rzn_licenses import license_addresses
+    from src.rzn_licenses import license_addresses, license_numbers
     rows = list(db.execute(
         "SELECT inn, name, city FROM t40_companies WHERE found_site IS NULL "
         "AND search_status IS NULL"))
@@ -233,6 +234,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
         if time.time() - t0 > budget_sec:
             break
         addrs = license_addresses(db, inn)
+        nums = license_numbers(db, inn)
         cands, seen = [], set()
 
         def _add(url_or_dom, into=None):
@@ -260,7 +262,8 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                 break
             _add(r.get("url"))
         res = _check_candidates_flex(inn, name, city, list(cands),
-                                     license_addrs=addrs)
+                                     license_addrs=addrs,
+                                     license_nums=nums)
         if res is None and addrs:
             # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
             # а адрес точки из лицензии уникален
@@ -280,7 +283,8 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                             break
                     if extra:
                         res = _check_candidates_flex(inn, name, city, extra,
-                                                     license_addrs=addrs)
+                                                     license_addrs=addrs,
+                                                     license_nums=nums)
         if res is None:
             # слой 3 (запасной): карточки карт — прямые URL, а если ключ
             # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
@@ -304,7 +308,8 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                             break
             if maps:
                 res = _check_candidates_flex(inn, name, city, maps,
-                                             license_addrs=addrs)
+                                             license_addrs=addrs,
+                                             license_nums=nums)
         cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
         if res:
             dom, grade, ev = res
