@@ -236,3 +236,29 @@ def test_catalog_minisites_are_aggregators():
     assert is_aggregator_domain("bananadent.clients.site")
     assert not is_aggregator_domain("a2med.ru")
     assert not is_aggregator_domain("smitra.ru")
+
+
+def test_search_waits_for_rzn(tmp_path):
+    """Гвард (заказчик, пачка 2, 2026-08-28): РЗН остановился предохранителем,
+    а поиск шёл дальше с лестницей без лицензий (2 из 3 ступеней слепы).
+    Теперь sites/search не берут строку, пока её ИНН не проверен реестром."""
+    import sqlite3
+
+    from src.rzn_licenses import ensure_tables
+    from src.test40 import ensure_t40_tables
+    db = sqlite3.connect(":memory:")
+    ensure_t40_tables(db)
+    ensure_tables(db)
+    db.execute("INSERT INTO t40_companies (row_no, inn, name, city, sites_raw)"
+               " VALUES (1, '1111111111', 'А', 'Уфа', 'a.ru')")
+    db.execute("INSERT INTO t40_companies (row_no, inn, name, city, sites_raw)"
+               " VALUES (2, '2222222222', 'Б', 'Уфа', 'b.ru')")
+    db.execute("INSERT INTO rzn_checked (inn, status) "
+               "VALUES ('1111111111', 'проверен')")
+    rows = db.execute(
+        "SELECT c.inn FROM t40_companies c "
+        "WHERE c.sites_raw IS NOT NULL AND c.found_site IS NULL "
+        "AND c.site_source IS NULL "
+        "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
+        "AND r.status='проверен')").fetchall()
+    assert rows == [("1111111111",)]      # Б ждёт реестра

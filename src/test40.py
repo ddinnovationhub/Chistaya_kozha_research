@@ -172,9 +172,15 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
     """Кандидаты из ячейки СПАРК — гибкая проверка. Бесплатно."""
     import concurrent.futures as cf
     rows = [r for r in db.execute(
-        "SELECT inn, name, city, sites_raw FROM t40_companies "
-        "WHERE sites_raw IS NOT NULL AND found_site IS NULL "
-        "AND site_source IS NULL")]
+        "SELECT c.inn, c.name, c.city, c.sites_raw FROM t40_companies c "
+        "WHERE c.sites_raw IS NOT NULL AND c.found_site IS NULL "
+        "AND c.site_source IS NULL "
+        # ГВАРД (заказчик, 2026-08-28, пачка 2: РЗН остановился
+        # предохранителем, поиск шёл с лестницей без лицензий): строка не
+        # проверяется, пока её ИНН не проверен реестром — иначе 2 из 3
+        # ступеней подтверждения слепы
+        "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
+        "AND r.status='проверен')")]
     t0 = time.time()
     stats = {"confirmed_inn": 0, "confirmed_addr": 0, "no": 0}
 
@@ -225,8 +231,10 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     from src.pilot108 import SEARCH_COST_RUB
     from src.rzn_licenses import license_addresses, license_numbers
     rows = list(db.execute(
-        "SELECT inn, name, city FROM t40_companies WHERE found_site IS NULL "
-        "AND search_status IS NULL"))
+        "SELECT inn, name, city FROM t40_companies c "
+        "WHERE found_site IS NULL AND search_status IS NULL "
+        "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
+        "AND r.status='проверен')"))   # гвард: поиск ждёт реестра
     t0 = time.time()
     stats = {"found_inn": 0, "found_addr": 0, "not_found": 0,
              "spent_rub": 0.0, "done": 0}
