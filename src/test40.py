@@ -411,6 +411,7 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000) -> dict:
 
 def export_t40(db: sqlite3.Connection, src_path: str) -> str:
     from openpyxl.styles import Alignment, Font, PatternFill
+    ensure_t40_tables(db)   # миграции колонок (map_check и др.)
     wb = openpyxl.Workbook()
     day = datetime.date.today().isoformat()
     BOLD = Font(name="Arial", size=10, bold=True)
@@ -508,6 +509,42 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             link.value = "ссылка не сохранена (сбор до 2026-08-27)"
             link.font = ARIAL
         r += 1
+
+    # ── Адреса точек из лицензий (заказчик, 2026-08-28): по строке на
+    # каждый адрес приложения — для формульного сопоставления ИНН ↔ адрес ↔
+    # название и последующего геокодирования (концентрация/удалённость).
+    # Адреса — из реестра лицензий (source_id), не из карточек карт. ──
+    ws = wb.create_sheet("Адреса_точек")
+    _sheet(ws, ["ИНН", "Название (из базы)", "Лицензиат (из лицензии)",
+                "Номер лицензии", "Мед", "Адрес точки (дословно из лицензии)",
+                "Город точки", "Улица (разобрано)", "Дом (разобрано)",
+                "Специальности точки", "Найденный сайт компании"],
+           (13, 30, 30, 24, 6, 60, 14, 22, 10, 45, 22))
+    import json as _json
+    import zlib as _zlib
+
+    from src.rzn_licenses import specialties_from_activity
+    from src.site_finder import license_addr_patterns
+    r = 2
+    for inn, name, site in db.execute(
+            "SELECT inn, name, found_site FROM t40_companies ORDER BY row_no"):
+        for number, is_med, licensee, raw in db.execute(
+                "SELECT number, is_med, licensee, raw_gz FROM rzn_licenses "
+                "WHERE inn=? ORDER BY is_med DESC", (inn,)):
+            lic = _json.loads(_zlib.decompress(raw))
+            for o in lic.get("objects", []):
+                addr = o.get("address") or ""
+                pats = license_addr_patterns([addr])
+                street, house = (pats[0] if pats else ("", ""))
+                specs = specialties_from_activity([o.get("activity") or ""])
+                for c, v in enumerate(
+                        [inn, name, licensee, number,
+                         "да" if is_med else "", addr, o.get("city") or "",
+                         street, house, ", ".join(specs), site or ""], 1):
+                    cell = ws.cell(r, c, v)
+                    cell.font = ARIAL
+                    cell.alignment = Alignment(vertical="top", wrap_text=True)
+                r += 1
 
     # ── Паспорта сайтов: сырьё для ручной проверки суждений ──
     ws = wb.create_sheet("Паспорта")
