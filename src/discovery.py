@@ -48,6 +48,9 @@ AGGREGATOR_DOMAINS = {
     "check.tochka.com", "b2b.house", "orgpage.ru", "sbis.ru",
     "vbankcenter.ru", "e-ecolog.ru", "dikidi.ru", "krasotaimedicina.ru",
     "med-firm.ru", "spr.ru", "tinkoff.ru", "sravni.ru",
+    # соцсети и мессенджеры из карточек карт (серая зона E2 шумела:
+    # vk.ru ×6, t.me ×3 в первых же 28 маркерах)
+    "vk.ru", "t.me", "ok.ru", "wa.me", "instagram.com", "youtube.com",
 }
 
 

@@ -359,7 +359,8 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                     res = res3
                 elif res is None and res3:
                     res = res3
-                elif res is None and maps:
+                elif res is None and (maps := [m for m in maps
+                        if m not in _rejected_domains(inn)]):
                     # СЕРАЯ ЗОНА E2 (заказчик, 2026-08-29, кейс франшиз):
                     # карточка карт указывает сайт, чужого ИНН на нём нет,
                     # но сеть не публикует ни наш ИНН, ни адрес точки —

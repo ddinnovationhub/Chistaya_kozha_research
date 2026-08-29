@@ -303,7 +303,8 @@ def legal_name_hint(texts: list[str], company_name: str) -> str | None:
     core = (company_name or "").split(",")[0].strip().strip('"«»')
     if len(core) < 4:
         return None
-    full = "\n".join(texts)
+    from src.html_text import html_to_text
+    full = "\n".join(html_to_text(t) if "<" in t else t for t in texts)
     up = full.upper()
     i = up.find(core.upper())
     while i >= 0:
