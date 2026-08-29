@@ -319,3 +319,14 @@ def test_legal_name_hint_gray_zone():
     assert legal_name_hint(["улица АГАТовая, дом 5"], "АГАТ, ООО") is None
     # короткие имена не проверяются
     assert legal_name_hint(texts, "АВ, ООО") is None
+
+
+def test_page_links_survive_broken_href():
+    """run 33249946208: href «http://[…» (незакрытая скобка → Invalid IPv6
+    URL) ронял весь этап обхода. Битая ссылка пропускается."""
+    from src.site_checker import _page_links
+    html = ('<html><a href="http://[bad">кривая</a>'
+            '<a href="/price/">Цены</a></html>')
+    links = _page_links(html, "https://x.ru")
+    assert ("https://x.ru/price/", "Цены") in links
+    assert all("[bad" not in u for u, _ in links)

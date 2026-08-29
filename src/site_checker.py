@@ -68,18 +68,29 @@ def _link_priority(url: str, text: str) -> int | None:
 
 
 def _page_links(page_text: str, base_url: str) -> list[tuple[str, str]]:
-    """(url, текст ссылки) со страницы: HTML — через DOM, markdown — регэкспом."""
+    """(url, текст ссылки) со страницы: HTML — через DOM, markdown — регэкспом.
+    Битый href (пачка 2, run 33249946208: незакрытая скобка «http://[…» →
+    ValueError: Invalid IPv6 URL из urljoin) пропускается, а не роняет обход."""
     from urllib.parse import urljoin
 
     from src.html_text import _soup, looks_like_html
+
+    def _join(u):
+        try:
+            return urljoin(base_url + "/", u)
+        except ValueError:
+            return None
+
     out = []
     if looks_like_html(page_text):
         for a in _soup(page_text).find_all("a", href=True):
-            out.append((urljoin(base_url + "/", a["href"]),
-                        a.get_text(" ", strip=True)[:80]))
+            u = _join(a["href"])
+            if u:
+                out.append((u, a.get_text(" ", strip=True)[:80]))
     else:
-        out = [(urljoin(base_url + "/", u), "") for u in
-               re.findall(r"\((https?://[^)\s]+|/[^)\s]+)\)", page_text)]
+        out = [(j, "") for u in
+               re.findall(r"\((https?://[^)\s]+|/[^)\s]+)\)", page_text)
+               if (j := _join(u))]
     return out
 
 

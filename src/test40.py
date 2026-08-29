@@ -435,9 +435,20 @@ def crawl_judge(db: sqlite3.Connection, budget_sec: float = 2400,
         for i in range(0, len(rows), chunk):
             if time.time() - t0 > budget_sec:
                 break
-            for fut in cf.as_completed(
-                    [ex.submit(work, it) for it in rows[i:i + chunk]]):
-                item, judged, pages, info = fut.result()
+            futs = {ex.submit(work, it): it for it in rows[i:i + chunk]}
+            for fut in cf.as_completed(futs):
+                try:
+                    item, judged, pages, info = fut.result()
+                except Exception as e:  # noqa: BLE001 — одна строка не роняет
+                    # этап (run 33249946208: битый href уронил весь обход)
+                    inn = futs[fut][0]
+                    print(f"  ⚠ обход {futs[fut][3]}: {type(e).__name__} — "
+                          f"строка помечена, этап продолжается")
+                    db.execute("UPDATE t40_companies SET fetch_status="
+                               "'ошибка обхода — на повтор', checked_at=? "
+                               "WHERE inn=?", (now, inn))
+                    db.commit()
+                    continue
                 inn, name, city, dom = item
                 if judged is None:
                     stats["unreachable"] += 1
