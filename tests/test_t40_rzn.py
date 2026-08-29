@@ -262,3 +262,36 @@ def test_search_waits_for_rzn(tmp_path):
         "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
         "AND r.status='проверен')").fetchall()
     assert rows == [("1111111111",)]      # Б ждёт реестра
+
+
+def test_rzn_import_dump(tmp_path):
+    """Вливка локального сбора (2026-08-29): rzn_dump.jsonl проходит тот же
+    парсер, что онлайн-путь; чужой ИНН отбрасывается; битые строки не валят."""
+    import json
+    import sqlite3
+
+    from src.rzn_import import import_dump
+    row = {"col1": {"label": "Л041-01170-02/00362563"},
+           "col2": {"label": "25.07.2017"}, "col3": {"label": "АО Тест"},
+           "col7": {"label": "0273028277"},
+           "objects": [{"address_fact": "Уфа, ул. Ленина, д. 1",
+                        "city": "Уфа", "region": "РБ",
+                        "activity": "…по: косметологии"}]}
+    foreign = {"col1": {"label": "ЛО-77-01-000001"},
+               "col7": {"label": "9999999999"}}
+    f = tmp_path / "dump.jsonl"
+    f.write_text(
+        json.dumps({"inn": "0273028277", "data": {"data": [row, foreign]}},
+                   ensure_ascii=False) + "\n"
+        + "битая строка\n"
+        + json.dumps({"inn": "1234567890", "data": {"data": []}}) + "\n",
+        encoding="utf-8")
+    db = sqlite3.connect(":memory:")
+    st = import_dump(db, str(f))
+    assert st["влито ИНН"] == 2 and st["битых строк"] == 1
+    assert db.execute("SELECT COUNT(*) FROM rzn_licenses "
+                      "WHERE inn='0273028277'").fetchone()[0] == 1  # чужая — нет
+    assert db.execute("SELECT specialties FROM rzn_licenses "
+                      "WHERE inn='0273028277'").fetchone()[0] == "косметологи"
+    assert db.execute("SELECT status, licenses_n FROM rzn_checked "
+                      "WHERE inn='1234567890'").fetchone() == ("проверен", 0)

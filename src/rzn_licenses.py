@@ -96,6 +96,15 @@ def fetch_licenses(inn: str, client: httpx.Client) -> list[dict] | None:
         data = r.json().get("data") or []
     except Exception:  # noqa: BLE001
         return None
+    return parse_rows(inn, data)
+
+
+def parse_rows(inn: str, data: list) -> list[dict]:
+    """Строки ответа реестра → лицензии. Вынесено из fetch_licenses (2026-08-29)
+    для вливки локально собранных сырых ответов (rzn_dump.jsonl: реестр
+    блокирует датацентры, заказчик собирает со своего IP скриптом
+    tools/rzn_local.py). Логика идентична онлайн-пути: сверка ИНН,
+    is_med по номеру, приложения с адресами."""
     out = []
     for row in data:
         # такт 3: q_no ищет и по номеру лицензии, и по названию — чужая
