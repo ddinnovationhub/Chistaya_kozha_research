@@ -2127,12 +2127,44 @@ def main():
             pass
     todo = todo[:limit]
     print("В этом заходе:", len(todo), "ИНН (~%d мин)" % (len(todo) * 4.5 // 60))
-    opener = urllib.request.build_opener(
-        urllib.request.HTTPCookieProcessor(CookieJar()))
-    req = urllib.request.Request(RZN_URL, headers={
-        "User-Agent": HEADERS["User-Agent"], "Accept": "text/html"})
-    print("Открываю сессию реестра...")
-    opener.open(req, timeout=40).read()
+    # Подбор режима подключения (2026-08-29, URLError у заказчика):
+    # A) как настроена система (прокси/VPN из Windows) с проверкой TLS;
+    # B) напрямую, мимо системного прокси; C/D) то же с отключённой
+    # проверкой TLS (только чтение публичного реестра; каждая строка
+    # ответа потом сверяется по ИНН на стороне агента).
+    import ssl
+    modes = []
+    for proxy in (None, {}):
+        for verify in (True, False):
+            handlers = [urllib.request.HTTPCookieProcessor(CookieJar())]
+            if proxy == {}:
+                handlers.append(urllib.request.ProxyHandler({}))
+            if not verify:
+                ctx = ssl.create_default_context()
+                ctx.check_hostname = False
+                ctx.verify_mode = ssl.CERT_NONE
+                handlers.append(urllib.request.HTTPSHandler(context=ctx))
+            modes.append((("системный прокси" if proxy is None else "напрямую")
+                          + (", TLS проверяется" if verify else ", БЕЗ проверки TLS"),
+                          urllib.request.build_opener(*handlers)))
+    opener = None
+    print("Открываю сессию реестра (подбираю режим подключения)...")
+    for name, op in modes:
+        try:
+            req = urllib.request.Request(RZN_URL, headers={
+                "User-Agent": HEADERS["User-Agent"], "Accept": "text/html"})
+            op.open(req, timeout=25).read()
+            opener = op
+            print("  режим:", name, "- РАБОТАЕТ")
+            break
+        except Exception as e:
+            print("  режим:", name, "-", type(e).__name__,
+                  str(getattr(e, "reason", e))[:90])
+    if opener is None:
+        print()
+        print("Ни один режим не подключился. Пришлите агенту текст выше -")
+        print("особенно то, что написано после URLError.")
+        return
     ok = fail = 0
     out = open(OUT, "a", encoding="utf-8")
     for n, inn in enumerate(todo, 1):
