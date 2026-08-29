@@ -11,7 +11,7 @@
 командной строке:  py rzn_local.py
 (Mac/Linux: python3 rzn_local.py)
 
-Скрипт вежливый: пауза 3 секунды между запросами (~2.5-3 часа всего; можно прерывать и продолжать),
+Скрипт вежливый: пауза 3 секунды между запросами (по умолчанию порциями по 200 ~ 15 минут за заход; можно прерывать),
 только чтение публичного реестра, никаких обходов. Прервали — просто
 запустите снова: продолжит с места.
 """
@@ -2109,6 +2109,24 @@ def main():
     if not todo:
         print("Всё уже собрано. Отправьте файл rzn_dump.jsonl агенту:", OUT)
         return
+    # ПОРЦИЯ ЗА ЗАХОД (заказчик, 2026-08-29: «забирать по 200 штук для
+    # конвейерности»). Enter = 200; число = столько; «все» = весь остаток.
+    limit = 200
+    if len(sys.argv) > 1:
+        arg = sys.argv[1].strip().lower()
+        limit = len(todo) if arg in ("все", "all", "0") else int(arg)
+    else:
+        try:
+            ans = input("Сколько ИНН собрать в этом заходе? "
+                        "[Enter = 200, число, или «все»]: ").strip().lower()
+            if ans in ("все", "all", "0"):
+                limit = len(todo)
+            elif ans:
+                limit = int(ans)
+        except Exception:
+            pass
+    todo = todo[:limit]
+    print("В этом заходе:", len(todo), "ИНН (~%d мин)" % (len(todo) * 4.5 // 60))
     opener = urllib.request.build_opener(
         urllib.request.HTTPCookieProcessor(CookieJar()))
     req = urllib.request.Request(RZN_URL, headers={
