@@ -168,25 +168,49 @@ def flexible_contact_texts(domain: str, max_pages: int = 6,
         except Exception:  # noqa: BLE001
             return None
 
+    def _get_pdf_text(url):
+        """Юр-документы в PDF (разбор конверсии, 2026-08-29, кейс
+        ava-kazan: юрлицо оператора — в PDF политики ПДн). ≤5 МБ."""
+        try:
+            import io
+
+            import pdfplumber
+            r = httpx.get(url, timeout=20, headers=BROWSER_HEADERS,
+                          follow_redirects=True)
+            if r.status_code >= 400 or len(r.content) > 5_000_000:
+                return None
+            with pdfplumber.open(io.BytesIO(r.content)) as pdf:
+                return "\n".join(p.extract_text() or "" for p in pdf.pages[:15])
+        except Exception:  # noqa: BLE001
+            return None
+
     home = _get(f"https://{domain}") or _get(f"http://{domain}")
     if not home:
         return []
     texts = [home]
     if not looks_like_html(home):
         return texts
-    links, seen = [], set()
+    links, pdf_links, seen = [], [], set()
     for a in _soup(home).find_all("a", href=True):
         label = a.get_text(" ", strip=True) or ""
         if _CONTACT_LINK_RE.search(label) or _CONTACT_LINK_RE.search(a["href"]):
             u = urljoin(f"https://{domain}/", a["href"]).split("#")[0]
-            if u not in seen and domain in u:
+            if u not in seen:
                 seen.add(u)
-                links.append(u)
+                if u.lower().endswith(".pdf"):
+                    pdf_links.append(u)         # PDF пускаем и с CDN сети
+                elif domain in u:
+                    links.append(u)
     for u in links:
         if len(texts) >= max_pages:
             break
         time.sleep(pause)
         t = _get(u)
+        if t:
+            texts.append(t)
+    for u in pdf_links[:2]:                     # ≤2 юр-PDF на сайт
+        time.sleep(pause)
+        t = _get_pdf_text(u)
         if t:
             texts.append(t)
     return texts
@@ -266,6 +290,28 @@ def fetch_contact_texts(domain: str) -> list[str]:
         if len(texts) >= 3:
             break
     return texts
+
+
+_OPF_NEAR_RE = re.compile(r"\bООО\b|\bАО\b|\bЗАО\b|\bПАО\b|общество", re.I)
+
+
+def legal_name_hint(texts: list[str], company_name: str) -> str | None:
+    """СЕРАЯ ЗОНА (заказчик, 2026-08-29, кейс АВА-КАЗАНЬ): сайт в юр-документах
+    дословно называет наше юрназвание рядом с ОПФ, но ни ИНН, ни адреса нет.
+    НЕ подтверждение (азбуки научили) — только маркер «Требует ручной
+    проверки». Возвращает найденный фрагмент или None."""
+    core = (company_name or "").split(",")[0].strip().strip('"«»')
+    if len(core) < 4:
+        return None
+    full = "\n".join(texts)
+    up = full.upper()
+    i = up.find(core.upper())
+    while i >= 0:
+        window = full[max(0, i - 80):i + len(core) + 80]
+        if _OPF_NEAR_RE.search(window):
+            return window.strip().replace("\n", " ")[:160]
+        i = up.find(core.upper(), i + 1)
+    return None
 
 
 def triple_check(domain: str, inn: str, city: str,

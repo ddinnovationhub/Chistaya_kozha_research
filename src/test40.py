@@ -164,6 +164,14 @@ def _check_candidates_flex(inn: str, name: str, city: str,
             return dom, "подтверждён номером лицензии", chk["evidence"]
         if chk["verdict"] == "адрес лицензии":
             return dom, "подтверждён адресом лицензии", chk["evidence"]
+        # СЕРАЯ ЗОНА E1 (заказчик, 2026-08-29): юрназвание с ОПФ в документах
+        # сайта, чужого ИНН нет → НЕ подтверждение, маркер на ручную
+        if name and "другого юрлица" not in chk["evidence"]:
+            from src.site_finder import legal_name_hint
+            hint = legal_name_hint(texts, name)
+            if hint:
+                return dom, "Требует ручной проверки", (
+                    f"юрназвание в документах сайта: «{hint[:120]}»")
     return None
 
 
@@ -203,7 +211,15 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
             for fut in cf.as_completed(
                     [ex.submit(work, it) for it in rows[i:i + chunk]]):
                 inn, res = fut.result()
-                if res:
+                if res and res[1] == "Требует ручной проверки":
+                    dom, _, ev = res
+                    # серая зона E1 в СПАРК-пути: found_site НЕ пишется —
+                    # строка уходит в поиск, маркер останется если и он пуст
+                    db.execute("UPDATE t40_companies SET site_source="
+                               "'кандидаты выгрузки не подтвердились (гибко)', "
+                               "search_candidates=? WHERE inn=?",
+                               (f"серая зона СПАРК: {dom} — {ev}"[:250], inn))
+                elif res:
                     dom, grade, ev = res
                     key = "confirmed_inn" if "ИНН" in grade else "confirmed_addr"
                     stats[key] += 1
@@ -266,13 +282,34 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
         stats["spent_rub"] += SEARCH_COST_RUB
         for r in parse_yandex_xml(
                 base64.b64decode(resp.json()["rawData"]).decode("utf-8")):
-            if len(cands) >= 5:
+            if len(cands) >= 10:   # было 5: юр-справочники съедали все слоты
                 break
             _add(r.get("url"))
         res = _check_candidates_flex(inn, name, city, list(cands),
                                      license_addrs=addrs,
                                      license_nums=nums)
-        if res is None and addrs:
+        if res is None or res[1] == "Требует ручной проверки":
+            # СЛОЙ 1.5 (заказчик, 2026-08-29): запрос по самому ИНН — сайты
+            # публикуют ИНН в реквизитах, Яндекс индексирует; найденное так
+            # подтверждается ступенью ИНН мгновенно
+            resp15 = yandex_search_raw(f'"{inn}"', n=10)
+            if handle_api_response(resp15, "Яндекс Search API") is not None:
+                stats["spent_rub"] += SEARCH_COST_RUB
+                by_inn = []
+                for r in parse_yandex_xml(base64.b64decode(
+                        resp15.json()["rawData"]).decode("utf-8")):
+                    _add(r.get("url"), into=by_inn)
+                    if len(by_inn) >= 5:
+                        break
+                if by_inn:
+                    res15 = _check_candidates_flex(inn, name, city, by_inn,
+                                                   license_addrs=addrs,
+                                                   license_nums=nums)
+                    if res15 and res15[1] != "Требует ручной проверки":
+                        res = res15
+                    elif res is None:
+                        res = res15
+        if (res is None or res[1] == "Требует ручной проверки") and addrs:
             # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
             # а адрес точки из лицензии уникален
             from src.site_finder import license_addr_patterns
@@ -293,7 +330,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                         res = _check_candidates_flex(inn, name, city, extra,
                                                      license_addrs=addrs,
                                                      license_nums=nums)
-        if res is None:
+        if res is None or res[1] == "Требует ручной проверки":
             # слой 3 (запасной): карточки карт — прямые URL, а если ключ
             # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
             # сайт бренда достраивается веб-поиском; принадлежность юрлица
@@ -315,11 +352,31 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                         if len(maps) >= 4:
                             break
             if maps:
-                res = _check_candidates_flex(inn, name, city, maps,
-                                             license_addrs=addrs,
-                                             license_nums=nums)
+                res3 = _check_candidates_flex(inn, name, city, maps,
+                                              license_addrs=addrs,
+                                              license_nums=nums)
+                if res3 and res3[1] != "Требует ручной проверки":
+                    res = res3
+                elif res is None and res3:
+                    res = res3
+                elif res is None and maps:
+                    # СЕРАЯ ЗОНА E2 (заказчик, 2026-08-29, кейс франшиз):
+                    # карточка карт указывает сайт, чужого ИНН на нём нет,
+                    # но сеть не публикует ни наш ИНН, ни адрес точки —
+                    # НЕ автозапись, маркер на ручную
+                    res = (maps[0], "Требует ручной проверки",
+                           f"карты указывают сайт {maps[0]}, принадлежность "
+                           f"не доказана")
         cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
-        if res:
+        if res and res[1] == "Требует ручной проверки":
+            dom, _, ev = res
+            stats["manual_review"] = stats.get("manual_review", 0) + 1
+            # found_site НЕ пишется: принадлежность не доказана — маркер
+            db.execute("UPDATE t40_companies SET search_status=?, "
+                       "search_attempts=?, search_candidates=? WHERE inn=?",
+                       (f"Требует ручной проверки: {dom} — {ev}"[:250],
+                        len(cands), cand_log, inn))
+        elif res:
             dom, grade, ev = res
             key = "found_inn" if "ИНН" in grade else "found_addr"
             stats[key] += 1

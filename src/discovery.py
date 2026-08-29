@@ -40,6 +40,14 @@ AGGREGATOR_DOMAINS = {
     # «подтверждён ИНН» формально срабатывает — но это агрегаторные карточки,
     # НЕ официальные сайты (кейсы rpkavrora.clients.site, avk-med.inni.info)
     "clients.site", "inni.info",
+    # юр-справочники (разбор конверсии пачки 2, 2026-08-29): по запросу
+    # «ООО … город» топ выдачи — карточки реквизитов, они съедали ВСЕ слоты
+    # кандидатов у всех 85 ненайденных строк; официальными сайтами не бывают
+    "checko.ru", "rusprofile.ru", "audit-it.ru", "list-org.com",
+    "zachestnyibiznes.ru", "focus.kontur.ru", "companies.rbc.ru",
+    "check.tochka.com", "b2b.house", "orgpage.ru", "sbis.ru",
+    "vbankcenter.ru", "e-ecolog.ru", "dikidi.ru", "krasotaimedicina.ru",
+    "med-firm.ru", "spr.ru", "tinkoff.ru", "sravni.ru",
 }
 
 

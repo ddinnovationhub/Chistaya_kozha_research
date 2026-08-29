@@ -295,3 +295,27 @@ def test_rzn_import_dump(tmp_path):
                       "WHERE inn='0273028277'").fetchone()[0] == "косметологи"
     assert db.execute("SELECT status, licenses_n FROM rzn_checked "
                       "WHERE inn='1234567890'").fetchone() == ("проверен", 0)
+
+
+def test_legal_registries_are_aggregators():
+    """Разбор конверсии пачки 2 (2026-08-29): юр-справочники съедали все
+    слоты кандидатов у всех 85 ненайденных — в чёрный список."""
+    from src.discovery import is_aggregator_domain
+    for d in ("checko.ru", "rusprofile.ru", "audit-it.ru", "list-org.com",
+              "zachestnyibiznes.ru", "focus.kontur.ru", "companies.rbc.ru"):
+        assert is_aggregator_domain(d), d
+    assert not is_aggregator_domain("ava-kazan.ru")
+
+
+def test_legal_name_hint_gray_zone():
+    """Серая зона E1 (кейс АВА-КАЗАНЬ): юрназвание с ОПФ в документах сайта —
+    маркер на ручную, НЕ подтверждение."""
+    from src.site_finder import legal_name_hint
+    texts = ["Оператор персональных данных: Акционерное общество "
+             "«АВА-КАЗАНЬ» (бренд «Скандинавия»)"]
+    hint = legal_name_hint(texts, "АВА-КАЗАНЬ, АО")
+    assert hint and "АВА-КАЗАНЬ" in hint
+    # без ОПФ рядом — не срабатывает (просто упоминание слова)
+    assert legal_name_hint(["улица АГАТовая, дом 5"], "АГАТ, ООО") is None
+    # короткие имена не проверяются
+    assert legal_name_hint(texts, "АВ, ООО") is None
