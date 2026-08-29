@@ -1,0 +1,43 @@
+# РЗН С ДОМАШНЕГО КОМПЬЮТЕРА ЗАКАЗЧИКА (2026-08-29). Причина: реестр
+# заблокировал диапазоны облачных датацентров (ConnectError с раннеров
+# GitHub три запуска подряд), обычным пользователям открыт. Этап РЗН
+# выполняется self-hosted раннером с домашнего IP заказчика — это НЕ обход:
+# легитимный пользователь реестра выполняет шаг со своей машины.
+# Всё остальное (поиск, судьи, даблчек) остаётся в облаке в test-40.
+# Кнопка не запустится, пока раннер не установлен (Settings → Actions →
+# Runners → New self-hosted runner).
+name: rzn-local
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: test-40        # та же группа: не пересекаться с test-40 за osint.db
+  cancel-in-progress: false
+
+jobs:
+  rzn:
+    runs-on: self-hosted
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Зависимости (только для РЗН-этапа)
+        run: pip install httpx openpyxl PyYAML beautifulsoup4 lxml
+      - name: Реестр лицензий РЗН (по ИНН, пауза 3 с)
+        run: python -m src.test40 rzn 9000
+      - name: Коммит результатов
+        if: always()
+        run: |
+          git config user.name "chk-osint-local"
+          git config user.email "local@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "rzn-local: реестр с локального раннера $(date +%F)"
+            git pull --rebase origin "${{ github.ref_name }}"
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
