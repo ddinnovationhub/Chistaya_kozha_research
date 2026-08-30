@@ -109,6 +109,15 @@ jobs:
             echo "Изменений нет"
           else
             git commit -m "test-40: конвейер $(date +%F) (run ${{ github.run_id }})"
-            git pull --rebase origin "${{ github.ref_name }}"
+            # Конфликт бинарной базы при параллельном пуше (run 33252669333:
+            # рекбейс упал, час работы не запушился): для osint.db и output/
+            # побеждает версия ПРОГОНА (--theirs в ребейсе = наш коммит);
+            # правки агента в базе переналиваются им после прогона
+            if ! git pull --rebase origin "${{ github.ref_name }}"; then
+              git checkout --theirs data/osint.db 2>/dev/null || true
+              git checkout --theirs -- output/ 2>/dev/null || true
+              git add data/ output/
+              GIT_EDITOR=true git rebase --continue
+            fi
             git push origin "HEAD:${{ github.ref_name }}"
           fi
