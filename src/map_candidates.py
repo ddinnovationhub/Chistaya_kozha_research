@@ -79,6 +79,9 @@ def gis2_cards(name: str, city: str, n: int = 3) -> dict:
     key = os.environ.get("DGIS_API_KEY")
     if not key:
         return {"urls": [], "brands": []}
+    from src.quota import spend
+    if not spend("dgis_places"):
+        return {"urls": [], "brands": []}
     try:
         r = httpx.get("https://catalog.api.2gis.com/3.0/items",
                       params={"q": f"{name} {city}", "page_size": 5,

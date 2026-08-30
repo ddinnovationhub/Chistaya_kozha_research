@@ -2,6 +2,15 @@
 # одной кнопкой — реестр лицензий РЗН → гибкая проверка сайтов из ячейки →
 # поисковая достройка (ключи из Secrets) → обход+паспорта+суждения → Excel.
 # Параметры: путь к файлу базы (лежит в data/) и число строк.
+#
+# АВТОПИЛОТ (заказчик, 2026-08-30: «одно нажатие — система сама доводит
+# прогон до цели, не превышая лимитов»): после полностью успешного прогона
+# src.autopilot решает «continue/stop»; continue → воркфлоу перезапускает
+# сам себя (потолок 8 перезапусков/цепочку). Утренний крон продолжает на
+# следующий день, когда суточные квоты (Геопоиск 1000/д, 2ГИС 1000/д)
+# обнулились. Предохранители ТЗ НЕ обходятся: любой системный стоп валит
+# этап → красный прогон → шаг «Продолжение» пропускается, доклад заказчику.
+# Выключить: python -m src.autopilot off, либо Actions → Disable workflow.
 name: test-40
 
 on:
@@ -15,9 +24,17 @@ on:
         description: "Сколько первых строк взять"
         required: true
         default: "40"
+      chain:
+        description: "Номер перезапуска цепочки автопилота (не трогать руками)"
+        required: false
+        default: "0"
+  schedule:
+    # утреннее продолжение автопилота: 05:37 UTC — суточные квоты уже новые
+    - cron: "37 5 * * *"
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: test-40
@@ -25,8 +42,9 @@ concurrency:
 
 jobs:
   t40:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 200
+    timeout-minutes: 330
     env:
       YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
       YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
@@ -52,41 +70,55 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Быстрые проверки
-        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py -q
+        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py -q
 
       - name: Импорт первых N строк
         run: python -m src.test40 import "${{ inputs.base_file }}" "${{ inputs.rows }}"
 
+      - name: Подготовка автопилота (возврат упавших строк в очередь, ≤3 повторов)
+        run: python -m src.autopilot prepare
+
+      # тайминги этапов подобраны так, чтобы прогон ЗАВЕРШАЛСЯ сам до
+      # timeout-minutes: чекпойнт, выгрузка и решение автопилота успевают
       - name: Реестр лицензий РЗН (по ИНН, пауза 3 с)
-        run: python -m src.test40 rzn 3600
+        run: python -m src.test40 rzn 600
 
       - name: Сайты из ячейки СПАРК (гибкая навигация, бесплатно)
-        run: python -m src.test40 sites 3600
+        run: python -m src.test40 sites 1800
 
       - name: Поисковая достройка ненайденных
-        run: python -m src.test40 search
+        run: python -m src.test40 search 3600
 
       - name: Обход + паспорта + суждения
-        run: python -m src.test40 judge 6000
+        run: python -m src.test40 judge 5400
 
       - name: Судьи-нейронки по паспортам (обязательное условие заказчика;
               отсутствие ключа провайдера — пропуск с сообщением, не отказ)
         continue-on-error: true
         run: |
-          python -m src.llm_judge run kilo || true
-          python -m src.llm_judge run llm7 || true
-          python -m src.llm_judge run yandexgpt || true
-          python -m src.llm_judge run groq || true
-          python -m src.llm_judge run openrouter || true
-          python -m src.llm_judge run cerebras || true
+          timeout 900 python -m src.llm_judge run kilo || true
+          timeout 900 python -m src.llm_judge run llm7 || true
+          timeout 900 python -m src.llm_judge run yandexgpt || true
+          timeout 900 python -m src.llm_judge run groq || true
+          timeout 900 python -m src.llm_judge run openrouter || true
+          timeout 900 python -m src.llm_judge run cerebras || true
           for p in kilo llm7 yandexgpt groq; do python -m src.llm_judge gate $p || true; done
 
       - name: Даблчек найденных сайтов карточками Яндекс-Геопоиска
         continue-on-error: true
-        run: python -m src.test40 mapcheck
+        run: timeout 1800 python -m src.test40 mapcheck || true
 
       - name: Выгрузка
         run: python -m src.test40 export "${{ inputs.base_file }}"
+
+      # решение ДО коммита: autopilot_state уезжает в репозиторий вместе
+      # с базой — следующий прогон и крон видят цель и снапшот прогресса
+      - name: Решение автопилота
+        id: pilot
+        run: |
+          d=$(python -m src.autopilot decide "${{ inputs.rows }}" "${{ inputs.chain }}" | tail -1)
+          echo "решение: $d"
+          echo "decision=$d" >> "$GITHUB_OUTPUT"
 
       - name: Чекпойнт как artifact
         if: always()
@@ -108,7 +140,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "Изменений нет"
           else
-            git commit -m "test-40: конвейер $(date +%F) (run ${{ github.run_id }})"
+            git commit -m "test-40: конвейер $(date +%F) (run ${{ github.run_id }}, цепочка ${{ inputs.chain }})"
             # Конфликт бинарной базы при параллельном пуше (run 33252669333:
             # рекбейс упал, час работы не запушился): для osint.db и output/
             # побеждает версия ПРОГОНА (--theirs в ребейсе = наш коммит);
@@ -120,4 +152,47 @@ jobs:
               GIT_EDITOR=true git rebase --continue
             fi
             git push origin "HEAD:${{ github.ref_name }}"
+          fi
+
+      # БЕЗ if: always() — шаг исполняется только когда ВСЕ обязательные
+      # этапы зелёные: системный стоп (предохранитель ТЗ) цепочку обрывает
+      - name: Продолжение конвейера (автопилот)
+        if: steps.pilot.outputs.decision == 'continue'
+        run: |
+          NEXT=$(( ${{ inputs.chain }} + 1 ))
+          echo "перезапуск: rows=${{ inputs.rows }}, цепочка $NEXT"
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/test-40.yml/dispatches" \
+            -d "{\"ref\":\"${{ github.ref_name }}\",\"inputs\":{\"base_file\":\"${{ inputs.base_file }}\",\"rows\":\"${{ inputs.rows }}\",\"chain\":\"$NEXT\"}}"
+
+  # утренний крон: суточные квоты обнулились — если работа осталась и бюджет
+  # позволяет, перезапустить конвейер (цепочка начинается заново, chain=0)
+  resume:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Зависимости (минимум для решения)
+        run: pip install pyyaml
+
+      - name: Продолжить незавершённую цель
+        run: |
+          d=$(python -m src.autopilot cron | tail -1)
+          echo "крон-решение: $d"
+          if [ "$d" != "stop" ]; then
+            curl -sS -X POST \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/${{ github.repository }}/actions/workflows/test-40.yml/dispatches" \
+              -d "{\"ref\":\"${{ github.ref_name }}\",\"inputs\":{\"base_file\":\"data/Выборка_компаний_V2.xlsx\",\"rows\":\"$d\",\"chain\":\"0\"}}"
           fi

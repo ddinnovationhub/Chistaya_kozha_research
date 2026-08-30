@@ -11,7 +11,9 @@ import datetime
 import sqlite3
 
 DB_PATH = "data/osint.db"
-LIMITS = {"yandex_geosearch": 1000}
+LIMITS = {"yandex_geosearch": 1000,
+          # демо-ключ 2ГИС: 1000 запросов/день на продукт (заказчик, 2026-08-27)
+          "dgis_places": 1000}
 
 
 def _db() -> sqlite3.Connection:

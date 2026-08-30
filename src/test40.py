@@ -18,6 +18,7 @@
 """
 
 import datetime
+import os
 import sqlite3
 import sys
 import time
@@ -210,7 +211,20 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
                 break
             for fut in cf.as_completed(
                     [ex.submit(work, it) for it in rows[i:i + chunk]]):
-                inn, res = fut.result()
+                # броня строки (автопилот, 2026-08-30): исключение по одной
+                # строке не валит этап — строка остаётся в очереди (site_source
+                # NULL), повтор в следующем прогоне; системность ловит порог
+                try:
+                    inn, res = fut.result()
+                except Exception as e:  # noqa: BLE001
+                    stats["row_errors"] = stats.get("row_errors", 0) + 1
+                    print(f"⚠ sites: строка упала ({type(e).__name__}: "
+                          f"{str(e)[:120]}) — на повтор")
+                    if stats["row_errors"] > 10:
+                        raise RuntimeError(
+                            f"sites: {stats['row_errors']} ошибок строк — "
+                            f"системный сбой, стоп по ТЗ") from e
+                    continue
                 if res and res[1] == "Требует ручной проверки":
                     dom, _, ev = res
                     # серая зона E1 в СПАРК-пути: found_site НЕ пишется —
@@ -244,8 +258,28 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     from src.api_client import handle_api_response, yandex_search_raw
     from src.dedup import normalize_domain
     from src.discovery import is_aggregator_domain, parse_yandex_xml
+    from src.budget import BudgetTracker
+    from src.errors import AuthError, BudgetExceededError, QuotaExhaustedError
     from src.pilot108 import SEARCH_COST_RUB
+    from src.quota import status as quota_status
     from src.rzn_licenses import license_addresses, license_numbers
+
+    # потолок проекта 5000 ₽ (автопилот, 2026-08-30): каждый запрос поиска
+    # списывается ДО отправки; переполнение → BudgetExceededError → этап
+    # падает, чекпойнт сохранён, цепочка автопилота не продолжается
+    budget = BudgetTracker()
+
+    _geo_key = os.environ.get("YANDEX_GEOSEARCH_API_KEY")
+    _GEO_RESERVE = 150   # запас суточной квоты Геопоиска под даблчек
+
+    def _geo_ok() -> bool:
+        """Слой карт доступен: ключа нет (каскад и так без него полный)
+        или суточная квота Геопоиска ещё не у резерва."""
+        if not _geo_key:
+            return True
+        used, limit = quota_status("yandex_geosearch")
+        return limit is None or (limit - used) > _GEO_RESERVE
+
     rows = list(db.execute(
         "SELECT inn, name, city FROM t40_companies c "
         "WHERE found_site IS NULL AND search_status IS NULL "
@@ -257,142 +291,173 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     for inn, name, city in rows:
         if time.time() - t0 > budget_sec:
             break
-        addrs = license_addresses(db, inn)
-        nums = license_numbers(db, inn)
-        cands, seen = [], set()
+        # броня строки (автопилот, 2026-08-30): сбой одной строки не
+        # валит этап — статус не записывается, повтор в следующем
+        # прогоне; системные стопы (квота, бюджет, авторизация) выше
+        try:
+            addrs = license_addresses(db, inn)
+            nums = license_numbers(db, inn)
+            cands, seen = [], set()
 
-        def _add(url_or_dom, into=None):
-            """Кандидат в слой into (и всегда в cands — сквозной журнал)."""
-            dom = normalize_domain(url_or_dom or "")
-            if dom and dom not in seen and not is_aggregator_domain(dom):
-                seen.add(dom)
-                cands.append(dom)
-                if into is not None:
-                    into.append(dom)
+            def _add(url_or_dom, into=None):
+                """Кандидат в слой into (и всегда в cands — сквозной журнал)."""
+                dom = normalize_domain(url_or_dom or "")
+                if dom and dom not in seen and not is_aggregator_domain(dom):
+                    seen.add(dom)
+                    cands.append(dom)
+                    if into is not None:
+                        into.append(dom)
 
-        # ПОРЯДОК СЛОЁВ (заказчик, 2026-08-27: «карты внедряем только в тот
-        # слой, где ранее оговоренными методами сайт найти не удалось»):
-        # 1) веб-поиск «{название} {город}» → 2) веб-запрос по адресу
-        # лицензии → 3) КАРТОЧКИ КАРТ (Яндекс Геопоиск / 2ГИС) — последний
-        # запасной слой; из карточки берётся только URL, подтверждение той
-        # же лестницей (кейс франчайзи: сайт бренда + адрес лицензии)
-        resp = yandex_search_raw(f"{name} {city}", n=10)
-        if handle_api_response(resp, "Яндекс Search API") is None:
-            continue
-        stats["spent_rub"] += SEARCH_COST_RUB
-        for r in parse_yandex_xml(
-                base64.b64decode(resp.json()["rawData"]).decode("utf-8")):
-            if len(cands) >= 10:   # было 5: юр-справочники съедали все слоты
-                break
-            _add(r.get("url"))
-        res = _check_candidates_flex(inn, name, city, list(cands),
-                                     license_addrs=addrs,
-                                     license_nums=nums)
-        if res is None or res[1] == "Требует ручной проверки":
-            # СЛОЙ 1.5 (заказчик, 2026-08-29): запрос по самому ИНН — сайты
-            # публикуют ИНН в реквизитах, Яндекс индексирует; найденное так
-            # подтверждается ступенью ИНН мгновенно
-            resp15 = yandex_search_raw(f'"{inn}"', n=10)
-            if handle_api_response(resp15, "Яндекс Search API") is not None:
-                stats["spent_rub"] += SEARCH_COST_RUB
-                by_inn = []
-                for r in parse_yandex_xml(base64.b64decode(
-                        resp15.json()["rawData"]).decode("utf-8")):
-                    _add(r.get("url"), into=by_inn)
-                    if len(by_inn) >= 5:
-                        break
-                if by_inn:
-                    res15 = _check_candidates_flex(inn, name, city, by_inn,
-                                                   license_addrs=addrs,
-                                                   license_nums=nums)
-                    if res15 and res15[1] != "Требует ручной проверки":
-                        res = res15
-                    elif res is None:
-                        res = res15
-        if (res is None or res[1] == "Требует ручной проверки") and addrs:
-            # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
-            # а адрес точки из лицензии уникален
-            from src.site_finder import license_addr_patterns
-            pats = license_addr_patterns(addrs)
-            if pats:
-                street, house = pats[0]
-                resp2 = yandex_search_raw(
-                    f"{city} {street} {house} клиника медицинский центр", n=10)
-                if handle_api_response(resp2, "Яндекс Search API") is not None:
+            # ПОРЯДОК СЛОЁВ (заказчик, 2026-08-27: «карты внедряем только в тот
+            # слой, где ранее оговоренными методами сайт найти не удалось»):
+            # 1) веб-поиск «{название} {город}» → 2) веб-запрос по адресу
+            # лицензии → 3) КАРТОЧКИ КАРТ (Яндекс Геопоиск / 2ГИС) — последний
+            # запасной слой; из карточки берётся только URL, подтверждение той
+            # же лестницей (кейс франчайзи: сайт бренда + адрес лицензии)
+            budget.charge("yandex_search_api")
+            resp = yandex_search_raw(f"{name} {city}", n=10)
+            if handle_api_response(resp, "Яндекс Search API") is None:
+                continue
+            stats["spent_rub"] += SEARCH_COST_RUB
+            for r in parse_yandex_xml(
+                    base64.b64decode(resp.json()["rawData"]).decode("utf-8")):
+                if len(cands) >= 10:   # было 5: юр-справочники съедали все слоты
+                    break
+                _add(r.get("url"))
+            res = _check_candidates_flex(inn, name, city, list(cands),
+                                         license_addrs=addrs,
+                                         license_nums=nums)
+            if res is None or res[1] == "Требует ручной проверки":
+                # СЛОЙ 1.5 (заказчик, 2026-08-29): запрос по самому ИНН — сайты
+                # публикуют ИНН в реквизитах, Яндекс индексирует; найденное так
+                # подтверждается ступенью ИНН мгновенно
+                budget.charge("yandex_search_api")
+                resp15 = yandex_search_raw(f'"{inn}"', n=10)
+                if handle_api_response(resp15, "Яндекс Search API") is not None:
                     stats["spent_rub"] += SEARCH_COST_RUB
-                    extra = []
+                    by_inn = []
                     for r in parse_yandex_xml(base64.b64decode(
-                            resp2.json()["rawData"]).decode("utf-8")):
-                        _add(r.get("url"), into=extra)
-                        if len(extra) >= 4:
+                            resp15.json()["rawData"]).decode("utf-8")):
+                        _add(r.get("url"), into=by_inn)
+                        if len(by_inn) >= 5:
                             break
-                    if extra:
-                        res = _check_candidates_flex(inn, name, city, extra,
-                                                     license_addrs=addrs,
-                                                     license_nums=nums)
-        if res is None or res[1] == "Требует ручной проверки":
-            # слой 3 (запасной): карточки карт — прямые URL, а если ключ
-            # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
-            # сайт бренда достраивается веб-поиском; принадлежность юрлица
-            # к сайту сети подтверждает адрес лицензии
-            from src.map_candidates import map_candidates
-            cards = map_candidates(name, city)
-            maps = []
-            for u in cards["urls"]:
-                _add(u, into=maps)
-            if not maps and cards["brands"]:
-                brand = cards["brands"][0]
-                resp3 = yandex_search_raw(
-                    f"{brand} {city} официальный сайт", n=10)
-                if handle_api_response(resp3, "Яндекс Search API") is not None:
-                    stats["spent_rub"] += SEARCH_COST_RUB
-                    for r in parse_yandex_xml(base64.b64decode(
-                            resp3.json()["rawData"]).decode("utf-8")):
-                        _add(r.get("url"), into=maps)
-                        if len(maps) >= 4:
-                            break
-            if maps:
-                res3 = _check_candidates_flex(inn, name, city, maps,
-                                              license_addrs=addrs,
-                                              license_nums=nums)
-                if res3 and res3[1] != "Требует ручной проверки":
-                    res = res3
-                elif res is None and res3:
-                    res = res3
-                elif res is None and (maps := [m for m in maps
-                        if m not in _rejected_domains(inn)]):
-                    # СЕРАЯ ЗОНА E2 (заказчик, 2026-08-29, кейс франшиз):
-                    # карточка карт указывает сайт, чужого ИНН на нём нет,
-                    # но сеть не публикует ни наш ИНН, ни адрес точки —
-                    # НЕ автозапись, маркер на ручную
-                    res = (maps[0], "Требует ручной проверки",
-                           f"карты указывают сайт {maps[0]}, принадлежность "
-                           f"не доказана")
-        cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
-        if res and res[1] == "Требует ручной проверки":
-            dom, _, ev = res
-            stats["manual_review"] = stats.get("manual_review", 0) + 1
-            # found_site НЕ пишется: принадлежность не доказана — маркер
-            db.execute("UPDATE t40_companies SET search_status=?, "
-                       "search_attempts=?, search_candidates=? WHERE inn=?",
-                       (f"Требует ручной проверки: {dom} — {ev}"[:250],
-                        len(cands), cand_log, inn))
-        elif res:
-            dom, grade, ev = res
-            key = "found_inn" if "ИНН" in grade else "found_addr"
-            stats[key] += 1
-            db.execute("UPDATE t40_companies SET found_site=?, grade=?, "
-                       "grade_evidence=?, site_source='поиск (название+город, "
-                       "гибкая навигация)', search_attempts=?, "
-                       "search_candidates=?, search_status='найден' WHERE inn=?",
-                       (dom, grade, ev[:300], len(cands), cand_log, inn))
-        else:
-            stats["not_found"] += 1
-            db.execute("UPDATE t40_companies SET search_status='сайт не найден', "
-                       "search_attempts=?, search_candidates=? WHERE inn=?",
-                       (len(cands), cand_log, inn))
-        stats["done"] += 1
-        db.commit()
+                    if by_inn:
+                        res15 = _check_candidates_flex(inn, name, city, by_inn,
+                                                       license_addrs=addrs,
+                                                       license_nums=nums)
+                        if res15 and res15[1] != "Требует ручной проверки":
+                            res = res15
+                        elif res is None:
+                            res = res15
+            if (res is None or res[1] == "Требует ручной проверки") and addrs:
+                # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
+                # а адрес точки из лицензии уникален
+                from src.site_finder import license_addr_patterns
+                pats = license_addr_patterns(addrs)
+                if pats:
+                    street, house = pats[0]
+                    budget.charge("yandex_search_api")
+                    resp2 = yandex_search_raw(
+                        f"{city} {street} {house} клиника медицинский центр", n=10)
+                    if handle_api_response(resp2, "Яндекс Search API") is not None:
+                        stats["spent_rub"] += SEARCH_COST_RUB
+                        extra = []
+                        for r in parse_yandex_xml(base64.b64decode(
+                                resp2.json()["rawData"]).decode("utf-8")):
+                            _add(r.get("url"), into=extra)
+                            if len(extra) >= 4:
+                                break
+                        if extra:
+                            res = _check_candidates_flex(inn, name, city, extra,
+                                                         license_addrs=addrs,
+                                                         license_nums=nums)
+            if res is None and not _geo_ok():
+                # квота Геопоиска у резерва, веб-слои пусты, запасной слой карт
+                # недоступен: строка честно ОТКЛАДЫВАЕТСЯ (search_status остаётся
+                # NULL — повтор завтра), а не получает «сайт не найден» по
+                # неполному каскаду. Три отсрочки подряд → поиск до завтра
+                stats["deferred_quota"] = stats.get("deferred_quota", 0) + 1
+                print(f"⚠ {inn}: слой карт без квоты — строка отложена на завтра")
+                if stats["deferred_quota"] >= 3:
+                    print("⛔ квота Геопоиска у резерва — поиск остановлен, "
+                          "крон продолжит после обнуления квоты")
+                    break
+                time.sleep(1)
+                continue
+            if res is None or res[1] == "Требует ручной проверки":
+                # слой 3 (запасной): карточки карт — прямые URL, а если ключ
+                # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
+                # сайт бренда достраивается веб-поиском; принадлежность юрлица
+                # к сайту сети подтверждает адрес лицензии
+                from src.map_candidates import map_candidates
+                cards = map_candidates(name, city)
+                maps = []
+                for u in cards["urls"]:
+                    _add(u, into=maps)
+                if not maps and cards["brands"]:
+                    brand = cards["brands"][0]
+                    budget.charge("yandex_search_api")
+                    resp3 = yandex_search_raw(
+                        f"{brand} {city} официальный сайт", n=10)
+                    if handle_api_response(resp3, "Яндекс Search API") is not None:
+                        stats["spent_rub"] += SEARCH_COST_RUB
+                        for r in parse_yandex_xml(base64.b64decode(
+                                resp3.json()["rawData"]).decode("utf-8")):
+                            _add(r.get("url"), into=maps)
+                            if len(maps) >= 4:
+                                break
+                if maps:
+                    res3 = _check_candidates_flex(inn, name, city, maps,
+                                                  license_addrs=addrs,
+                                                  license_nums=nums)
+                    if res3 and res3[1] != "Требует ручной проверки":
+                        res = res3
+                    elif res is None and res3:
+                        res = res3
+                    elif res is None and (maps := [m for m in maps
+                            if m not in _rejected_domains(inn)]):
+                        # СЕРАЯ ЗОНА E2 (заказчик, 2026-08-29, кейс франшиз):
+                        # карточка карт указывает сайт, чужого ИНН на нём нет,
+                        # но сеть не публикует ни наш ИНН, ни адрес точки —
+                        # НЕ автозапись, маркер на ручную
+                        res = (maps[0], "Требует ручной проверки",
+                               f"карты указывают сайт {maps[0]}, принадлежность "
+                               f"не доказана")
+            cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
+            if res and res[1] == "Требует ручной проверки":
+                dom, _, ev = res
+                stats["manual_review"] = stats.get("manual_review", 0) + 1
+                # found_site НЕ пишется: принадлежность не доказана — маркер
+                db.execute("UPDATE t40_companies SET search_status=?, "
+                           "search_attempts=?, search_candidates=? WHERE inn=?",
+                           (f"Требует ручной проверки: {dom} — {ev}"[:250],
+                            len(cands), cand_log, inn))
+            elif res:
+                dom, grade, ev = res
+                key = "found_inn" if "ИНН" in grade else "found_addr"
+                stats[key] += 1
+                db.execute("UPDATE t40_companies SET found_site=?, grade=?, "
+                           "grade_evidence=?, site_source='поиск (название+город, "
+                           "гибкая навигация)', search_attempts=?, "
+                           "search_candidates=?, search_status='найден' WHERE inn=?",
+                           (dom, grade, ev[:300], len(cands), cand_log, inn))
+            else:
+                stats["not_found"] += 1
+                db.execute("UPDATE t40_companies SET search_status='сайт не найден', "
+                           "search_attempts=?, search_candidates=? WHERE inn=?",
+                           (len(cands), cand_log, inn))
+            stats["done"] += 1
+            db.commit()
+        except (QuotaExhaustedError, AuthError, BudgetExceededError):
+            raise
+        except Exception as e:  # noqa: BLE001
+            stats["row_errors"] = stats.get("row_errors", 0) + 1
+            print(f"⚠ search: строка {inn} упала ({type(e).__name__}: "
+                  f"{str(e)[:120]}) — статус не записан, на повтор")
+            if stats["row_errors"] > 10:
+                raise RuntimeError(
+                    f"search: {stats['row_errors']} ошибок строк — "
+                    f"системный сбой, стоп по ТЗ") from e
         time.sleep(1)
     return stats
 
@@ -491,11 +556,20 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000) -> dict:
     2026-08-28). Идемпотентно: только строки без map_check; квота
     src.quota ограничивает сутки."""
     from src.map_candidates import yandex_doublecheck
+    from src.quota import status as quota_status
     rows = list(db.execute(
         "SELECT inn, name, city, found_site FROM t40_companies "
         "WHERE found_site IS NOT NULL AND map_check IS NULL LIMIT ?", (limit,)))
     stats = {"совпадает": 0, "расхождение": 0, "нет карточки": 0, "done": 0}
     for inn, name, city, site in rows:
+        # квота-честность (автопилот, 2026-08-30): исчерпанная суточная
+        # квота Геопоиска раньше давала ложный терминальный вердикт
+        # «карточка не найдена» — теперь строка остаётся в очереди на завтра
+        used, lim = quota_status("yandex_geosearch")
+        if lim is not None and used >= lim:
+            print(f"⛔ даблчек: суточная квота Геопоиска исчерпана — "
+                  f"{len(rows) - stats['done']} строк остаются на завтра")
+            break
         verdict = yandex_doublecheck(name, city, site)
         db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
                    (verdict, inn))
@@ -734,7 +808,8 @@ if __name__ == "__main__":
         b = float(sys.argv[2]) if len(sys.argv) > 2 else 1800
         print("сайты (гибко):", check_sites(con, b))
     elif cmd == "search":
-        print("поиск:", run_search(con))
+        b = float(sys.argv[2]) if len(sys.argv) > 2 else 3600
+        print("поиск:", run_search(con, b))
     elif cmd == "judge":
         b = float(sys.argv[2]) if len(sys.argv) > 2 else 2400
         print("обход и суждения:", crawl_judge(con, b))
