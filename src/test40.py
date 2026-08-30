@@ -585,6 +585,17 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000) -> dict:
     return stats
 
 
+def _xl(v):
+    """Санация значения для ячейки Excel (краш run 33327894175, цепочка 1:
+    сайт отдал бинарный мусор → управляющие символы в тексте позиции →
+    openpyxl отказал ВСЕЙ выгрузке). Управляющие символы заменяются '·' —
+    мусор остаётся видимым на ручной проверке, но файл собирается."""
+    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+    if isinstance(v, str) and ILLEGAL_CHARACTERS_RE.search(v):
+        return ILLEGAL_CHARACTERS_RE.sub("·", v)
+    return v
+
+
 def export_t40(db: sqlite3.Connection, src_path: str) -> str:
     from openpyxl.styles import Alignment, Font, PatternFill
     ensure_t40_tables(db)   # миграции колонок (map_check и др.)
@@ -650,7 +661,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                     f"судьи мед {med_votes}/{len(judges)} — на ручную")
         vals.append(cons)
         for c, v in enumerate(vals, 1):
-            cell = ws.cell(r, c, v if v is not None else "")
+            cell = ws.cell(r, c, _xl(v) if v is not None else "")
             cell.font = ARIAL
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         r += 1
@@ -672,7 +683,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             "FROM rzn_licenses "
             "WHERE inn IN (SELECT inn FROM t40_companies) ORDER BY inn"):
         for c, v in enumerate(row[:-1], 1):
-            cell = ws.cell(r, c, v if v is not None else "")
+            cell = ws.cell(r, c, _xl(v) if v is not None else "")
             cell.font = ARIAL
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         link = ws.cell(r, 12)
@@ -717,7 +728,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                         [inn, name, licensee, number,
                          "да" if is_med else "", addr, o.get("city") or "",
                          street, house, ", ".join(specs), site or ""], 1):
-                    cell = ws.cell(r, c, v)
+                    cell = ws.cell(r, c, _xl(v))
                     cell.font = ARIAL
                     cell.alignment = Alignment(vertical="top", wrap_text=True)
                 r += 1
@@ -731,7 +742,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             "SELECT row_no, name, inn, found_site, passport FROM t40_companies "
             "WHERE passport IS NOT NULL ORDER BY row_no"):
         for c, v in enumerate(row, 1):
-            cell = ws.cell(r, c, v if v is not None else "")
+            cell = ws.cell(r, c, _xl(v) if v is not None else "")
             cell.font = ARIAL
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         r += 1
@@ -751,7 +762,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                 "JOIN t40_companies c ON c.inn=j.inn "
                 "ORDER BY c.row_no, j.provider"):
             for c, v in enumerate(row, 1):
-                cell = ws.cell(r, c, v if v is not None else "")
+                cell = ws.cell(r, c, _xl(v) if v is not None else "")
                 cell.font = ARIAL
                 cell.alignment = Alignment(vertical="top", wrap_text=True)
             r += 1
@@ -782,7 +793,7 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             "site_specialties, search_attempts FROM t40_companies WHERE inn=?",
             (inn,)).fetchone() or [None] * 15
         for c, v in enumerate(list(src) + list(row), 1):
-            cell = ws.cell(r, c, v if v is not None else "")
+            cell = ws.cell(r, c, _xl(v) if v is not None else "")
             cell.font = ARIAL
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         r += 1
