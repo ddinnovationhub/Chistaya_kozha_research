@@ -11,7 +11,6 @@ test40.gray_zone_verdict: немедицинские кандидаты карт
 
 import sqlite3
 import sys
-import time
 
 from src.test40 import gray_zone_verdict
 
@@ -26,18 +25,34 @@ def main(limit: int = 0) -> dict:
     if limit:
         rows = rows[:limit]
     import collections
+    import concurrent.futures as cf
     stats = collections.Counter({"проверено": 0, "отсеяно (немед)": 0,
                                  "ошибок": 0})
-    for inn, name, status, cand_log in rows:
+
+    def work(item):
+        """Вердикт по одной строке. Домены разные, поэтому параллельность
+        не нарушает лимит «≤1 запрос/3 с на домен» (sources.yaml)."""
+        inn, name, status, cand_log = item
         try:
             dom = status.split("проверки: ", 1)[1].split(" — ", 1)[0].strip()
         except IndexError:
-            stats["ошибок"] += 1
-            continue
+            return inn, cand_log, None, "битый маркер"
         try:
-            verdict = gray_zone_verdict(dom, name)
+            # без Playwright-эскалации: локально нет JINA_API_KEY и
+            # headless-браузер даёт 3 часа на 170 строк. Нечитаемые
+            # строки возвращаются в очередь поиска — их добьёт прогон
+            # в Actions, где ключ Jina есть
+            return inn, cand_log, gray_zone_verdict(dom, name,
+                                                    escalate=False), dom
         except Exception as e:  # noqa: BLE001 — строка не валит ревизию
-            print(f"⚠ {dom}: {type(e).__name__} — оставлен как есть")
+            return inn, cand_log, None, f"ошибка {type(e).__name__} на {dom}"
+
+    with cf.ThreadPoolExecutor(max_workers=6) as ex:
+        results = ex.map(work, rows)
+
+    for inn, cand_log, verdict, dom in results:
+        if dom.startswith(("ошибка", "битый")):
+            print(f"⚠ {inn}: {dom} — оставлен как есть")
             stats["ошибок"] += 1
             continue
         if verdict is None:
@@ -47,6 +62,15 @@ def main(limit: int = 0) -> dict:
                 "search_candidates=? WHERE inn=?",
                 (f"{cand_log or ''} | ревизия 2026-08-31: отсеян немедицинский "
                  f"кандидат карт {dom}"[:400], inn))
+        elif verdict[0] == "сайт не прочитан":
+            # не человеку, а обратно в конвейер: следующий прогон Actions
+            # прочитает сайт рендером и вынесет вердикт сам
+            stats["в очередь поиска (нужен рендер)"] += 1
+            db.execute(
+                "UPDATE t40_companies SET search_status=NULL, "
+                "search_candidates=? WHERE inn=?",
+                (f"{cand_log or ''} | ревизия 2026-08-31: {dom} не прочитан "
+                 f"без рендера — на переобход"[:400], inn))
         else:
             prio, ev = verdict
             stats[prio] += 1
@@ -57,7 +81,6 @@ def main(limit: int = 0) -> dict:
         db.commit()
         if stats["проверено"] % 20 == 0:
             print(f"  … {stats['проверено']}/{len(rows)}", flush=True)
-        time.sleep(0.5)
     db.close()
     return stats
 

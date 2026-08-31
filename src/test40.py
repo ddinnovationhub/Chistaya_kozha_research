@@ -122,7 +122,8 @@ def _rejected_domains(inn: str) -> set[str]:
         db.close()
 
 
-def gray_zone_verdict(dom: str, name: str) -> tuple[str, str] | None:
+def gray_zone_verdict(dom: str, name: str,
+                      escalate: bool = True) -> tuple[str, str] | None:
     """ФИЛЬТР СЕРОЙ ЗОНЫ (заказчик, 2026-08-31: «половина строк — сайты на
     ручную, это типа я всё должен проверить?»). Карточка карт отдаёт любой
     сайт по адресу, поэтому на ручную уезжали ozon.ru, hh.ru, dzen.ru,
@@ -139,7 +140,7 @@ def gray_zone_verdict(dom: str, name: str) -> tuple[str, str] | None:
         return None
     # «мало текста» ≠ «не медицинский» (invitro.ru отдаёт 3.8 КБ JS-оболочки):
     # тонкого кандидата добираем рендером, как в лестнице подтверждения
-    if sum(len(html_to_text(t)) for t in texts) < 400:
+    if escalate and sum(len(html_to_text(t)) for t in texts) < 400:
         try:
             from src.fetch_cascade import _level1_jina, _level3_headless
             extra = _level1_jina(f"https://{dom}")[0] or \
