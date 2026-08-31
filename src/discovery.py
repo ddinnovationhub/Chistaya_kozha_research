@@ -54,6 +54,12 @@ AGGREGATOR_DOMAINS = {
     # добор по серой зоне run 12 (2026-08-30): ещё мессенджер и два
     # бизнес-каталога, всплывшие как «сайты» из карточек карт
     "telegram.me", "cataloxy.ru", "orgs.biz",
+    # разбор серой зоны прогона 1500 (заказчик, 2026-08-31): карточка карт
+    # отдаёт сайт по адресу здания — так на ручную уезжали справочники,
+    # доски вакансий, маркетплейсы и блог-платформы
+    "companium.ru", "hh.ru", "dzen.ru", "zen.yandex.ru", "ozon.ru",
+    "wildberries.ru", "otc.ru", "my-gkh.ru", "mysmsbox.ru", "ponaweb.ru",
+    "gorod.guru", "yell.com", "blizko.ru", "regmarkets.ru",
 }
 
 
