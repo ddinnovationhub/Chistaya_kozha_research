@@ -558,17 +558,61 @@ def crawl_judge(db: sqlite3.Connection, budget_sec: float = 2400,
     return stats
 
 
-def map_doublecheck(db: sqlite3.Connection, limit: int = 1000) -> dict:
+def map_doublecheck(db: sqlite3.Connection, limit: int = 1000,
+                    budget_sec: float = 1500) -> dict:
     """Даблчек найденных сайтов карточками Яндекс-Геопоиска (заказчик,
     2026-08-28). Идемпотентно: только строки без map_check; квота
     src.quota ограничивает сутки."""
+    import re as _re
+
     from src.map_candidates import yandex_doublecheck
     from src.quota import status as quota_status
+    from src.rzn_licenses import license_addresses, license_numbers
+    stats = {"совпадает": 0, "расхождение": 0, "нет карточки": 0,
+             "расхождение: карточка не сайт компании": 0,
+             "расхождение: второй домен компании": 0, "done": 0}
+    t0 = time.time()
+
+    def _resolve(inn, name, city, site, card_dom) -> str:
+        """АВТОРАЗРЕШЕНИЕ расхождения (заказчик, 2026-09-02): домен из карточки
+        карт проходит ту же лестницу ИНН → номер лицензии → адрес лицензии.
+        Прошёл — у компании два подтверждённых домена; нет — карточка указывает
+        чужой сайт, наш (уже подтверждённый) остаётся. Человеку — ничего."""
+        chk = _check_candidates_flex(inn, name, city, [card_dom],
+                                     license_addrs=license_addresses(db, inn),
+                                     license_nums=license_numbers(db, inn))
+        if chk:
+            stats["расхождение: второй домен компании"] += 1
+            return (f"РАСХОЖДЕНИЕ разрешено: карточка {card_dom} — {chk[1]} "
+                    f"(второй домен компании; в H остаётся {site})")
+        stats["расхождение: карточка не сайт компании"] += 1
+        return (f"РАСХОЖДЕНИЕ разрешено: карточка {card_dom} — лестницей не "
+                f"подтверждён, не сайт компании; {site} остаётся")
+
+    # накопленные расхождения старого формата («— на ручную») — разрешить без
+    # повторного запроса к картам: домен уже в тексте
+    for inn, name, city, site, mc in db.execute(
+            "SELECT inn, name, city, found_site, map_check FROM t40_companies "
+            "WHERE map_check LIKE 'РАСХОЖДЕНИЕ: в карточке %' "
+            "AND map_check NOT LIKE 'РАСХОЖДЕНИЕ разрешено%' LIMIT ?",
+            (limit,)).fetchall():
+        if time.time() - t0 > budget_sec:
+            break
+        m = _re.match(r"РАСХОЖДЕНИЕ: в карточке (\S+)", mc)
+        if not m:
+            continue
+        db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
+                   (_resolve(inn, name, city, site, m.group(1)), inn))
+        db.commit()
+        stats["done"] += 1
+
     rows = list(db.execute(
         "SELECT inn, name, city, found_site FROM t40_companies "
         "WHERE found_site IS NOT NULL AND map_check IS NULL LIMIT ?", (limit,)))
-    stats = {"совпадает": 0, "расхождение": 0, "нет карточки": 0, "done": 0}
     for inn, name, city, site in rows:
+        if time.time() - t0 > budget_sec:
+            print("⏱ даблчек: бюджет времени исчерпан — остаток на следующий прогон")
+            break
         # квота-честность (автопилот, 2026-08-30): исчерпанная суточная
         # квота Геопоиска раньше давала ложный терминальный вердикт
         # «карточка не найдена» — теперь строка остаётся в очереди на завтра
@@ -578,11 +622,15 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000) -> dict:
                   f"{len(rows) - stats['done']} строк остаются на завтра")
             break
         verdict = yandex_doublecheck(name, city, site)
+        if verdict.startswith("РАСХОЖДЕНИЕ: в карточке "):
+            stats["расхождение"] += 1
+            verdict = _resolve(inn, name, city, site,
+                               verdict.split("в карточке ", 1)[1].strip())
         db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
                    (verdict, inn))
         db.commit()
         if "РАСХОЖДЕНИЕ" in verdict:
-            stats["расхождение"] += 1
+            pass
         elif "совпадает" in verdict:
             stats["совпадает"] += 1
         else:
@@ -832,7 +880,8 @@ if __name__ == "__main__":
         b = float(sys.argv[2]) if len(sys.argv) > 2 else 2400
         print("обход и суждения:", crawl_judge(con, b))
     elif cmd == "mapcheck":
-        print("даблчек картами:", map_doublecheck(con))
+        b = float(sys.argv[2]) if len(sys.argv) > 2 else 1500
+        print("даблчек картами:", map_doublecheck(con, budget_sec=b))
     elif cmd == "export":
         print("выгрузка:", export_t40(con, sys.argv[2]))
     else:

@@ -44,7 +44,7 @@ jobs:
   t40:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 330
+    timeout-minutes: 355
     env:
       YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
       YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
@@ -71,7 +71,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Быстрые проверки
-        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py -q
+        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py tests/test_keenable.py tests/test_prices.py -q
 
       - name: Импорт первых N строк
         run: python -m src.test40 import "${{ inputs.base_file }}" "${{ inputs.rows }}"
@@ -97,20 +97,31 @@ jobs:
               отсутствие ключа провайдера — пропуск с сообщением, не отказ)
         continue-on-error: true
         run: |
-          timeout 900 python -m src.llm_judge run kilo || true
-          timeout 900 python -m src.llm_judge run llm7 || true
-          timeout 900 python -m src.llm_judge run yandexgpt || true
-          timeout 900 python -m src.llm_judge run groq || true
-          timeout 900 python -m src.llm_judge run openrouter || true
-          timeout 900 python -m src.llm_judge run cerebras || true
+          timeout 720 python -m src.llm_judge run kilo || true
+          timeout 720 python -m src.llm_judge run llm7 || true
+          timeout 720 python -m src.llm_judge run yandexgpt || true
+          timeout 720 python -m src.llm_judge run groq || true
+          timeout 720 python -m src.llm_judge run openrouter || true
+          timeout 720 python -m src.llm_judge run cerebras || true
           for p in kilo llm7 yandexgpt groq; do python -m src.llm_judge gate $p || true; done
 
-      - name: Даблчек найденных сайтов карточками Яндекс-Геопоиска
+      - name: Даблчек картами + авторазрешение расхождений (домен карточки — через лестницу)
         continue-on-error: true
-        run: timeout 1800 python -m src.test40 mapcheck || true
+        run: timeout 1800 python -m src.test40 mapcheck 1500 || true
+
+      # ПРАЙС-КАСКАД в конвейере (заказчик, 2026-09-02: «надо догонять прайсы»):
+      # только профильные по лицензии (дерматовенерология/онкология/
+      # косметология) с найденным сайтом; чекпойнт подомённо, автопилот
+      # считает остаток и дожимает цепочкой. Отдельная кнопка prices.yml
+      # остаётся для ручных перезапусков — НЕ запускать параллельно с test-40
+      - name: Прайс-каскад по профильным компаниям
+        continue-on-error: true
+        run: timeout 1800 python -m src.prices run 400 1500 || true
 
       - name: Выгрузка
-        run: python -m src.test40 export "${{ inputs.base_file }}"
+        run: |
+          python -m src.test40 export "${{ inputs.base_file }}"
+          python -m src.prices export || true
 
       # решение ДО коммита: autopilot_state уезжает в репозиторий вместе
       # с базой — следующий прогон и крон видят цель и снапшот прогресса

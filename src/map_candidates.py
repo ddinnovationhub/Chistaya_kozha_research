@@ -133,7 +133,10 @@ def yandex_doublecheck(name: str, city: str, found_site: str) -> str:
         return ".".join(parts[-2:]) if len(parts) >= 2 else d
     if _root(ours) in {_root(d) for d in card_doms if d}:
         return "совпадает с карточкой (домен сети)"
-    return f"РАСХОЖДЕНИЕ: в карточке {card_doms[0]} — на ручную"
+    # разрешается автоматически в test40.map_doublecheck: домен карточки
+    # идёт через ту же лестницу подтверждения (заказчик, 2026-09-02:
+    # «перепроверять 500+ строк я не буду»)
+    return f"РАСХОЖДЕНИЕ: в карточке {card_doms[0]}"
 
 
 def map_candidates(name: str, city: str) -> dict:

@@ -59,6 +59,11 @@ jobs:
             echo "Изменений нет"
           else
             git commit -m "prices: прайс-каскад $(date +%F) (run ${{ github.run_id }})"
-            git pull --rebase origin "${{ github.ref_name }}"
+            if ! git pull --rebase origin "${{ github.ref_name }}"; then
+              git checkout --theirs data/osint.db 2>/dev/null || true
+              git checkout --theirs -- output/ 2>/dev/null || true
+              git add data/ output/
+              GIT_EDITOR=true git rebase --continue
+            fi
             git push origin "HEAD:${{ github.ref_name }}"
           fi

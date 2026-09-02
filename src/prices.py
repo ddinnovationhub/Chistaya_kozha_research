@@ -514,7 +514,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
             "items": len(items), "files_found": len(files)}
 
 
-def run_batch(db: sqlite3.Connection, limit: int = 40) -> list[dict]:
+def run_batch(db: sqlite3.Connection, limit: int = 40,
+              budget_sec: float = 0) -> list[dict]:
     """Обкатка: первые N компаний с найденным сайтом (потом — по фильтру
     заказчика). Чекпойнт подомённо, перезапуск продолжает с места."""
     ensure_price_tables(db)
@@ -533,7 +534,12 @@ def run_batch(db: sqlite3.Connection, limit: int = 40) -> list[dict]:
         "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе')) "
         "ORDER BY c.row_no LIMIT ?", (limit,)).fetchall()
     out, seen_domains = [], set()
+    t_start = time.time()
     for inn, site in rows:
+        if budget_sec and time.time() - t_start > budget_sec:
+            print("⏱ прайс-каскад: бюджет времени исчерпан — остаток на "
+                  "следующий прогон (чекпойнт подомённо)", flush=True)
+            break
         if site in seen_domains:                   # один домен — один разбор
             continue
         seen_domains.add(site)
@@ -600,6 +606,7 @@ if __name__ == "__main__":
         print("файл:", export_prices(db))
     elif cmd == "run":
         n = int(sys.argv[2]) if len(sys.argv) > 2 else 40
-        res = run_batch(db, n)
+        b = float(sys.argv[3]) if len(sys.argv) > 3 else 0
+        res = run_batch(db, n, b)
         ok = sum(1 for r in res if r.get("items"))
         print(f"Итог: {ok}/{len(res)} с извлечённым прайсом")
