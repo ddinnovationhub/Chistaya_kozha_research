@@ -81,6 +81,49 @@ def link_scent(label: str, href: str) -> int:
 
 # --- таблицы ----------------------------------------------------------------
 
+# ── ДВЕ БАЗЫ (заказчик, 2026-09-02: «было требование запускать параллельно;
+# работа одного блокирует работу другого»). Прайсы живут в СВОЕЙ базе
+# data/prices.db; из data/osint.db они только ЧИТАЮТ список компаний
+# (присоединена read-only как схема «o»). Два конвейера пишут разные файлы —
+# гит-конфликтов нет, test-40 и prices идут параллельно. ─────────────────
+T40 = "t40_companies"          # в проде переопределяется на "o.t40_companies"
+RZN = "rzn_licenses"           # и "o.rzn_licenses" (см. open_dbs)
+PRICES_DB = "data/prices.db"
+OSINT_DB = "data/osint.db"
+
+
+def open_dbs(prices_path: str = PRICES_DB, osint_path: str = OSINT_DB
+             ) -> sqlite3.Connection:
+    """Главная база — прайсы (запись); osint.db присоединена только на чтение.
+    Разовая синхронизация: записи price_*, оставшиеся в osint.db от обкатки
+    28.08 и от прогона test-40 со встроенным шагом прайсов, переносятся
+    (по домену, идемпотентно) — работа не теряется и не повторяется."""
+    global T40, RZN
+    # uri=True: иначе «file:…?mode=ro» в ATTACH прочтётся как имя файла и
+    # SQLite молча создаст пустую базу с таким именем
+    db = sqlite3.connect(prices_path, uri=True)
+    db.execute("PRAGMA busy_timeout=15000")
+    ensure_price_tables(db)
+    db.execute("ATTACH DATABASE ? AS o", (f"file:{osint_path}?mode=ro",))
+    T40, RZN = "o.t40_companies", "o.rzn_licenses"
+    has = {r[0] for r in db.execute(
+        "SELECT name FROM o.sqlite_master WHERE type='table'")}
+    if "price_recipes" in has:
+        db.execute("INSERT OR IGNORE INTO price_recipes SELECT * FROM o.price_recipes")
+        if "price_items" in has:
+            db.execute(
+                "INSERT INTO price_items (inn, domain, url, section, code, name_raw, "
+                "price_raw, price_value, currency, checked_at) "
+                "SELECT inn, domain, url, section, code, name_raw, price_raw, "
+                "price_value, currency, checked_at FROM o.price_items "
+                "WHERE domain NOT IN (SELECT DISTINCT domain FROM price_items)")
+        if "price_nav_log" in has:
+            db.execute("INSERT INTO price_nav_log SELECT * FROM o.price_nav_log "
+                       "WHERE domain NOT IN (SELECT DISTINCT domain FROM price_nav_log)")
+        db.commit()
+    return db
+
+
 def ensure_price_tables(db: sqlite3.Connection):
     db.execute("""CREATE TABLE IF NOT EXISTS price_recipes (
         domain TEXT PRIMARY KEY, inn TEXT, level TEXT, status TEXT,
@@ -135,7 +178,7 @@ def polite_get(url: str, delay: float) -> httpx.Response | None:
 
 def p0_passport_files(db: sqlite3.Connection, inn: str) -> list[str]:
     """Ссылки на прайс-файлы из уже собранного паспорта (label → href)."""
-    row = db.execute("SELECT found_site, passport FROM t40_companies "
+    row = db.execute(f"SELECT found_site, passport FROM {T40} "
                      "WHERE inn=?", (inn,)).fetchone()
     if not row or not row[1]:
         return []
@@ -524,9 +567,9 @@ def run_batch(db: sqlite3.Connection, limit: int = 40,
     # онкология и/или косметология. Искать прайсы заведомо непрофильных —
     # бессмысленная трата времени и лимитов (130 из 200 в пачке 1).
     rows = db.execute(
-        "SELECT c.inn, c.found_site FROM t40_companies c "
+        f"SELECT c.inn, c.found_site FROM {T40} c "
         "WHERE c.found_site IS NOT NULL AND c.found_site<>'' "
-        "AND EXISTS (SELECT 1 FROM rzn_licenses l WHERE l.inn=c.inn "
+        f"AND EXISTS (SELECT 1 FROM {RZN} l WHERE l.inn=c.inn "
         "  AND l.is_med=1 AND (l.specialties LIKE '%дерматовенерологи%' "
         "  OR l.specialties LIKE '%онкологи%' "
         "  OR l.specialties LIKE '%косметологи%')) "
@@ -555,6 +598,21 @@ def run_batch(db: sqlite3.Connection, limit: int = 40,
           f"{METER['bytes'] / 1e6:.1f} МБ · "
           f"пауз вежливости {METER['seconds_sleep'] / 60:.0f} мин · 0 ₽")
     return out
+
+
+def remaining(db: sqlite3.Connection) -> int:
+    """Профильные компании с сайтом, чей домен ещё не разобран."""
+    ensure_price_tables(db)
+    return db.execute(
+        f"SELECT COUNT(DISTINCT c.found_site) FROM {T40} c "
+        "WHERE c.found_site IS NOT NULL AND c.found_site<>'' "
+        f"AND EXISTS (SELECT 1 FROM {RZN} l WHERE l.inn=c.inn "
+        "  AND l.is_med=1 AND (l.specialties LIKE '%дерматовенерологи%' "
+        "  OR l.specialties LIKE '%онкологи%' "
+        "  OR l.specialties LIKE '%косметологи%')) "
+        "AND NOT EXISTS (SELECT 1 FROM price_recipes r "
+        "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе'))"
+    ).fetchone()[0]
 
 
 def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
@@ -590,15 +648,18 @@ def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
                         "FROM price_items WHERE price_value<50 "
                         "OR price_value>1000000 ORDER BY price_value"):
         ws3.append(r)
-    path = path or f"output/Прайсы_{time.strftime('%Y-%m-%d')}.xlsx"
+    path = path or f"output/Прайсы_профиль_{time.strftime('%Y-%m-%d')}.xlsx"
     wb.save(path)
     return path
 
 
 if __name__ == "__main__":
     import sys
-    db = sqlite3.connect("data/osint.db")
+    db = open_dbs()
     cmd = sys.argv[1] if len(sys.argv) > 1 else "run"
+    if cmd == "remaining":                          # для самопродолжения
+        print(remaining(db))
+        sys.exit(0)
     if cmd == "probe" and len(sys.argv) > 2:       # обкатка одного домена
         print(run_company(db, sys.argv[3] if len(sys.argv) > 3 else "",
                           sys.argv[2]))

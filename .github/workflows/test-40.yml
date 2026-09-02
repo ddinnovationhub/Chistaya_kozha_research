@@ -71,7 +71,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Быстрые проверки
-        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py tests/test_keenable.py tests/test_prices.py -q
+        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py tests/test_keenable.py -q
 
       - name: Импорт первых N строк
         run: python -m src.test40 import "${{ inputs.base_file }}" "${{ inputs.rows }}"
@@ -109,19 +109,10 @@ jobs:
         continue-on-error: true
         run: timeout 1800 python -m src.test40 mapcheck 1500 || true
 
-      # ПРАЙС-КАСКАД в конвейере (заказчик, 2026-09-02: «надо догонять прайсы»):
-      # только профильные по лицензии (дерматовенерология/онкология/
-      # косметология) с найденным сайтом; чекпойнт подомённо, автопилот
-      # считает остаток и дожимает цепочкой. Отдельная кнопка prices.yml
-      # остаётся для ручных перезапусков — НЕ запускать параллельно с test-40
-      - name: Прайс-каскад по профильным компаниям
-        continue-on-error: true
-        run: timeout 1800 python -m src.prices run 400 1500 || true
-
+      # прайс-каскад — ОТДЕЛЬНЫЙ параллельный конвейер prices.yml со своей
+      # базой data/prices.db (заказчик, 2026-09-02); здесь его нет намеренно
       - name: Выгрузка
-        run: |
-          python -m src.test40 export "${{ inputs.base_file }}"
-          python -m src.prices export || true
+        run: python -m src.test40 export "${{ inputs.base_file }}"
 
       # решение ДО коммита: autopilot_state уезжает в репозиторий вместе
       # с базой — следующий прогон и крон видят цель и снапшот прогресса

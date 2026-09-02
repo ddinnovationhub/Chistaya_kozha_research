@@ -111,3 +111,37 @@ def test_parse_html_tables_naked_prices():
     assert items[0]["price_value"] == 1200
     assert items[1]["price_value"] is None       # вилка — дословно
     assert "от 200 до 800" in items[1]["price_raw"]
+
+
+def test_open_dbs_separate_file_and_legacy_sync(tmp_path, monkeypatch):
+    """Две базы (заказчик, 2026-09-02): прайсы пишутся в свою базу, osint.db
+    присоединена только на чтение; записи обкатки из osint.db переносятся
+    один раз, идемпотентно; повторное открытие ничего не дублирует."""
+    import sqlite3
+
+    from src import prices
+    osint = tmp_path / "osint.db"
+    o = sqlite3.connect(osint)
+    o.execute("CREATE TABLE t40_companies (inn TEXT, found_site TEXT, passport TEXT)")
+    o.execute("CREATE TABLE rzn_licenses (inn TEXT, is_med INTEGER, specialties TEXT)")
+    o.execute("INSERT INTO t40_companies VALUES ('1','a.ru',NULL),('2','b.ru',NULL)")
+    o.execute("INSERT INTO rzn_licenses VALUES ('1',1,'дерматовенерология'),('2',1,'косметология')")
+    prices.ensure_price_tables(o)
+    o.execute("INSERT INTO price_recipes VALUES ('a.ru','1','P3','прайс извлечён','u','[]','[]',1,2,'','2026-08-28')")
+    o.execute("INSERT INTO price_items (inn, domain, url, section, code, name_raw, price_raw, "
+              "price_value, currency, checked_at) VALUES ('1','a.ru','u','s','','Приём','100',100,'руб','2026-08-28')")
+    o.commit(); o.close()
+    pdb_path = tmp_path / "prices.db"
+    db = prices.open_dbs(str(pdb_path), str(osint))
+    assert prices.T40 == "o.t40_companies"
+    assert db.execute("SELECT COUNT(*) FROM price_recipes").fetchone()[0] == 1
+    assert db.execute("SELECT COUNT(*) FROM price_items").fetchone()[0] == 1
+    assert prices.remaining(db) == 1                      # b.ru ещё не разобран
+    db.close()
+    db = prices.open_dbs(str(pdb_path), str(osint))       # повторно — без дублей
+    assert db.execute("SELECT COUNT(*) FROM price_items").fetchone()[0] == 1
+    # osint.db только на чтение: запись в схему o невозможна
+    import pytest
+    with pytest.raises(sqlite3.OperationalError):
+        db.execute("INSERT INTO o.t40_companies VALUES ('3','c.ru',NULL)")
+    prices.T40, prices.RZN = "t40_companies", "rzn_licenses"   # вернуть дефолт

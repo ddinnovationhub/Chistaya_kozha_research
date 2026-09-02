@@ -1,19 +1,28 @@
-# ПРАЙС-КАСКАД — отдельная кнопка (заказчик, 2026-08-28). НЕ трогает test-40.
-# Идёт ТОЛЬКО по компаниям, в чьей мед-лицензии есть дерматовенерология /
-# онкология / косметология (фильтр заказчика), с найденным сайтом.
-# Каналы бесплатные: HTTP + Jina Reader (ключ из Secrets снимает rate-limit).
+# ПРАЙС-КАСКАД — ПАРАЛЛЕЛЬНЫЙ КОНВЕЙЕР (заказчик, 2026-09-02: «было
+# требование запускать параллельно; работа одного блокирует работу другого»).
+# Своя база data/prices.db (osint.db только читается) и своя выгрузка —
+# с test-40 не пересекается ни по файлам, ни по concurrency-группе, поэтому
+# запускается одновременно с ним. Идёт ТОЛЬКО по компаниям, в чьей мед-лицензии
+# есть дерматовенерология / онкология / косметология, с найденным сайтом.
+# Самопродолжение: пока остаток > 0, воркфлоу перезапускает сам себя
+# (потолок 12 перезапусков). Каналы бесплатные: HTTP + Jina Reader.
 name: prices
 
 on:
   workflow_dispatch:
     inputs:
       rows:
-        description: "Сколько профильных компаний с сайтом взять"
+        description: "Сколько профильных компаний с сайтом взять за прогон"
         required: true
-        default: "40"
+        default: "400"
+      chain:
+        description: "Номер перезапуска (не трогать руками)"
+        required: false
+        default: "0"
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: prices
@@ -35,35 +44,61 @@ jobs:
         run: pip install -r requirements.txt
       - name: Быстрые проверки
         run: python -m pytest tests/test_prices.py -q
-      - name: Прайс-каскад (чекпойнт подомённо, перезапуск продолжает)
-        run: python -m src.prices run "${{ inputs.rows }}"
+
+      # бюджет 165 мин: выгрузка, чекпойнт и коммит успевают до timeout
+      - name: Прайс-каскад (чекпойнт подомённо в data/prices.db)
+        run: python -m src.prices run "${{ inputs.rows }}" 9900
+
       - name: Выгрузка
         run: python -m src.prices export
+
+      - name: Остаток работы
+        id: rem
+        run: |
+          r=$(python -m src.prices remaining | tail -1)
+          echo "остаток профильных доменов без разбора: $r"
+          echo "left=$r" >> "$GITHUB_OUTPUT"
+
       - name: Чекпойнт как artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: prices-${{ github.run_id }}
           path: |
-            data/osint.db
-            output/
+            data/prices.db
+            output/Прайсы_профиль_*.xlsx
           if-no-files-found: warn
           retention-days: 30
+
+      # коммитятся ТОЛЬКО свои файлы — osint.db и выгрузки test-40 не трогаем
       - name: Коммит результатов
         if: always()
         run: |
           git config user.name "chk-osint-actions"
           git config user.email "actions@users.noreply.github.com"
-          git add output/ data/
+          git add data/prices.db output/Прайсы_профиль_*.xlsx 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "Изменений нет"
           else
-            git commit -m "prices: прайс-каскад $(date +%F) (run ${{ github.run_id }})"
+            git commit -m "prices: прайс-каскад $(date +%F) (run ${{ github.run_id }}, цепочка ${{ inputs.chain }})"
+            # параллельный test-40 пушит свои файлы; при конфликте по нашим
+            # файлам побеждает версия ЭТОГО прогона (--theirs в ребейзе)
             if ! git pull --rebase origin "${{ github.ref_name }}"; then
-              git checkout --theirs data/osint.db 2>/dev/null || true
+              git checkout --theirs -- data/prices.db 2>/dev/null || true
               git checkout --theirs -- output/ 2>/dev/null || true
-              git add data/ output/
+              git add data/prices.db output/
               GIT_EDITOR=true git rebase --continue
             fi
             git push origin "HEAD:${{ github.ref_name }}"
           fi
+
+      - name: Продолжение (пока остаток > 0, потолок 12 перезапусков)
+        if: steps.rem.outputs.left != '0' && fromJSON(inputs.chain) < 12
+        run: |
+          NEXT=$(( ${{ inputs.chain }} + 1 ))
+          echo "перезапуск: rows=${{ inputs.rows }}, цепочка $NEXT, остаток ${{ steps.rem.outputs.left }}"
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/prices.yml/dispatches" \
+            -d "{\"ref\":\"${{ github.ref_name }}\",\"inputs\":{\"rows\":\"${{ inputs.rows }}\",\"chain\":\"$NEXT\"}}"

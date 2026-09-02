@@ -59,7 +59,6 @@ def snapshot(db: sqlite3.Connection) -> dict:
         "mapchecked": q("SELECT COUNT(*) FROM t40_companies WHERE map_check IS NOT NULL"),
         "judgments": q("SELECT COUNT(*) FROM llm_judgments"),
         "map_resolved": q("SELECT COUNT(*) FROM t40_companies WHERE map_check LIKE 'РАСХОЖДЕНИЕ разрешено%'"),
-        "price_recipes": q("SELECT COUNT(*) FROM price_recipes WHERE status NOT IN ('', 'в работе')"),
     }
 
 
@@ -88,15 +87,7 @@ def remaining(db: sqlite3.Connection, target_rows: int) -> dict:
             "SELECT COUNT(*) FROM t40_companies WHERE row_no<=? "
             "AND map_check LIKE 'РАСХОЖДЕНИЕ: в карточке %' "
             "AND map_check NOT LIKE 'РАСХОЖДЕНИЕ разрешено%'", target_rows),
-        # прайс-каскад (заказчик, 2026-09-02: «надо догонять прайсы») — только
-        # профильные по лицензии (дерматовенерология/онкология/косметология)
-        "прайсы: профильные с сайтом без разбора": q(
-            "SELECT COUNT(*) FROM t40_companies c WHERE c.row_no<=? "
-            "AND c.found_site IS NOT NULL AND EXISTS (SELECT 1 FROM rzn_licenses l "
-            "  WHERE l.inn=c.inn AND l.is_med=1 AND (l.specialties LIKE '%дерматовенерологи%' "
-            "  OR l.specialties LIKE '%онкологи%' OR l.specialties LIKE '%косметологи%')) "
-            "AND NOT EXISTS (SELECT 1 FROM price_recipes r WHERE r.domain=c.found_site "
-            "  AND r.status NOT IN ('', 'в работе'))", target_rows),
+        # прайсы — отдельный параллельный конвейер prices.yml (своя база)
         "без единого судьи": q(
             "SELECT COUNT(*) FROM t40_companies c WHERE row_no<=? "
             "AND passport IS NOT NULL AND NOT EXISTS "
