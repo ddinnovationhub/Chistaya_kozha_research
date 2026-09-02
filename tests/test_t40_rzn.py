@@ -307,18 +307,20 @@ def test_legal_registries_are_aggregators():
     assert not is_aggregator_domain("ava-kazan.ru")
 
 
-def test_legal_name_hint_gray_zone():
-    """Серая зона E1 (кейс АВА-КАЗАНЬ): юрназвание с ОПФ в документах сайта —
-    маркер на ручную, НЕ подтверждение."""
-    from src.site_finder import legal_name_hint
-    texts = ["Оператор персональных данных: Акционерное общество "
-             "«АВА-КАЗАНЬ» (бренд «Скандинавия»)"]
-    hint = legal_name_hint(texts, "АВА-КАЗАНЬ, АО")
-    assert hint and "АВА-КАЗАНЬ" in hint
-    # без ОПФ рядом — не срабатывает (просто упоминание слова)
-    assert legal_name_hint(["улица АГАТовая, дом 5"], "АГАТ, ООО") is None
-    # короткие имена не проверяются
-    assert legal_name_hint(texts, "АВ, ООО") is None
+def test_no_intermediate_verdicts(monkeypatch):
+    """Заказчик, 2026-08-31: «мне нужен сайт именно той компании, ИНН и
+    название которой стоит в строке. И точка». Кандидат, не прошедший
+    лестницу ИНН → номер лицензии → адрес лицензии, НЕ порождает никакого
+    промежуточного вердикта — только None (строка получит «сайт не найден»)."""
+    from src import test40
+    monkeypatch.setattr("src.site_finder.flexible_contact_texts",
+                        lambda d, **k: ["<html><body>Клиника «Скандинавия», "
+                                        "оператор АО «АВА-КАЗАНЬ», приём "
+                                        "врачей, запись на приём</body></html>"])
+    monkeypatch.setattr("src.site_finder.triple_check",
+                        lambda *a, **k: {"verdict": None, "evidence": ""})
+    assert test40._check_candidates_flex(
+        "1655146267", "АВА-КАЗАНЬ, АО", "Казань", ["ava-kazan.ru"]) is None
 
 
 def test_page_links_survive_broken_href():

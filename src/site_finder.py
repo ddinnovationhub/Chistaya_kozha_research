@@ -78,35 +78,6 @@ def translit_candidates(name: str) -> list[str]:
     return out[:6]
 
 
-# Маркеры медицинской организации в видимом тексте сайта (заказчик,
-# 2026-08-31: «половина строк — сайты на ручную проверку»). Карточка карт
-# отдаёт ЛЮБОЙ сайт по адресу — так в серую зону попали ozon.ru, hh.ru,
-# zabor-krd.ru и автосервисы. Один маркер — случайность («врач» есть в любой
-# статье), поэтому порог — ДВА РАЗНЫХ маркера.
-_MED_SITE_MARKERS = (
-    ("клиника", re.compile(r"клиник[аиуоеы]|клиники\b", re.I)),
-    ("медцентр", re.compile(r"медицинск\w{0,3} центр|медцентр|поликлиник", re.I)),
-    ("приём врача", re.compile(r"запись на при[ёе]м|при[ёе]м врача|консультация врача", re.I)),
-    ("врачи", re.compile(r"наши врачи|врач[и\-]специалист|команда врачей", re.I)),
-    ("пациенты", re.compile(r"пациент[амуы]|для пациентов", re.I)),
-    ("мед-лицензия", re.compile(r"лицензи\w+ на осуществление медицинск|медицинск\w+ лицензи", re.I)),
-    ("специальности", re.compile(
-        r"дерматолог|косметолог|стоматолог|терапевт|гинеколог|уролог|невролог"
-        r"|офтальмолог|педиатр|хирург|эндокринолог|кардиолог|трихолог", re.I)),
-    ("услуги/диагностика", re.compile(
-        r"диагностик[аиу]|анализ[ыов]{1,2}\b|УЗИ\b|лечение\s+\w+|медицинск\w+ услуг", re.I)),
-)
-
-
-def med_site_signal(texts: list[str]) -> list[str]:
-    """Какие признаки медорганизации найдены в видимом тексте страниц.
-    Пустой список = сайт не медицинский (для нашей выборки — чужой сайт)."""
-    from src.html_text import html_to_text
-    blob = " ".join(html_to_text(t) if "<" in (t or "") else (t or "")
-                    for t in texts)[:400_000]
-    return [label for label, rx in _MED_SITE_MARKERS if rx.search(blob)]
-
-
 def content_matches_name(text: str, name: str) -> bool:
     """Содержимое соответствует названию: значимый токен названия (кириллицей
     или транслитом) встречается в тексте страницы."""
@@ -322,26 +293,6 @@ def fetch_contact_texts(domain: str) -> list[str]:
 
 
 _OPF_NEAR_RE = re.compile(r"\bООО\b|\bАО\b|\bЗАО\b|\bПАО\b|общество", re.I)
-
-
-def legal_name_hint(texts: list[str], company_name: str) -> str | None:
-    """СЕРАЯ ЗОНА (заказчик, 2026-08-29, кейс АВА-КАЗАНЬ): сайт в юр-документах
-    дословно называет наше юрназвание рядом с ОПФ, но ни ИНН, ни адреса нет.
-    НЕ подтверждение (азбуки научили) — только маркер «Требует ручной
-    проверки». Возвращает найденный фрагмент или None."""
-    core = (company_name or "").split(",")[0].strip().strip('"«»')
-    if len(core) < 4:
-        return None
-    from src.html_text import html_to_text
-    full = "\n".join(html_to_text(t) if "<" in t else t for t in texts)
-    up = full.upper()
-    i = up.find(core.upper())
-    while i >= 0:
-        window = full[max(0, i - 80):i + len(core) + 80]
-        if _OPF_NEAR_RE.search(window):
-            return window.strip().replace("\n", " ")[:160]
-        i = up.find(core.upper(), i + 1)
-    return None
 
 
 def triple_check(domain: str, inn: str, city: str,

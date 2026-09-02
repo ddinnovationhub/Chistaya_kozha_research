@@ -122,53 +122,6 @@ def _rejected_domains(inn: str) -> set[str]:
         db.close()
 
 
-def gray_zone_verdict(dom: str, name: str,
-                      escalate: bool = True) -> tuple[str, str] | None:
-    """ФИЛЬТР СЕРОЙ ЗОНЫ (заказчик, 2026-08-31: «половина строк — сайты на
-    ручную, это типа я всё должен проверить?»). Карточка карт отдаёт любой
-    сайт по адресу, поэтому на ручную уезжали ozon.ru, hh.ru, dzen.ru,
-    zabor-krd.ru. Правило: на ручную идёт ТОЛЬКО медицинский сайт, и он
-    ранжируется по силе намёка.
-
-    Возвращает (приоритет, обоснование) или None — тогда честное
-    «сайт не найден», а не работа для человека."""
-    from src.html_text import html_to_text
-    from src.site_finder import (content_matches_name, flexible_contact_texts,
-                                 med_site_signal)
-    texts = flexible_contact_texts(dom)
-    if not texts:
-        return None
-    # «мало текста» ≠ «не медицинский» (invitro.ru отдаёт 3.8 КБ JS-оболочки):
-    # тонкого кандидата добираем рендером, как в лестнице подтверждения
-    if escalate and sum(len(html_to_text(t)) for t in texts) < 400:
-        try:
-            from src.fetch_cascade import _level1_jina, _level3_headless
-            extra = _level1_jina(f"https://{dom}")[0] or \
-                _level3_headless(f"https://{dom}")[0]
-            if extra:
-                texts.append(extra)
-        except Exception:  # noqa: BLE001 — эскалация не валит вердикт
-            pass
-    visible = sum(len(html_to_text(t)) for t in texts)
-    signals = med_site_signal(texts)
-    if len(signals) < 2:
-        if visible < 400:
-            # сайт есть, но прочитать не смогли — это НЕ «не медицинский»;
-            # прозрачная неполнота вместо выдуманного вывода (ЖЁСТКИЕ ОГР.)
-            return ("сайт не прочитан",
-                    f"карты указывают {dom}, сайт не отдал читаемый текст "
-                    f"({visible} симв.) — проверить глазами")
-        return None      # немедицинский сайт — карточка карт промахнулась
-    matched = any(content_matches_name(t, name) for t in texts)
-    if matched:
-        return ("вероятно наш сайт",
-                f"медицинский сайт ({', '.join(signals[:3])}), название компании "
-                f"встречается в тексте")
-    return ("сайт сети/бренда",
-            f"медицинский сайт ({', '.join(signals[:3])}), названия компании на "
-            f"нём нет — вероятно франчайзи или бренд сети")
-
-
 def _check_candidates_flex(inn: str, name: str, city: str,
                            candidates: list[str],
                            license_addrs: list[str] | None = None,
@@ -212,14 +165,10 @@ def _check_candidates_flex(inn: str, name: str, city: str,
             return dom, "подтверждён номером лицензии", chk["evidence"]
         if chk["verdict"] == "адрес лицензии":
             return dom, "подтверждён адресом лицензии", chk["evidence"]
-        # СЕРАЯ ЗОНА E1 (заказчик, 2026-08-29): юрназвание с ОПФ в документах
-        # сайта, чужого ИНН нет → НЕ подтверждение, маркер на ручную
-        if name and "другого юрлица" not in chk["evidence"]:
-            from src.site_finder import legal_name_hint
-            hint = legal_name_hint(texts, name)
-            if hint:
-                return dom, "Требует ручной проверки", (
-                    f"юрназвание в документах сайта: «{hint[:120]}»")
+        # Промежуточных вердиктов НЕТ (заказчик, 2026-08-31: «мне нужен сайт
+        # именно той компании, ИНН и название которой стоит в строке. И точка»).
+        # Не прошёл лестницу ИНН → номер лицензии → адрес лицензии — значит
+        # не наш сайт: строка получает «сайт не найден», а не работу человеку.
     return None
 
 
@@ -272,15 +221,7 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
                             f"sites: {stats['row_errors']} ошибок строк — "
                             f"системный сбой, стоп по ТЗ") from e
                     continue
-                if res and res[1] == "Требует ручной проверки":
-                    dom, _, ev = res
-                    # серая зона E1 в СПАРК-пути: found_site НЕ пишется —
-                    # строка уходит в поиск, маркер останется если и он пуст
-                    db.execute("UPDATE t40_companies SET site_source="
-                               "'кандидаты выгрузки не подтвердились (гибко)', "
-                               "search_candidates=? WHERE inn=?",
-                               (f"серая зона СПАРК: {dom} — {ev}"[:250], inn))
-                elif res:
+                if res:
                     dom, grade, ev = res
                     key = "confirmed_inn" if "ИНН" in grade else "confirmed_addr"
                     stats[key] += 1
@@ -305,6 +246,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     from src.api_client import handle_api_response, yandex_search_raw
     from src.dedup import normalize_domain
     from src.discovery import is_aggregator_domain, parse_yandex_xml
+    from src.keenable import keenable_search
     from src.budget import BudgetTracker
     from src.errors import AuthError, BudgetExceededError, QuotaExhaustedError
     from src.pilot108 import SEARCH_COST_RUB
@@ -333,7 +275,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
         "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
         "AND r.status='проверен')"))   # гвард: поиск ждёт реестра
     t0 = time.time()
-    stats = {"found_inn": 0, "found_addr": 0, "not_found": 0,
+    stats = {"found_inn": 0, "found_addr": 0, "found_keenable": 0, "not_found": 0,
              "spent_rub": 0.0, "done": 0}
     for inn, name, city in rows:
         if time.time() - t0 > budget_sec:
@@ -361,6 +303,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
             # лицензии → 3) КАРТОЧКИ КАРТ (Яндекс Геопоиск / 2ГИС) — последний
             # запасной слой; из карточки берётся только URL, подтверждение той
             # же лестницей (кейс франчайзи: сайт бренда + адрес лицензии)
+            src_label = "название+город"
             budget.charge("yandex_search_api")
             resp = yandex_search_raw(f"{name} {city}", n=10)
             if handle_api_response(resp, "Яндекс Search API") is None:
@@ -374,7 +317,24 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
             res = _check_candidates_flex(inn, name, city, list(cands),
                                          license_addrs=addrs,
                                          license_nums=nums)
-            if res is None or res[1] == "Требует ручной проверки":
+            if res is None:
+                # СЛОЙ 1k (заказчик, 2026-09-02): второй индекс Keenable —
+                # ТОЛЬКО там, где Яндекс кандидатов не дал или они не прошли
+                # лестницу (замер: recall 77% от Яндекса → дополнение, не замена).
+                # Та же лестница подтверждения, бесплатно, ≤5 новых кандидатов
+                keen = []
+                budget.charge("keenable")
+                for hit in keenable_search(f"{name} {city}", n=20):
+                    _add(hit["url"], into=keen)
+                    if len(keen) >= 5:
+                        break
+                if keen:
+                    res = _check_candidates_flex(inn, name, city, keen,
+                                                 license_addrs=addrs,
+                                                 license_nums=nums)
+                    if res:
+                        src_label = "Keenable, название+город"
+            if res is None:
                 # СЛОЙ 1.5 (заказчик, 2026-08-29): запрос по самому ИНН — сайты
                 # публикуют ИНН в реквизитах, Яндекс индексирует; найденное так
                 # подтверждается ступенью ИНН мгновенно
@@ -392,11 +352,22 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                         res15 = _check_candidates_flex(inn, name, city, by_inn,
                                                        license_addrs=addrs,
                                                        license_nums=nums)
-                        if res15 and res15[1] != "Требует ручной проверки":
-                            res = res15
-                        elif res is None:
-                            res = res15
-            if (res is None or res[1] == "Требует ручной проверки") and addrs:
+                        res = res15 or res
+                if res is None:
+                    # СЛОЙ 1.5k: Keenable по самому ИНН (заказчик, 2026-09-02)
+                    keen15 = []
+                    budget.charge("keenable")
+                    for hit in keenable_search(f'"{inn}"', n=10):
+                        _add(hit["url"], into=keen15)
+                        if len(keen15) >= 5:
+                            break
+                    if keen15:
+                        res = _check_candidates_flex(inn, name, city, keen15,
+                                                     license_addrs=addrs,
+                                                     license_nums=nums)
+                        if res:
+                            src_label = "Keenable, ИНН"
+            if res is None and addrs:
                 # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
                 # а адрес точки из лицензии уникален
                 from src.site_finder import license_addr_patterns
@@ -431,7 +402,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                     break
                 time.sleep(1)
                 continue
-            if res is None or res[1] == "Требует ручной проверки":
+            if res is None:
                 # слой 3 (запасной): карточки карт — прямые URL, а если ключ
                 # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
                 # сайт бренда достраивается веб-поиском; принадлежность юрлица
@@ -454,53 +425,29 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
                             if len(maps) >= 4:
                                 break
                 if maps:
-                    res3 = _check_candidates_flex(inn, name, city, maps,
-                                                  license_addrs=addrs,
-                                                  license_nums=nums)
-                    if res3 and res3[1] != "Требует ручной проверки":
-                        res = res3
-                    elif res is None and res3:
-                        res = res3
-                    elif res is None and (maps := [m for m in maps
-                            if m not in _rejected_domains(inn)]):
-                        # СЕРАЯ ЗОНА E2 (заказчик, 2026-08-29, кейс франшиз):
-                        # карточка карт указывает сайт, чужого ИНН на нём нет,
-                        # но сеть не публикует ни наш ИНН, ни адрес точки —
-                        # НЕ автозапись, маркер на ручную
-                        res = (maps[0], "Требует ручной проверки",
-                               f"карты указывают сайт {maps[0]}, принадлежность "
-                               f"не доказана")
+                    # кандидаты карт проходят ТУ ЖЕ лестницу подтверждения.
+                    # Не прошли — сайта нет (заказчик, 2026-08-31): карточка
+                    # карт сама по себе ничего не доказывает
+                    res = _check_candidates_flex(inn, name, city, maps,
+                                                 license_addrs=addrs,
+                                                 license_nums=nums)
             cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
-            if res and res[1] == "Требует ручной проверки":
-                # ФИЛЬТР: на ручную уходит только медицинский сайт (иначе
-                # человеку достаётся ozon.ru и заборы) — заказчик, 2026-08-31
-                dom = res[0]
-                gz = gray_zone_verdict(dom, name)
-                if gz is None:
-                    stats["gray_filtered"] = stats.get("gray_filtered", 0) + 1
-                    db.execute(
-                        "UPDATE t40_companies SET search_status='сайт не найден', "
-                        "search_attempts=?, search_candidates=? WHERE inn=?",
-                        (len(cands),
-                         f"{cand_log} | отсеян немедицинский кандидат карт: {dom}"[:400],
-                         inn))
-                else:
-                    prio, ev = gz
-                    stats["manual_review"] = stats.get("manual_review", 0) + 1
-                    # found_site НЕ пишется: принадлежность не доказана — маркер
-                    db.execute("UPDATE t40_companies SET search_status=?, "
-                               "search_attempts=?, search_candidates=? WHERE inn=?",
-                               (f"Ручная проверка [{prio}]: {dom} — {ev}"[:250],
-                                len(cands), cand_log, inn))
-            elif res:
+            # ДВА ИСХОДА, третьего нет (заказчик, 2026-08-31: «я должен
+            # получить сайт именно той компании, ИНН и название которой стоит
+            # в строке. И точка»): подтверждён лестницей — в колонку H;
+            # не подтверждён — «сайт не найден», журнал кандидатов в запасе
+            if res:
                 dom, grade, ev = res
                 key = "found_inn" if "ИНН" in grade else "found_addr"
                 stats[key] += 1
+                if "Keenable" in src_label:
+                    stats["found_keenable"] += 1
                 db.execute("UPDATE t40_companies SET found_site=?, grade=?, "
-                           "grade_evidence=?, site_source='поиск (название+город, "
-                           "гибкая навигация)', search_attempts=?, "
+                           "grade_evidence=?, site_source=?, search_attempts=?, "
                            "search_candidates=?, search_status='найден' WHERE inn=?",
-                           (dom, grade, ev[:300], len(cands), cand_log, inn))
+                           (dom, grade, ev[:300],
+                            f"поиск ({src_label}, гибкая навигация)",
+                            len(cands), cand_log, inn))
             else:
                 stats["not_found"] += 1
                 db.execute("UPDATE t40_companies SET search_status='сайт не найден', "
@@ -792,51 +739,6 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
                     cell.font = ARIAL
                     cell.alignment = Alignment(vertical="top", wrap_text=True)
                 r += 1
-
-    # ── РУЧНАЯ ПРОВЕРКА: единственный лист, где от человека нужна работа
-    # (заказчик, 2026-08-31: «это типа я должен всё проверить?» — раньше
-    # ручные строки были размазаны по 1500 строкам листа ИТОГ). Отсортирован
-    # по приоритету: сверху то, где вероятность попадания выше всего ──
-    ws = wb.create_sheet("Ручная_проверка")
-    _sheet(ws, ["Приоритет", "№", "Название", "ИНН", "Город",
-                "Сайт-кандидат (открыть)", "Почему не записали автоматически",
-                "РЗН: мед-лицензия", "Что проверить"],
-           (22, 6, 30, 13, 14, 26, 60, 16, 40))
-    _PRIO_ORDER = {"вероятно наш сайт": 1, "сайт сети/бренда": 2,
-                   "сайт не прочитан": 3}
-    manual_rows = []
-    for row_no, name, inn, city, st, n_med in db.execute(
-            "SELECT c.row_no, c.name, c.inn, c.city, c.search_status, "
-            "k.med_licenses_n FROM t40_companies c "
-            "LEFT JOIN rzn_checked k ON k.inn=c.inn "
-            "WHERE c.search_status LIKE 'Ручная проверка%' "
-            "   OR c.search_status LIKE 'Требует ручной проверки%'"):
-        prio = "не разобрано"
-        body = st
-        if st.startswith("Ручная проверка ["):
-            prio = st.split("[", 1)[1].split("]", 1)[0]
-            body = st.split("]: ", 1)[-1]
-        dom = body.split(" — ", 1)[0].strip()
-        why = body.split(" — ", 1)[-1]
-        todo = ("Открыть сайт: это клиника нашей компании?"
-                if prio == "вероятно наш сайт" else
-                "Сеть/бренд: работает ли компания под этим брендом?"
-                if prio == "сайт сети/бренда" else
-                "Сайт не читается роботом — посмотреть глазами")
-        manual_rows.append((_PRIO_ORDER.get(prio, 9), prio, row_no, name, inn,
-                            city, dom, why, n_med, todo))
-    r = 2
-    for item in sorted(manual_rows):
-        for c, v in enumerate(item[1:], 1):
-            cell = ws.cell(r, c, _xl(v) if v is not None else "")
-            cell.font = ARIAL
-            cell.alignment = Alignment(vertical="top", wrap_text=True)
-        link = ws.cell(r, 6)
-        if item[6]:
-            link.hyperlink = f"https://{item[6]}"
-            link.font = Font(name="Arial", size=10, color="0563C1",
-                             underline="single")
-        r += 1
 
     # ── Паспорта сайтов: сырьё для ручной проверки суждений ──
     ws = wb.create_sheet("Паспорта")

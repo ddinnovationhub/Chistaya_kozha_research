@@ -54,6 +54,7 @@ jobs:
       CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
       YANDEX_GEOSEARCH_API_KEY: ${{ secrets.YANDEX_GEOSEARCH_API_KEY }}
       DGIS_API_KEY: ${{ secrets.DGIS_API_KEY }}
+      KEENABLE_API_KEY: ${{ secrets.KEENABLE_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4

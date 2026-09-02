@@ -60,6 +60,8 @@ AGGREGATOR_DOMAINS = {
     "companium.ru", "hh.ru", "dzen.ru", "zen.yandex.ru", "ozon.ru",
     "wildberries.ru", "otc.ru", "my-gkh.ru", "mysmsbox.ru", "ponaweb.ru",
     "gorod.guru", "yell.com", "blizko.ru", "regmarkets.ru",
+    # каталоги, всплывшие в живой выдаче Keenable (2026-09-02)
+    "32top.ru", "leaderg.ru",
 }
 
 

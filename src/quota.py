@@ -13,7 +13,10 @@ import sqlite3
 DB_PATH = "data/osint.db"
 LIMITS = {"yandex_geosearch": 1000,
           # демо-ключ 2ГИС: 1000 запросов/день на продукт (заказчик, 2026-08-27)
-          "dgis_places": 1000}
+          "dgis_places": 1000,
+          # Keenable: 100 000/мес по ключу; суточный потолок 3000 ≈ 90 000/мес
+          # с запасом (заказчик, 2026-09-02)
+          "keenable": 3000}
 
 
 def _db() -> sqlite3.Connection:

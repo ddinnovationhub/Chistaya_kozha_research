@@ -73,6 +73,20 @@ def check_yandex_search() -> bool:
     return _row("Яндекс Search API", FAIL, f"код {r.status_code}")
 
 
+def check_keenable() -> bool:
+    """Keenable — второй источник кандидатов (заказчик, 2026-09-02)."""
+    if not os.environ.get("KEENABLE_API_KEY"):
+        return _row("Keenable Search API", SKIP, "нет KEENABLE_API_KEY — публичный эндпоинт")
+    import httpx
+    r = httpx.post("https://api.keenable.ai/v1/search",
+                   headers={"X-API-Key": os.environ["KEENABLE_API_KEY"],
+                            "Content-Type": "application/json"},
+                   json={"query": "тест", "max_results": 1}, timeout=20)
+    if r.status_code == 200:
+        return _row("Keenable Search API", OK, "1 запрос, 0 ₽ (100 000/мес)")
+    return _row("Keenable Search API", FAIL, f"код {r.status_code} {r.text[:80]}")
+
+
 def check_maps() -> bool:
     """Карточные каналы (Яндекс Геопоиск / 2ГИС) — кандидаты сайтов из карт."""
     fail = False
@@ -152,6 +166,7 @@ def main() -> int:
     failures = 0
     failures += check_rzn()
     failures += check_yandex_search()
+    failures += check_keenable()
     failures += check_jina()
     failures += check_maps()
     failures += check_playwright()
