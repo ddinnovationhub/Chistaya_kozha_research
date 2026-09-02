@@ -71,7 +71,7 @@ jobs:
           python -m playwright install --with-deps chromium
 
       - name: Быстрые проверки
-        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py tests/test_keenable.py -q
+        run: python -m pytest tests/test_t40_rzn.py tests/test_pilot108.py tests/test_autopilot.py tests/test_keenable.py tests/test_parallel_search.py -q
 
       - name: Импорт первых N строк
         run: python -m src.test40 import "${{ inputs.base_file }}" "${{ inputs.rows }}"
@@ -80,7 +80,10 @@ jobs:
         run: python -m src.autopilot prepare
 
       # тайминги этапов подобраны так, чтобы прогон ЗАВЕРШАЛСЯ сам до
-      # timeout-minutes: чекпойнт, выгрузка и решение автопилота успевают
+      # timeout-minutes: чекпойнт, выгрузка и решение автопилота успевают.
+      # 2026-09-02 (лимит 2000 мин Actions): поиск, разрешение расхождений и
+      # прайсы — в 6 потоков; судьи ≤5 мин на провайдера (yandexgpt/llm7 уже
+      # покрыли ~всё, остальные догоняют понемногу, не съедая прогон)
       - name: Реестр лицензий РЗН (по ИНН, пауза 3 с)
         run: python -m src.test40 rzn 600
 
@@ -97,12 +100,12 @@ jobs:
               отсутствие ключа провайдера — пропуск с сообщением, не отказ)
         continue-on-error: true
         run: |
-          timeout 720 python -m src.llm_judge run kilo || true
-          timeout 720 python -m src.llm_judge run llm7 || true
-          timeout 720 python -m src.llm_judge run yandexgpt || true
-          timeout 720 python -m src.llm_judge run groq || true
-          timeout 720 python -m src.llm_judge run openrouter || true
-          timeout 720 python -m src.llm_judge run cerebras || true
+          timeout 300 python -m src.llm_judge run kilo || true
+          timeout 300 python -m src.llm_judge run llm7 || true
+          timeout 300 python -m src.llm_judge run yandexgpt || true
+          timeout 300 python -m src.llm_judge run groq || true
+          timeout 300 python -m src.llm_judge run openrouter || true
+          timeout 300 python -m src.llm_judge run cerebras || true
           for p in kilo llm7 yandexgpt groq; do python -m src.llm_judge gate $p || true; done
 
       - name: Даблчек картами + авторазрешение расхождений (домен карточки — через лестницу)

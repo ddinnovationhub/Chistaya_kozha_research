@@ -558,7 +558,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
 
 
 def run_batch(db: sqlite3.Connection, limit: int = 40,
-              budget_sec: float = 0) -> list[dict]:
+              budget_sec: float = 0, workers: int = 1,
+              db_factory=None) -> list[dict]:
     """Обкатка: первые N компаний с найденным сайтом (потом — по фильтру
     заказчика). Чекпойнт подомённо, перезапуск продолжает с места."""
     ensure_price_tables(db)
@@ -576,22 +577,59 @@ def run_batch(db: sqlite3.Connection, limit: int = 40,
         "AND NOT EXISTS (SELECT 1 FROM price_recipes r "
         "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе')) "
         "ORDER BY c.row_no LIMIT ?", (limit,)).fetchall()
-    out, seen_domains = [], set()
-    t_start = time.time()
+    out, seen_domains, todo = [], set(), []
     for inn, site in rows:
-        if budget_sec and time.time() - t_start > budget_sec:
-            print("⏱ прайс-каскад: бюджет времени исчерпан — остаток на "
-                  "следующий прогон (чекпойнт подомённо)", flush=True)
-            break
         if site in seen_domains:                   # один домен — один разбор
             continue
         seen_domains.add(site)
-        t0 = time.time()
-        res = run_company(db, inn, site)
-        print(f"  {site}: {res['status']} ({res.get('items', 0)} позиций, "
-              f"{res.get('level', '')}, {time.time() - t0:.0f} с)",
-              flush=True)
-        out.append(res)
+        todo.append((inn, site))
+    t_start = time.time()
+
+    # ПАРАЛЛЕЛЬНО по доменам (заказчик, 2026-09-02: «это очень долго»):
+    # пауза вежливости — внутри домена, домены разные; у каждого потока своя
+    # связка соединений (SQLite не делит соединение между потоками)
+    def _one(item):
+        inn, site = item
+        wdb = db_factory() if db_factory else db
+        try:
+            t0 = time.time()
+            res = run_company(wdb, inn, site)
+            res["_sec"] = time.time() - t0
+            return res
+        finally:
+            if db_factory:
+                wdb.close()
+
+    if workers <= 1 or db_factory is None:
+        for item in todo:
+            if budget_sec and time.time() - t_start > budget_sec:
+                print("⏱ прайс-каскад: бюджет времени исчерпан — остаток на "
+                      "следующий прогон (чекпойнт подомённо)", flush=True)
+                break
+            res = _one(item)
+            print(f"  {res['domain']}: {res['status']} ({res.get('items', 0)} "
+                  f"позиций, {res.get('level', '')}, {res['_sec']:.0f} с)", flush=True)
+            out.append(res)
+    else:
+        import concurrent.futures as cf
+        with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+            chunk = workers * 2
+            for i in range(0, len(todo), chunk):
+                if budget_sec and time.time() - t_start > budget_sec:
+                    print("⏱ прайс-каскад: бюджет времени исчерпан — остаток на "
+                          "следующий прогон (чекпойнт подомённо)", flush=True)
+                    break
+                for fut in cf.as_completed([ex.submit(_one, it)
+                                            for it in todo[i:i + chunk]]):
+                    try:
+                        res = fut.result()
+                    except Exception as e:  # noqa: BLE001 — домен на повтор
+                        print(f"  ⚠ домен упал: {type(e).__name__}", flush=True)
+                        continue
+                    print(f"  {res['domain']}: {res['status']} ({res.get('items', 0)} "
+                          f"позиций, {res.get('level', '')}, {res['_sec']:.0f} с)",
+                          flush=True)
+                    out.append(res)
     print(f"РАСХОД: HTTP {METER['http_requests']} зап. · "
           f"Jina {METER['jina_requests']} зап. · "
           f"файлов {METER['files_downloaded']} · "
@@ -668,6 +706,6 @@ if __name__ == "__main__":
     elif cmd == "run":
         n = int(sys.argv[2]) if len(sys.argv) > 2 else 40
         b = float(sys.argv[3]) if len(sys.argv) > 3 else 0
-        res = run_batch(db, n, b)
+        res = run_batch(db, n, b, workers=6, db_factory=open_dbs)
         ok = sum(1 for r in res if r.get("items"))
         print(f"Итог: {ok}/{len(res)} с извлечённым прайсом")

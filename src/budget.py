@@ -13,6 +13,7 @@
 
 import json
 import pathlib
+import threading
 
 import yaml
 
@@ -45,9 +46,15 @@ class BudgetTracker:
         self.state_path.write_text(
             json.dumps(self.state, ensure_ascii=False, indent=2), encoding="utf-8")
 
+    _LOCK = threading.Lock()   # параллельный поиск (2026-09-02): счётчик общий
+
     def charge(self, service: str, n_requests: int = 1):
         """Списать n запросов сервиса. Вызывается ПЕРЕД запросом:
-        при пробитом потолке запрос не уходит."""
+        при пробитом потолке запрос не уходит. Потокобезопасно."""
+        with self._LOCK:
+            return self._charge(service, n_requests)
+
+    def _charge(self, service: str, n_requests: int = 1):
         cost = self.cost_per_request.get(service, 0.0) * n_requests
         projected = self.spent + cost
         if projected > self.ceiling_rub:

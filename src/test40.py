@@ -238,18 +238,174 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
     return stats
 
 
-def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
-    """Поисковая достройка ненайденных — ТОЛЬКО из Actions (ключи в Secrets).
-    Кандидаты поиска тоже проверяются гибкой навигацией."""
+# ── ПАРАЛЛЕЛЬНЫЙ ПОИСК (заказчик, 2026-09-02: «это очень долго; лимит 2000
+# минут Actions и сроки ТЗ»). Последовательно шло 16 строк/час: каждый
+# кандидат — до 6 страниц с паузой 3 с. Строки независимы и домены разные,
+# поэтому лестница проверяется в пуле потоков (как check_sites); лимит
+# «≤1 запрос/3 с на домен» не нарушается, а Яндекс Search API получает
+# ≤1 запрос/с через общий шлюз. Запись в базу — только из главного потока.
+_YANDEX_GATE = __import__("threading").Lock()
+_yandex_last = [0.0]
+
+
+def _paced_yandex(query: str, n: int = 10):
+    """Яндекс Search API: ≤1 запрос/с суммарно по всем потокам."""
+    from src.api_client import yandex_search_raw
+    with _YANDEX_GATE:
+        wait = 1.0 - (time.time() - _yandex_last[0])
+        if wait > 0:
+            time.sleep(wait)
+        _yandex_last[0] = time.time()
+    return yandex_search_raw(query, n=n)
+
+
+def _search_one(inn: str, name: str, city: str, addrs: list, nums: list,
+                budget, geo_ok) -> dict:
+    """Каскад поиска ОДНОЙ строки без записи в базу (исполняется в потоке).
+    Возвращает: res (подтверждённый сайт или None), src_label, cands,
+    skipped (первый запрос не удался — строка остаётся в очереди),
+    deferred (квота карт у резерва — строка откладывается), spent."""
     import base64
 
-    from src.api_client import handle_api_response, yandex_search_raw
+    from src.api_client import handle_api_response
     from src.dedup import normalize_domain
     from src.discovery import is_aggregator_domain, parse_yandex_xml
     from src.keenable import keenable_search
+    from src.pilot108 import SEARCH_COST_RUB
+    out = {"res": None, "src_label": "название+город", "cands": [],
+           "skipped": False, "deferred": False, "spent": 0.0}
+    cands, seen = out["cands"], set()
+
+    def _add(url_or_dom, into=None):
+        """Кандидат в слой into (и всегда в cands — сквозной журнал)."""
+        dom = normalize_domain(url_or_dom or "")
+        if dom and dom not in seen and not is_aggregator_domain(dom):
+            seen.add(dom)
+            cands.append(dom)
+            if into is not None:
+                into.append(dom)
+
+    def _docs(resp):
+        return parse_yandex_xml(
+            base64.b64decode(resp.json()["rawData"]).decode("utf-8"))
+
+    def _ladder(domains):
+        return _check_candidates_flex(inn, name, city, domains,
+                                      license_addrs=addrs, license_nums=nums)
+
+    # ПОРЯДОК СЛОЁВ (заказчик, 2026-08-27: «карты внедряем только в тот
+    # слой, где ранее оговоренными методами сайт найти не удалось»):
+    # 1) веб-поиск «{название} {город}» → 1k) Keenable → 1.5) Яндекс по ИНН →
+    # 1.5k) Keenable по ИНН → 2) веб-запрос по адресу лицензии → 3) карточки
+    # карт. Каждый кандидат — через одну и ту же лестницу подтверждения.
+    budget.charge("yandex_search_api")
+    resp = _paced_yandex(f"{name} {city}", n=10)
+    if handle_api_response(resp, "Яндекс Search API") is None:
+        out["skipped"] = True
+        return out
+    out["spent"] += SEARCH_COST_RUB
+    for r in _docs(resp):
+        if len(cands) >= 10:   # было 5: юр-справочники съедали все слоты
+            break
+        _add(r.get("url"))
+    res = _ladder(list(cands))
+    if res is None:
+        # СЛОЙ 1k (заказчик, 2026-09-02): второй индекс Keenable — ТОЛЬКО там,
+        # где Яндекс кандидатов не дал или они не прошли лестницу
+        keen = []
+        budget.charge("keenable")
+        for hit in keenable_search(f"{name} {city}", n=20):
+            _add(hit["url"], into=keen)
+            if len(keen) >= 5:
+                break
+        if keen:
+            res = _ladder(keen)
+            if res:
+                out["src_label"] = "Keenable, название+город"
+    if res is None:
+        # СЛОЙ 1.5 (заказчик, 2026-08-29): запрос по самому ИНН
+        budget.charge("yandex_search_api")
+        resp15 = _paced_yandex(f'"{inn}"', n=10)
+        if handle_api_response(resp15, "Яндекс Search API") is not None:
+            out["spent"] += SEARCH_COST_RUB
+            by_inn = []
+            for r in _docs(resp15):
+                _add(r.get("url"), into=by_inn)
+                if len(by_inn) >= 5:
+                    break
+            if by_inn:
+                res = _ladder(by_inn)
+        if res is None:
+            # СЛОЙ 1.5k: Keenable по самому ИНН
+            keen15 = []
+            budget.charge("keenable")
+            for hit in keenable_search(f'"{inn}"', n=10):
+                _add(hit["url"], into=keen15)
+                if len(keen15) >= 5:
+                    break
+            if keen15:
+                res = _ladder(keen15)
+                if res:
+                    out["src_label"] = "Keenable, ИНН"
+    if res is None and addrs:
+        # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
+        # а адрес точки из лицензии уникален
+        from src.site_finder import license_addr_patterns
+        pats = license_addr_patterns(addrs)
+        if pats:
+            street, house = pats[0]
+            budget.charge("yandex_search_api")
+            resp2 = _paced_yandex(
+                f"{city} {street} {house} клиника медицинский центр", n=10)
+            if handle_api_response(resp2, "Яндекс Search API") is not None:
+                out["spent"] += SEARCH_COST_RUB
+                extra = []
+                for r in _docs(resp2):
+                    _add(r.get("url"), into=extra)
+                    if len(extra) >= 4:
+                        break
+                if extra:
+                    res = _ladder(extra)
+    if res is None and not geo_ok():
+        # квота Геопоиска у резерва, веб-слои пусты, запасной слой карт
+        # недоступен: строка честно ОТКЛАДЫВАЕТСЯ (search_status остаётся
+        # NULL), а не получает «сайт не найден» по неполному каскаду
+        out["deferred"] = True
+        return out
+    if res is None:
+        # слой 3 (запасной): карточки карт — прямые URL, а если ключ без
+        # разрешения на контакты (демо 2ГИС) — БРЕНД из карточки, сайт бренда
+        # достраивается веб-поиском. Кандидаты карт проходят ТУ ЖЕ лестницу:
+        # не прошли — сайта нет (заказчик, 2026-08-31)
+        from src.map_candidates import map_candidates
+        cards = map_candidates(name, city)
+        maps = []
+        for u in cards["urls"]:
+            _add(u, into=maps)
+        if not maps and cards["brands"]:
+            brand = cards["brands"][0]
+            budget.charge("yandex_search_api")
+            resp3 = _paced_yandex(f"{brand} {city} официальный сайт", n=10)
+            if handle_api_response(resp3, "Яндекс Search API") is not None:
+                out["spent"] += SEARCH_COST_RUB
+                for r in _docs(resp3):
+                    _add(r.get("url"), into=maps)
+                    if len(maps) >= 4:
+                        break
+        if maps:
+            res = _ladder(maps)
+    out["res"] = res
+    return out
+
+
+def run_search(db: sqlite3.Connection, budget_sec: float = 3600,
+               workers: int = 6) -> dict:
+    """Поисковая достройка ненайденных — ТОЛЬКО из Actions (ключи в Secrets).
+    Каскад по строкам — в пуле потоков; запись в базу — из главного потока."""
+    import concurrent.futures as cf
+
     from src.budget import BudgetTracker
     from src.errors import AuthError, BudgetExceededError, QuotaExhaustedError
-    from src.pilot108 import SEARCH_COST_RUB
     from src.quota import status as quota_status
     from src.rzn_licenses import license_addresses, license_numbers
 
@@ -257,13 +413,10 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
     # списывается ДО отправки; переполнение → BudgetExceededError → этап
     # падает, чекпойнт сохранён, цепочка автопилота не продолжается
     budget = BudgetTracker()
-
     _geo_key = os.environ.get("YANDEX_GEOSEARCH_API_KEY")
     _GEO_RESERVE = 150   # запас суточной квоты Геопоиска под даблчек
 
     def _geo_ok() -> bool:
-        """Слой карт доступен: ключа нет (каскад и так без него полный)
-        или суточная квота Геопоиска ещё не у резерва."""
         if not _geo_key:
             return True
         used, limit = quota_status("yandex_geosearch")
@@ -274,198 +427,72 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600) -> dict:
         "WHERE found_site IS NULL AND search_status IS NULL "
         "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
         "AND r.status='проверен')"))   # гвард: поиск ждёт реестра
+    addrs = {r[0]: license_addresses(db, r[0]) for r in rows}
+    nums = {r[0]: license_numbers(db, r[0]) for r in rows}
     t0 = time.time()
-    stats = {"found_inn": 0, "found_addr": 0, "found_keenable": 0, "not_found": 0,
-             "spent_rub": 0.0, "done": 0}
-    for inn, name, city in rows:
-        if time.time() - t0 > budget_sec:
-            break
-        # броня строки (автопилот, 2026-08-30): сбой одной строки не
-        # валит этап — статус не записывается, повтор в следующем
-        # прогоне; системные стопы (квота, бюджет, авторизация) выше
-        try:
-            addrs = license_addresses(db, inn)
-            nums = license_numbers(db, inn)
-            cands, seen = [], set()
-
-            def _add(url_or_dom, into=None):
-                """Кандидат в слой into (и всегда в cands — сквозной журнал)."""
-                dom = normalize_domain(url_or_dom or "")
-                if dom and dom not in seen and not is_aggregator_domain(dom):
-                    seen.add(dom)
-                    cands.append(dom)
-                    if into is not None:
-                        into.append(dom)
-
-            # ПОРЯДОК СЛОЁВ (заказчик, 2026-08-27: «карты внедряем только в тот
-            # слой, где ранее оговоренными методами сайт найти не удалось»):
-            # 1) веб-поиск «{название} {город}» → 2) веб-запрос по адресу
-            # лицензии → 3) КАРТОЧКИ КАРТ (Яндекс Геопоиск / 2ГИС) — последний
-            # запасной слой; из карточки берётся только URL, подтверждение той
-            # же лестницей (кейс франчайзи: сайт бренда + адрес лицензии)
-            src_label = "название+город"
-            budget.charge("yandex_search_api")
-            resp = yandex_search_raw(f"{name} {city}", n=10)
-            if handle_api_response(resp, "Яндекс Search API") is None:
-                continue
-            stats["spent_rub"] += SEARCH_COST_RUB
-            for r in parse_yandex_xml(
-                    base64.b64decode(resp.json()["rawData"]).decode("utf-8")):
-                if len(cands) >= 10:   # было 5: юр-справочники съедали все слоты
-                    break
-                _add(r.get("url"))
-            res = _check_candidates_flex(inn, name, city, list(cands),
-                                         license_addrs=addrs,
-                                         license_nums=nums)
-            if res is None:
-                # СЛОЙ 1k (заказчик, 2026-09-02): второй индекс Keenable —
-                # ТОЛЬКО там, где Яндекс кандидатов не дал или они не прошли
-                # лестницу (замер: recall 77% от Яндекса → дополнение, не замена).
-                # Та же лестница подтверждения, бесплатно, ≤5 новых кандидатов
-                keen = []
-                budget.charge("keenable")
-                for hit in keenable_search(f"{name} {city}", n=20):
-                    _add(hit["url"], into=keen)
-                    if len(keen) >= 5:
-                        break
-                if keen:
-                    res = _check_candidates_flex(inn, name, city, keen,
-                                                 license_addrs=addrs,
-                                                 license_nums=nums)
-                    if res:
-                        src_label = "Keenable, название+город"
-            if res is None:
-                # СЛОЙ 1.5 (заказчик, 2026-08-29): запрос по самому ИНН — сайты
-                # публикуют ИНН в реквизитах, Яндекс индексирует; найденное так
-                # подтверждается ступенью ИНН мгновенно
-                budget.charge("yandex_search_api")
-                resp15 = yandex_search_raw(f'"{inn}"', n=10)
-                if handle_api_response(resp15, "Яндекс Search API") is not None:
-                    stats["spent_rub"] += SEARCH_COST_RUB
-                    by_inn = []
-                    for r in parse_yandex_xml(base64.b64decode(
-                            resp15.json()["rawData"]).decode("utf-8")):
-                        _add(r.get("url"), into=by_inn)
-                        if len(by_inn) >= 5:
-                            break
-                    if by_inn:
-                        res15 = _check_candidates_flex(inn, name, city, by_inn,
-                                                       license_addrs=addrs,
-                                                       license_nums=nums)
-                        res = res15 or res
-                if res is None:
-                    # СЛОЙ 1.5k: Keenable по самому ИНН (заказчик, 2026-09-02)
-                    keen15 = []
-                    budget.charge("keenable")
-                    for hit in keenable_search(f'"{inn}"', n=10):
-                        _add(hit["url"], into=keen15)
-                        if len(keen15) >= 5:
-                            break
-                    if keen15:
-                        res = _check_candidates_flex(inn, name, city, keen15,
-                                                     license_addrs=addrs,
-                                                     license_nums=nums)
-                        if res:
-                            src_label = "Keenable, ИНН"
-            if res is None and addrs:
-                # слой 2: клиника может зваться на сайте иначе, чем юрлицо,
-                # а адрес точки из лицензии уникален
-                from src.site_finder import license_addr_patterns
-                pats = license_addr_patterns(addrs)
-                if pats:
-                    street, house = pats[0]
-                    budget.charge("yandex_search_api")
-                    resp2 = yandex_search_raw(
-                        f"{city} {street} {house} клиника медицинский центр", n=10)
-                    if handle_api_response(resp2, "Яндекс Search API") is not None:
-                        stats["spent_rub"] += SEARCH_COST_RUB
-                        extra = []
-                        for r in parse_yandex_xml(base64.b64decode(
-                                resp2.json()["rawData"]).decode("utf-8")):
-                            _add(r.get("url"), into=extra)
-                            if len(extra) >= 4:
-                                break
-                        if extra:
-                            res = _check_candidates_flex(inn, name, city, extra,
-                                                         license_addrs=addrs,
-                                                         license_nums=nums)
-            if res is None and not _geo_ok():
-                # квота Геопоиска у резерва, веб-слои пусты, запасной слой карт
-                # недоступен: строка честно ОТКЛАДЫВАЕТСЯ (search_status остаётся
-                # NULL — повтор завтра), а не получает «сайт не найден» по
-                # неполному каскаду. Три отсрочки подряд → поиск до завтра
-                stats["deferred_quota"] = stats.get("deferred_quota", 0) + 1
-                print(f"⚠ {inn}: слой карт без квоты — строка отложена на завтра")
-                if stats["deferred_quota"] >= 3:
-                    print("⛔ квота Геопоиска у резерва — поиск остановлен, "
-                          "крон продолжит после обнуления квоты")
-                    break
-                time.sleep(1)
-                continue
-            if res is None:
-                # слой 3 (запасной): карточки карт — прямые URL, а если ключ
-                # без разрешения на контакты (демо 2ГИС) — БРЕНД из карточки,
-                # сайт бренда достраивается веб-поиском; принадлежность юрлица
-                # к сайту сети подтверждает адрес лицензии
-                from src.map_candidates import map_candidates
-                cards = map_candidates(name, city)
-                maps = []
-                for u in cards["urls"]:
-                    _add(u, into=maps)
-                if not maps and cards["brands"]:
-                    brand = cards["brands"][0]
-                    budget.charge("yandex_search_api")
-                    resp3 = yandex_search_raw(
-                        f"{brand} {city} официальный сайт", n=10)
-                    if handle_api_response(resp3, "Яндекс Search API") is not None:
-                        stats["spent_rub"] += SEARCH_COST_RUB
-                        for r in parse_yandex_xml(base64.b64decode(
-                                resp3.json()["rawData"]).decode("utf-8")):
-                            _add(r.get("url"), into=maps)
-                            if len(maps) >= 4:
-                                break
-                if maps:
-                    # кандидаты карт проходят ТУ ЖЕ лестницу подтверждения.
-                    # Не прошли — сайта нет (заказчик, 2026-08-31): карточка
-                    # карт сама по себе ничего не доказывает
-                    res = _check_candidates_flex(inn, name, city, maps,
-                                                 license_addrs=addrs,
-                                                 license_nums=nums)
-            cand_log = ", ".join(cands)[:400]   # журнал: что именно проверялось
-            # ДВА ИСХОДА, третьего нет (заказчик, 2026-08-31: «я должен
-            # получить сайт именно той компании, ИНН и название которой стоит
-            # в строке. И точка»): подтверждён лестницей — в колонку H;
-            # не подтверждён — «сайт не найден», журнал кандидатов в запасе
-            if res:
-                dom, grade, ev = res
-                key = "found_inn" if "ИНН" in grade else "found_addr"
-                stats[key] += 1
-                if "Keenable" in src_label:
-                    stats["found_keenable"] += 1
-                db.execute("UPDATE t40_companies SET found_site=?, grade=?, "
-                           "grade_evidence=?, site_source=?, search_attempts=?, "
-                           "search_candidates=?, search_status='найден' WHERE inn=?",
-                           (dom, grade, ev[:300],
-                            f"поиск ({src_label}, гибкая навигация)",
-                            len(cands), cand_log, inn))
-            else:
-                stats["not_found"] += 1
-                db.execute("UPDATE t40_companies SET search_status='сайт не найден', "
-                           "search_attempts=?, search_candidates=? WHERE inn=?",
-                           (len(cands), cand_log, inn))
-            stats["done"] += 1
-            db.commit()
-        except (QuotaExhaustedError, AuthError, BudgetExceededError):
-            raise
-        except Exception as e:  # noqa: BLE001
-            stats["row_errors"] = stats.get("row_errors", 0) + 1
-            print(f"⚠ search: строка {inn} упала ({type(e).__name__}: "
-                  f"{str(e)[:120]}) — статус не записан, на повтор")
-            if stats["row_errors"] > 10:
-                raise RuntimeError(
-                    f"search: {stats['row_errors']} ошибок строк — "
-                    f"системный сбой, стоп по ТЗ") from e
-        time.sleep(1)
+    stats = {"found_inn": 0, "found_addr": 0, "found_keenable": 0,
+             "not_found": 0, "spent_rub": 0.0, "done": 0}
+    deferred = 0
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        chunk = workers * 2
+        for i in range(0, len(rows), chunk):
+            if time.time() - t0 > budget_sec:
+                print("⏱ поиск: бюджет времени исчерпан — остаток на следующий прогон")
+                break
+            if deferred >= 3:
+                print("⛔ квота Геопоиска у резерва — поиск остановлен, "
+                      "крон продолжит после обнуления квоты")
+                break
+            futs = {ex.submit(_search_one, inn, name, city, addrs[inn],
+                              nums[inn], budget, _geo_ok): inn
+                    for inn, name, city in rows[i:i + chunk]}
+            for fut in cf.as_completed(futs):
+                inn = futs[fut]
+                # броня строки (автопилот, 2026-08-30): сбой одной строки не
+                # валит этап — статус не записывается, повтор в следующем
+                # прогоне; системные стопы (квота, бюджет, авторизация) выше
+                try:
+                    r = fut.result()
+                except (QuotaExhaustedError, AuthError, BudgetExceededError):
+                    raise
+                except Exception as e:  # noqa: BLE001
+                    stats["row_errors"] = stats.get("row_errors", 0) + 1
+                    print(f"⚠ search: строка {inn} упала ({type(e).__name__}: "
+                          f"{str(e)[:120]}) — статус не записан, на повтор")
+                    if stats["row_errors"] > 10:
+                        raise RuntimeError(
+                            f"search: {stats['row_errors']} ошибок строк — "
+                            f"системный сбой, стоп по ТЗ") from e
+                    continue
+                stats["spent_rub"] += r["spent"]
+                if r["skipped"]:
+                    continue
+                if r["deferred"]:
+                    deferred += 1
+                    stats["deferred_quota"] = deferred
+                    print(f"⚠ {inn}: слой карт без квоты — строка отложена на завтра")
+                    continue
+                cand_log = ", ".join(r["cands"])[:400]   # журнал: что проверялось
+                # ДВА ИСХОДА, третьего нет (заказчик, 2026-08-31): подтверждён
+                # лестницей — в колонку H; не подтверждён — «сайт не найден»
+                if r["res"]:
+                    dom, grade, ev = r["res"]
+                    stats["found_inn" if "ИНН" in grade else "found_addr"] += 1
+                    if "Keenable" in r["src_label"]:
+                        stats["found_keenable"] += 1
+                    db.execute("UPDATE t40_companies SET found_site=?, grade=?, "
+                               "grade_evidence=?, site_source=?, search_attempts=?, "
+                               "search_candidates=?, search_status='найден' WHERE inn=?",
+                               (dom, grade, ev[:300],
+                                f"поиск ({r['src_label']}, гибкая навигация)",
+                                len(r["cands"]), cand_log, inn))
+                else:
+                    stats["not_found"] += 1
+                    db.execute("UPDATE t40_companies SET search_status='сайт не найден', "
+                               "search_attempts=?, search_candidates=? WHERE inn=?",
+                               (len(r["cands"]), cand_log, inn))
+                stats["done"] += 1
+                db.commit()
     return stats
 
 
@@ -559,10 +586,15 @@ def crawl_judge(db: sqlite3.Connection, budget_sec: float = 2400,
 
 
 def map_doublecheck(db: sqlite3.Connection, limit: int = 1000,
-                    budget_sec: float = 1500) -> dict:
+                    budget_sec: float = 1500, workers: int = 6) -> dict:
     """Даблчек найденных сайтов карточками Яндекс-Геопоиска (заказчик,
-    2026-08-28). Идемпотентно: только строки без map_check; квота
-    src.quota ограничивает сутки."""
+    2026-08-28) + АВТОРАЗРЕШЕНИЕ расхождений (заказчик, 2026-09-02): домен
+    из карточки проходит ту же лестницу ИНН → номер лицензии → адрес лицензии.
+    Прошёл — у компании два подтверждённых домена; нет — карточка указывает
+    чужой сайт, наш остаётся. Человеку — ничего.
+    Запросы к картам — последовательно (суточная квота); обход доменов
+    карточек — в пуле потоков (2026-09-02: «это очень долго»)."""
+    import concurrent.futures as cf
     import re as _re
 
     from src.map_candidates import yandex_doublecheck
@@ -573,70 +605,76 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000,
              "расхождение: второй домен компании": 0, "done": 0}
     t0 = time.time()
 
-    def _resolve(inn, name, city, site, card_dom) -> str:
-        """АВТОРАЗРЕШЕНИЕ расхождения (заказчик, 2026-09-02): домен из карточки
-        карт проходит ту же лестницу ИНН → номер лицензии → адрес лицензии.
-        Прошёл — у компании два подтверждённых домена; нет — карточка указывает
-        чужой сайт, наш (уже подтверждённый) остаётся. Человеку — ничего."""
-        chk = _check_candidates_flex(inn, name, city, [card_dom],
-                                     license_addrs=license_addresses(db, inn),
-                                     license_nums=license_numbers(db, inn))
-        if chk:
-            stats["расхождение: второй домен компании"] += 1
-            return (f"РАСХОЖДЕНИЕ разрешено: карточка {card_dom} — {chk[1]} "
-                    f"(второй домен компании; в H остаётся {site})")
-        stats["расхождение: карточка не сайт компании"] += 1
-        return (f"РАСХОЖДЕНИЕ разрешено: карточка {card_dom} — лестницей не "
-                f"подтверждён, не сайт компании; {site} остаётся")
-
-    # накопленные расхождения старого формата («— на ручную») — разрешить без
-    # повторного запроса к картам: домен уже в тексте
-    for inn, name, city, site, mc in db.execute(
-            "SELECT inn, name, city, found_site, map_check FROM t40_companies "
-            "WHERE map_check LIKE 'РАСХОЖДЕНИЕ: в карточке %' "
-            "AND map_check NOT LIKE 'РАСХОЖДЕНИЕ разрешено%' LIMIT ?",
-            (limit,)).fetchall():
-        if time.time() - t0 > budget_sec:
-            break
-        m = _re.match(r"РАСХОЖДЕНИЕ: в карточке (\S+)", mc)
-        if not m:
-            continue
-        db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
-                   (_resolve(inn, name, city, site, m.group(1)), inn))
-        db.commit()
-        stats["done"] += 1
-
+    # 1) свежие карточки — быстро, последовательно (квота карт)
     rows = list(db.execute(
         "SELECT inn, name, city, found_site FROM t40_companies "
         "WHERE found_site IS NOT NULL AND map_check IS NULL LIMIT ?", (limit,)))
     for inn, name, city, site in rows:
-        if time.time() - t0 > budget_sec:
-            print("⏱ даблчек: бюджет времени исчерпан — остаток на следующий прогон")
+        if time.time() - t0 > budget_sec * 0.3:
+            print("⏱ даблчек: карточки — бюджет времени, остаток на следующий прогон")
             break
-        # квота-честность (автопилот, 2026-08-30): исчерпанная суточная
-        # квота Геопоиска раньше давала ложный терминальный вердикт
-        # «карточка не найдена» — теперь строка остаётся в очереди на завтра
+        # квота-честность (автопилот, 2026-08-30): исчерпанная квота раньше
+        # давала ложный вердикт «карточка не найдена» — строка ждёт завтра
         used, lim = quota_status("yandex_geosearch")
         if lim is not None and used >= lim:
             print(f"⛔ даблчек: суточная квота Геопоиска исчерпана — "
                   f"{len(rows) - stats['done']} строк остаются на завтра")
             break
         verdict = yandex_doublecheck(name, city, site)
-        if verdict.startswith("РАСХОЖДЕНИЕ: в карточке "):
-            stats["расхождение"] += 1
-            verdict = _resolve(inn, name, city, site,
-                               verdict.split("в карточке ", 1)[1].strip())
         db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
                    (verdict, inn))
         db.commit()
-        if "РАСХОЖДЕНИЕ" in verdict:
-            pass
+        if verdict.startswith("РАСХОЖДЕНИЕ"):
+            stats["расхождение"] += 1
         elif "совпадает" in verdict:
             stats["совпадает"] += 1
         else:
             stats["нет карточки"] += 1
         stats["done"] += 1
         time.sleep(1)
+
+    # 2) все неразрешённые расхождения (свежие и накопленные «— на ручную»)
+    #    — лестница по домену карточки, параллельно; запись — главный поток
+    todo = []
+    for inn, name, city, site, mc in db.execute(
+            "SELECT inn, name, city, found_site, map_check FROM t40_companies "
+            "WHERE map_check LIKE 'РАСХОЖДЕНИЕ: в карточке %' "
+            "AND map_check NOT LIKE 'РАСХОЖДЕНИЕ разрешено%' LIMIT ?",
+            (limit,)).fetchall():
+        m = _re.match(r"РАСХОЖДЕНИЕ: в карточке (\S+)", mc)
+        if m:
+            todo.append((inn, name, city, site, m.group(1),
+                         license_addresses(db, inn), license_numbers(db, inn)))
+
+    def _resolve(item):
+        inn, name, city, site, card_dom, addrs, nums = item
+        chk = _check_candidates_flex(inn, name, city, [card_dom],
+                                     license_addrs=addrs, license_nums=nums)
+        if chk:
+            return inn, "второй", (f"РАСХОЖДЕНИЕ разрешено: карточка {card_dom} — "
+                                   f"{chk[1]} (второй домен компании; в H остаётся {site})")
+        return inn, "чужой", (f"РАСХОЖДЕНИЕ разрешено: карточка {card_dom} — лестницей "
+                              f"не подтверждён, не сайт компании; {site} остаётся")
+
+    with cf.ThreadPoolExecutor(max_workers=workers) as ex:
+        chunk = workers * 2
+        for i in range(0, len(todo), chunk):
+            if time.time() - t0 > budget_sec:
+                print("⏱ даблчек: разрешение расхождений — остаток на следующий прогон")
+                break
+            for fut in cf.as_completed([ex.submit(_resolve, it)
+                                        for it in todo[i:i + chunk]]):
+                try:
+                    inn, kind, text = fut.result()
+                except Exception as e:  # noqa: BLE001 — строка на повтор
+                    print(f"⚠ даблчек: разрешение упало ({type(e).__name__})")
+                    continue
+                stats["расхождение: второй домен компании" if kind == "второй"
+                      else "расхождение: карточка не сайт компании"] += 1
+                db.execute("UPDATE t40_companies SET map_check=? WHERE inn=?",
+                           (text, inn))
+                db.commit()
+                stats["done"] += 1
     return stats
 
 
