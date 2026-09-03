@@ -114,8 +114,10 @@ jobs:
 
       # прайс-каскад — ОТДЕЛЬНЫЙ параллельный конвейер prices.yml со своей
       # базой data/prices.db (заказчик, 2026-09-02); здесь его нет намеренно
-      - name: Выгрузка
-        run: python -m src.test40 export "${{ inputs.base_file }}"
+      - name: Выгрузка (отдельная + сводный файл двух конвейеров)
+        run: |
+          python -m src.test40 export "${{ inputs.base_file }}"
+          python -m src.combined_export "${{ inputs.base_file }}" || true
 
       # решение ДО коммита: autopilot_state уезжает в репозиторий вместе
       # с базой — следующий прогон и крон видят цель и снапшот прогресса

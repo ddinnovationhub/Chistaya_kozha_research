@@ -685,10 +685,13 @@ def _xl(v):
     return xl(v)
 
 
-def export_t40(db: sqlite3.Connection, src_path: str) -> str:
+def export_t40(db: sqlite3.Connection, src_path: str, wb=None) -> str:
     from openpyxl.styles import Alignment, Font, PatternFill
     ensure_t40_tables(db)   # миграции колонок (map_check и др.)
-    wb = openpyxl.Workbook()
+    # wb передан — листы пишутся в общий сводный файл (src/combined_export),
+    # сохраняет его вызывающий; без wb — прежняя отдельная выгрузка
+    standalone = wb is None
+    wb = wb if wb is not None else openpyxl.Workbook()
     day = datetime.date.today().isoformat()
     BOLD = Font(name="Arial", size=10, bold=True)
     ARIAL = Font(name="Arial", size=10)
@@ -887,6 +890,8 @@ def export_t40(db: sqlite3.Connection, src_path: str) -> str:
             cell.alignment = Alignment(vertical="top", wrap_text=True)
         r += 1
 
+    if not standalone:
+        return ""
     out = f"output/Тест40_{day}.xlsx"
     wb.save(out)
     return out

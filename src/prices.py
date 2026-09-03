@@ -653,16 +653,19 @@ def remaining(db: sqlite3.Connection) -> int:
     ).fetchone()[0]
 
 
-def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
-    """Выгрузка: Рецепты_доменов / Позиции / Выбросы_на_проверку."""
+def export_prices(db: sqlite3.Connection, path: str | None = None,
+                  wb=None) -> str:
+    """Выгрузка: Рецепты_доменов / Позиции / Выбросы_на_проверку.
+    wb передан — листы дописываются в общий сводный файл (combined_export)."""
     import openpyxl
     from openpyxl.styles import Font
 
     from src.xlsx_utils import xl_row
-    wb = openpyxl.Workbook()
+    standalone = wb is None
+    wb = wb if wb is not None else openpyxl.Workbook()
     bold = Font(bold=True)
-    ws = wb.active
-    ws.title = "Рецепты_доменов"
+    ws = wb.active if standalone else wb.create_sheet("Прайсы_рецепты")
+    ws.title = "Прайсы_рецепты" if not standalone else "Рецепты_доменов"
     ws.append(["Домен", "ИНН", "Уровень каскада", "Статус",
                "Страница/файл прайса", "Позиций", "Разделов", "Примечание"])
     for c in ws[1]:
@@ -688,6 +691,8 @@ def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
                         "FROM price_items WHERE price_value<50 "
                         "OR price_value>1000000 ORDER BY price_value"):
         ws3.append(xl_row(r))
+    if not standalone:
+        return ""
     path = path or f"output/Прайсы_профиль_{time.strftime('%Y-%m-%d')}.xlsx"
     wb.save(path)
     return path
