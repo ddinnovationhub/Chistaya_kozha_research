@@ -657,6 +657,8 @@ def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
     """Выгрузка: Рецепты_доменов / Позиции / Выбросы_на_проверку."""
     import openpyxl
     from openpyxl.styles import Font
+
+    from src.xlsx_utils import xl_row
     wb = openpyxl.Workbook()
     bold = Font(bold=True)
     ws = wb.active
@@ -668,7 +670,7 @@ def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
     for r in db.execute("SELECT domain, inn, level, status, price_page_url, "
                         "items_n, sections_n, note FROM price_recipes "
                         "ORDER BY status, domain"):
-        ws.append(r)
+        ws.append(xl_row(r))
     ws2 = wb.create_sheet("Позиции")
     ws2.append(["ИНН", "Домен", "Раздел", "Код", "Название (дословно)",
                 "Цена (дословно)", "Цена, руб", "URL источника", "Дата"])
@@ -677,7 +679,7 @@ def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
     for r in db.execute("SELECT inn, domain, section, code, name_raw, "
                         "price_raw, price_value, url, checked_at "
                         "FROM price_items ORDER BY domain, id"):
-        ws2.append(r)
+        ws2.append(xl_row(r))
     ws3 = wb.create_sheet("Выбросы_на_проверку")
     ws3.append(["Домен", "Название", "Цена дословно", "Цена, руб", "URL"])
     for c in ws3[1]:
@@ -685,7 +687,7 @@ def export_prices(db: sqlite3.Connection, path: str | None = None) -> str:
     for r in db.execute("SELECT domain, name_raw, price_raw, price_value, url "
                         "FROM price_items WHERE price_value<50 "
                         "OR price_value>1000000 ORDER BY price_value"):
-        ws3.append(r)
+        ws3.append(xl_row(r))
     path = path or f"output/Прайсы_профиль_{time.strftime('%Y-%m-%d')}.xlsx"
     wb.save(path)
     return path

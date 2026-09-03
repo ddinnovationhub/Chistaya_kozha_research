@@ -145,3 +145,27 @@ def test_open_dbs_separate_file_and_legacy_sync(tmp_path, monkeypatch):
     with pytest.raises(sqlite3.OperationalError):
         db.execute("INSERT INTO o.t40_companies VALUES ('3','c.ru',NULL)")
     prices.T40, prices.RZN = "t40_companies", "rzn_licenses"   # вернуть дефолт
+
+
+def test_export_survives_null_bytes(tmp_path, monkeypatch):
+    """Run 33618854799: нулевой байт \\x00 в name_raw уронил выгрузку целиком
+    (IllegalCharacterError). Санация общая (src/xlsx_utils), мусор виден как «·»."""
+    import sqlite3
+
+    import openpyxl
+
+    from src import prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("INSERT INTO price_recipes VALUES ('a.ru','1','P3','прайс извлечён',"
+               "'u','[]','[]',1,1,'зам\x02етка','2026-09-02')")
+    db.execute("INSERT INTO price_items (inn, domain, url, section, code, name_raw, "
+               "price_raw, price_value, currency, checked_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
+               ("1", "a.ru", "u", "s", "", "Сыворотка \x00 со старением",
+                "100", 100, "руб", "2026-09-02"))
+    out = tmp_path / "прайсы.xlsx"
+    monkeypatch.setattr(prices, "T40", "t40_companies")
+    path = prices.export_prices(db, str(out))
+    ws = openpyxl.load_workbook(path)["Позиции"]
+    val = ws.cell(2, 5).value
+    assert "Сыворотка" in val and "\x00" not in val and "·" in val

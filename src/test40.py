@@ -679,14 +679,10 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000,
 
 
 def _xl(v):
-    """Санация значения для ячейки Excel (краш run 33327894175, цепочка 1:
-    сайт отдал бинарный мусор → управляющие символы в тексте позиции →
-    openpyxl отказал ВСЕЙ выгрузке). Управляющие символы заменяются '·' —
-    мусор остаётся видимым на ручной проверке, но файл собирается."""
-    from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
-    if isinstance(v, str) and ILLEGAL_CHARACTERS_RE.search(v):
-        return ILLEGAL_CHARACTERS_RE.sub("·", v)
-    return v
+    """Санация ячейки Excel — общая реализация в src/xlsx_utils.py
+    (краши run 33327894175 и 33618854799: управляющие символы с сайтов)."""
+    from src.xlsx_utils import xl
+    return xl(v)
 
 
 def export_t40(db: sqlite3.Connection, src_path: str) -> str:
