@@ -117,8 +117,34 @@ def prepare(db: sqlite3.Connection) -> dict:
         "UPDATE t40_companies SET fetch_status=NULL, "
         "fetch_retries=COALESCE(fetch_retries,0)+1 WHERE fetch_status=?",
         (RETRY_STATUS,)).rowcount
+    # ИНВАРИАНТ (заказчик, 2026-09-03: «в колонке M специализация с сайтов,
+    # а сайт не найден»): у строки БЕЗ found_site не бывает производных
+    # обхода. Прошлые сбросы сайта чистили паспорт/суждения, но пропускали
+    # site_specialties и positions_seen — остатки от сайта, признанного
+    # чужим, выглядели как данные. Чистка идемпотентна, идёт каждый прогон
+    try:
+        orphans = db.execute(
+            "UPDATE t40_companies SET fetch_status=NULL, fetch_level=NULL, "
+            "pages_seen=NULL, med_judgment=NULL, med_basis=NULL, "
+            "mgmt_network=NULL, profile_judgment=NULL, profile_matches_n=NULL, "
+            "profile_matches=NULL, positions_seen=NULL, site_specialties=NULL, "
+            "passport=NULL, checked_at=NULL, map_check=NULL "
+            "WHERE found_site IS NULL AND (site_specialties IS NOT NULL "
+            "OR positions_seen IS NOT NULL OR passport IS NOT NULL "
+            "OR fetch_status IS NOT NULL OR med_judgment IS NOT NULL "
+            "OR map_check IS NOT NULL)").rowcount
+        db.execute("DELETE FROM llm_judgments WHERE inn IN "
+                   "(SELECT inn FROM t40_companies WHERE found_site IS NULL)")
+    except sqlite3.OperationalError:   # усечённая схема (легаси/тесты)
+        orphans = 0
+    try:
+        db.execute("DELETE FROM t40_page_texts WHERE inn IN "
+                   "(SELECT inn FROM t40_companies WHERE found_site IS NULL)")
+    except sqlite3.OperationalError:
+        pass   # таблицы нет в тестовой базе
     db.commit()
-    return {"возвращено в очередь": reset, "исчерпали повторы": exhausted}
+    return {"возвращено в очередь": reset, "исчерпали повторы": exhausted,
+            "очищено остатков сброшенных сайтов": orphans}
 
 
 def decide(db: sqlite3.Connection, target_rows: int, chain: int) -> str:

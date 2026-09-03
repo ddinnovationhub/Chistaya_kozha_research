@@ -121,6 +121,23 @@ def open_dbs(prices_path: str = PRICES_DB, osint_path: str = OSINT_DB
             db.execute("INSERT INTO price_nav_log SELECT * FROM o.price_nav_log "
                        "WHERE domain NOT IN (SELECT DISTINCT domain FROM price_nav_log)")
         db.commit()
+    # ЧИСТКА СИРОТ (заказчик, 2026-09-03): рецепт привязан к паре
+    # (ИНН, домен=found_site на момент разбора). Если сайт у ИНН позже
+    # сброшен лестницей/чёрным списком — привязка недоказана, прайс чужого
+    # домена не должен числиться за компанией. Удаление снимает чекпойнт:
+    # при новом подтверждённом сайте домен разберётся заново
+    orphan_pairs = db.execute(
+        "SELECT r.domain, r.inn FROM price_recipes r WHERE NOT EXISTS "
+        "(SELECT 1 FROM o.t40_companies c WHERE c.inn=r.inn "
+        " AND c.found_site=r.domain)").fetchall()
+    if orphan_pairs:
+        for dom, inn in orphan_pairs:
+            db.execute("DELETE FROM price_items WHERE domain=? AND inn=?", (dom, inn))
+            db.execute("DELETE FROM price_recipes WHERE domain=? AND inn=?", (dom, inn))
+            db.execute("DELETE FROM price_nav_log WHERE domain=?", (dom,))
+        db.commit()
+        print(f"ℹ прайсы: удалено {len(orphan_pairs)} рецептов-сирот "
+              f"(сайт у ИНН сброшен — привязка недоказана)")
     return db
 
 

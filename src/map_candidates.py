@@ -18,8 +18,22 @@
 """
 
 import os
+import re
 
 import httpx
+
+_OPF_SEG_RE = re.compile(r"\b(?:ООО|ОАО|ЗАО|ПАО|АО|ИП|АНО|ГБУЗ|ГАУЗ|МАУЗ"
+                         r"|МУП|НУЗ|ЧУЗ|ФГБУ|ГУП)\b")
+
+
+def clean_map_name(name: str) -> str:
+    """СПАРК пишет «НОВЫЕ МЕТОДЫ, ООО КДЛ» — а карточка в картах называется
+    «Новые методы». Сегменты с ОПФ выбрасываются из запроса к картам
+    (2026-09-03, ложное отрицание 6670254298: запрос с «ООО КДЛ» внутри
+    притянул карточку федеральной сети KDL вместо нашей лаборатории)."""
+    parts = [p.strip() for p in (name or "").split(",")]
+    kept = [p for p in parts if p and not _OPF_SEG_RE.search(p)]
+    return " ".join(kept) if kept else (name or "")
 
 
 def yandex_map_urls(name: str, city: str, n: int = 3) -> list[str]:
@@ -33,7 +47,8 @@ def yandex_map_urls(name: str, city: str, n: int = 3) -> list[str]:
         return []
     try:
         r = httpx.get("https://search-maps.yandex.ru/v1/",
-                      params={"text": f"{name} {city}", "type": "biz",
+                      params={"text": f"{clean_map_name(name)} {city}",
+                              "type": "biz",
                               "lang": "ru_RU", "results": 5, "apikey": key},
                       timeout=20)
         if r.status_code != 200:
@@ -84,7 +99,8 @@ def gis2_cards(name: str, city: str, n: int = 3) -> dict:
         return {"urls": [], "brands": []}
     try:
         r = httpx.get("https://catalog.api.2gis.com/3.0/items",
-                      params={"q": f"{name} {city}", "page_size": 5,
+                      params={"q": f"{clean_map_name(name)} {city}",
+                              "page_size": 5,
                               "fields": "items.contact_groups,items.brand,items.org",
                               "key": key},
                       timeout=20)

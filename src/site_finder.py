@@ -152,6 +152,16 @@ _CONTACT_LINK_RE = re.compile(
     r"|documents|contacts|about|privacy|requisit", re.IGNORECASE)
 
 
+def _head_tail(text: str) -> str:
+    """Страница целиком до 300 КБ; больше — первые 200 КБ + ПОСЛЕДНИЕ 100 КБ.
+    Прежняя обрезка text[:200000] отрезала футер с адресом и реквизитами
+    (2026-09-03, novomedclinic.ru: одностраничник 1.88 МБ, адрес лицензии
+    на позиции 1.86 МБ — ложное «сайт не найден»)."""
+    if len(text) <= 300000:
+        return text
+    return text[:200000] + "\n" + text[-100000:]
+
+
 def flexible_contact_texts(domain: str, max_pages: int = 6,
                            pause: float = 3.0) -> list[str]:
     """Главная + страницы, выбранные по ТЕКСТУ ссылок главной (и по href как
@@ -164,7 +174,9 @@ def flexible_contact_texts(domain: str, max_pages: int = 6,
         try:
             r = httpx.get(url, timeout=10, headers=BROWSER_HEADERS,
                           follow_redirects=True)
-            return r.text[:200000] if r.status_code < 400 and len(r.text) > 200 else None
+            if r.status_code >= 400 or len(r.text) <= 200:
+                return None
+            return _head_tail(r.text)
         except Exception:  # noqa: BLE001
             return None
 
@@ -221,40 +233,137 @@ def flexible_contact_texts(domain: str, max_pages: int = 6,
 # связь компания↔сайт не хуже ИНН — у многих клиник ИНН на сайте нет,
 # а адреса точек в контактах есть (кейс А2МЕД САМАРА). ─────────────────────
 
-_LIC_STREET_RE = re.compile(
-    r"(?:ул\.?|улица|просп\w*|пр-т|пер\.?|переулок|шоссе|ш\.|б-р|бульвар"
-    r"|наб\.?|набережная|проезд|линия|тракт|дорога)\s*\.?\s*"
-    r"([А-ЯЁ][А-ЯЁа-яё0-9\- .]{2,40}?)\s*,")
-_LIC_HOUSE_RE = re.compile(r"\b(?:д\.?|дом)\s*(\d+\s*[а-яА-Я]?(?:\s*/\s*\d+)?)")
+# Разбор ПОСЕГМЕНТНЫЙ (2026-09-03, ложные отрицания 5406346898/6670254298:
+# «пр-кт Димитрова, зд. 1» давал НОЛЬ паттернов — 140 из 371 строки «сайт
+# не найден» шли по лестнице без адресной ступени). Один сквозной regex не
+# покрывает зоопарк форматов РЗН: «зд.», «дом №5», «Техническая, 94» без
+# маркера дома, «4-я Челюскинцев», «Проспект Победы» с заглавной.
+_STREET_MARKER_RE = re.compile(
+    r"(?:^|\s)(?:ул|улица|пр-?кт|пр-т|пр|просп(?:ект)?|пер|переулок|ш|шоссе"
+    r"|б-р|бульвар|наб|набережная|проезд|линия|тракт|дорога|пл|площадь"
+    r"|мкр|микрорайон|квартал|мгстр|магистраль)(?:\.|\s|$)", re.IGNORECASE)
+_NON_STREET_SEG_RE = re.compile(
+    r"\b(?:обл|область|край|респ\w*|район|р-н|округ|г|гор|город|пос|пгт"
+    r"|п|с|дер|д)\b\.?\s*[А-ЯЁ]|^\d{6}$", re.IGNORECASE)
+_HOUSE_RE = re.compile(
+    r"\b(?:д|дом|зд|здание|вл|влд|двлд|владение|стр|строение)\b\.?\s*№?\s*"
+    r"(\d+)(?:\s*/\s*(\d+))?\s*[-–/]?\s*([а-яё])?(?![а-яё0-9])"
+    r"(?:[\s,]*(?:к|корп|корпус)\.?\s*(\d+))?", re.IGNORECASE)
+_BARE_HOUSE_RE = re.compile(
+    r"^№?\s*(\d+)(?:\s*/\s*(\d+))?\s*[-–/]?\s*([а-яё])?"
+    r"(?:\s*(?:к|корп|корпус)\.?\s*(\d+))?\s*$", re.IGNORECASE)
+
+
+def _house_str(m) -> str:
+    """Группы (цифры, дробь, литера, корпус) → каноничный дом «19/15», «18б»,
+    «14к1»."""
+    h = m.group(1)
+    if m.group(2):
+        h += "/" + m.group(2)
+    if m.group(3):
+        h += m.group(3).lower()
+    if m.group(4):
+        h += "к" + m.group(4)
+    return h
 
 
 def license_addr_patterns(addresses: list[str]) -> list[tuple[str, str]]:
-    """Адреса лицензии → пары (улица, дом) для поиска на сайте."""
+    """Адреса лицензии → пары (улица, дом) для поиска на сайте.
+    Улица — сегмент с маркером (ул/пр-кт/пер/…) либо, если маркеров нет,
+    первый «уличный» сегмент без цифр; дом — маркер д/дом/зд/№ в любом
+    сегменте после улицы либо голое число сразу за сегментом улицы."""
     out, seen = [], set()
     for a in addresses:
-        sm = _LIC_STREET_RE.search(a)
-        hm = _LIC_HOUSE_RE.search(a)
-        if not (sm and hm):
+        segs = [s.strip() for s in str(a).split(",")]
+        street, house, street_i = None, None, None
+        for i, seg in enumerate(segs):
+            if _STREET_MARKER_RE.search(seg):
+                nm = _STREET_MARKER_RE.sub(" ", seg)
+                nm = _HOUSE_RE.sub(" ", nm)          # «ул. Варварская д. 27/8»
+                nm = re.sub(r"[«»\"']", " ", nm)
+                nm = re.sub(r"^\s*(?:им\.|имени)\s*", " ", nm.strip())
+                nm = re.sub(r"\s+", " ", nm).strip(" .№").lower()
+                # «ул. Буйнакская. 2» — дом после точки внутри сегмента
+                tm = re.match(r"(.+?)[.\s]+(\d+[а-яё]?)$", nm)
+                if tm and len(tm.group(1).strip(" .")) >= 3:
+                    nm, house = tm.group(1).strip(" ."), tm.group(2)
+                if len(nm) >= 3 and not nm.isdigit():
+                    street, street_i = nm, i
+                    break
+        if street is None:
+            # адрес без маркера улицы: «г. Тюмень, Урицкого, 36»
+            for i, seg in enumerate(segs):
+                if (re.search(r"[а-яё]", seg, re.I) and not re.search(r"\d", seg)
+                        and not _NON_STREET_SEG_RE.search(seg)
+                        and len(seg.strip(" .")) >= 4
+                        and i + 1 < len(segs)
+                        and (_BARE_HOUSE_RE.match(segs[i + 1])
+                             or _HOUSE_RE.search(segs[i + 1]))):
+                    street = re.sub(r"\s+", " ", seg).strip(" .").lower()
+                    street_i = i
+                    break
+        if street is None:
             continue
-        street = sm.group(1).strip(" .").lower()
-        house = re.sub(r"\s+", "", hm.group(1)).lower()
-        if len(street) >= 4 and (street, house) not in seen:
+        if house is None:
+            tail = ", ".join(segs[street_i:])
+            hm = _HOUSE_RE.search(tail)
+            if hm:
+                house = _house_str(hm)
+            elif street_i + 1 < len(segs):
+                bm = _BARE_HOUSE_RE.match(segs[street_i + 1])
+                if bm:
+                    house = _house_str(bm)
+        if house and (street, house) not in seen:
             seen.add((street, house))
             out.append((street, house))
     return out
 
 
+def _house_page_re(house: str):
+    """Дом «18б»/«19/15»/«14к1» → regex для страницы. Литера обязана
+    совпасть (18б ≠ 18); корпус из лицензии сверяется, если на странице
+    корпус указан (к.2 при лицензионном к.1 — другое здание, кейс mkm66)."""
+    m = re.match(r"(\d+)(?:/(\d+))?([а-яё])?(?:к(\d+))?$", house)
+    if not m:
+        return re.compile(rf"\b{re.escape(house)}\b")
+    digits, frac, letter, corpus = m.groups()
+    pat = rf"\b{digits}"
+    if frac:
+        pat += rf"\s*/\s*{frac}"
+    if letter:
+        pat += rf"[\s\-–/]?{letter}(?![а-яё0-9])"
+    else:
+        pat += r"(?![0-9а-яё])" if not frac else r"(?![0-9])"
+    # хвост корпуса на странице: «, к. 2» / «корп. 2» / «/2»
+    pat += r"(?:[\s,]*(?:к|корп|корпус)\.?\s*(\d+))?"
+    return re.compile(pat), corpus
+
+
 def license_addr_in_text(text: str, patterns: list[tuple[str, str]]
                          ) -> tuple[str, str] | None:
-    """Первая пара «улица + дом» из лицензии, найденная на странице:
-    улица дословно, номер дома в окне ±120 символов от неё."""
+    """Первая пара «улица + дом» из лицензии, найденная на странице.
+    Дом ищется ПОСЛЕ улицы в окне до следующего уличного маркера (разбор
+    2026-09-03, кейс detdoc.ru: окно ±120 в обе стороны цепляло номер дома
+    СОСЕДНЕГО адреса из списка филиалов — «шварца, 14» подтверждал
+    «техническая, 14»)."""
     low = text.lower()
     for street, house in patterns:
-        for m in re.finditer(re.escape(street), low):
-            window = low[max(0, m.start() - 120):m.end() + 120]
-            h = house.replace("/", r"\s*/\s*")
-            if re.search(rf"\b{h}\b", window):
-                return street, house
+        built = _house_page_re(house)
+        h_re, lic_corpus = built if isinstance(built, tuple) else (built, None)
+        # границы кириллицы: улица «ким» не должна находиться внутри слова
+        street_re = re.compile(rf"(?<![а-яё]){re.escape(street)}(?![а-яё])")
+        for m in street_re.finditer(low):
+            window = low[m.end():m.end() + 80]
+            nxt = _STREET_MARKER_RE.search(window, 1)
+            if nxt:
+                window = window[:nxt.start() + 1]
+            hm = h_re.search(window)
+            if not hm:
+                continue
+            page_corpus = hm.group(1) if hm.groups() else None
+            if lic_corpus and page_corpus and page_corpus != lic_corpus:
+                continue   # дом тот, корпус другой — другое здание
+            return street, house
     return None
 
 
@@ -283,7 +392,7 @@ def fetch_contact_texts(domain: str) -> list[str]:
             r = httpx.get(f"https://{domain}{path}", timeout=10,
                           headers=BROWSER_HEADERS, follow_redirects=True)
             if r.status_code < 400 and len(r.text) > 200:
-                texts.append(r.text[:200000])
+                texts.append(_head_tail(r.text))
         except Exception:  # noqa: BLE001
             if path == "":
                 break
