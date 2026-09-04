@@ -136,3 +136,41 @@ def test_mapcheck_resolves_backlog_in_parallel(monkeypatch):
                       ).fetchone()[0] == 0
     assert db.execute("SELECT COUNT(*) FROM t40_companies WHERE found_site LIKE 'ours%'"
                       ).fetchone()[0] == 12          # колонка H не тронута
+
+
+def test_quota_defers_row_not_whole_search(monkeypatch):
+    """Карты — запасной слой, и по факту базы они не нашли ни одного сайта
+    из 1403. Раньше три отложенных строки подряд роняли весь этап поиска,
+    унося с собой работающие веб-слои (разбор 2026-09-04)."""
+    from src import test40
+
+    db = _db()          # 12 строк, реестр по всем пройден
+
+    # первые три строки требуют карт (квоты нет) → откладываются;
+    # остальные находятся веб-слоем и ДОЛЖНЫ быть обработаны
+    def fake_one(inn, name, city, addrs, nums, budget, geo_ok):
+        idx = int(inn)
+        if idx <= 3:
+            return {"res": None, "src_label": "", "cands": [], "skipped": False,
+                    "deferred": True, "spent": 0.0}
+        return {"res": (f"c{idx}.ru", "подтверждён ИНН", "ИНН на сайте"),
+                "src_label": "название+город", "cands": [f"c{idx}.ru"],
+                "skipped": False, "deferred": False, "spent": 0.5}
+
+    monkeypatch.setattr(test40, "_search_one", fake_one)
+    monkeypatch.setattr("src.rzn_licenses.license_addresses", lambda db, inn: [])
+    monkeypatch.setattr("src.rzn_licenses.license_numbers", lambda db, inn: [])
+    monkeypatch.setattr("src.budget.BudgetTracker", _Budget)
+    monkeypatch.setenv("YANDEX_GEOSEARCH_API_KEY", "x")
+    stats = test40.run_search(db, budget_sec=60, workers=2)
+
+    assert stats["deferred_quota"] >= 1          # отложенные честно посчитаны
+    assert stats["done"] == 9                    # остальные девять обработаны
+    found = db.execute("SELECT COUNT(*) FROM t40_companies "
+                       "WHERE found_site IS NOT NULL").fetchone()[0]
+    assert found == 9
+    # отложенные остались в очереди, а не получили «сайт не найден»
+    waiting = db.execute("SELECT COUNT(*) FROM t40_companies WHERE "
+                         "found_site IS NULL AND search_status IS NULL"
+                         ).fetchone()[0]
+    assert waiting == 3

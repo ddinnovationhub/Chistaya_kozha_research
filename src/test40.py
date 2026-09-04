@@ -472,9 +472,18 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600,
             if time.time() - t0 > budget_sec:
                 print("⏱ поиск: бюджет времени исчерпан — остаток на следующий прогон")
                 break
-            if deferred >= 3:
-                print("⛔ квота Геопоиска у резерва — поиск остановлен, "
-                      "крон продолжит после обнуления квоты")
+            # ОТКЛАДЫВАЕТСЯ СТРОКА, А НЕ ВЕСЬ ПОИСК (разбор 2026-09-04).
+            # Прежде три отложенных подряд роняли весь этап: «квота
+            # Геопоиска у резерва — поиск остановлен». Но карты — последний,
+            # запасной слой, и по факту базы они не нашли НИ ОДНОГО сайта из
+            # 1403: находят веб-поиск (809), ячейка СПАРК (573), Keenable
+            # (21). Терять из-за них работающие веб-слои нельзя. Стоп теперь
+            # только когда подряд отложено много строк — то есть веб-слои
+            # действительно перестали давать результат; счётчик обнуляется
+            # на каждой обработанной строке.
+            if deferred >= 25:
+                print(f"⛔ подряд отложено {deferred} строк (веб-слои пусты, "
+                      "квота карт исчерпана) — остаток на следующий прогон")
                 break
             futs = {ex.submit(_search_one, inn, name, city, addrs[inn],
                               nums[inn], budget, _geo_ok): inn
@@ -501,7 +510,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600,
                 if r["skipped"]:
                     continue
                 if r["deferred"]:
-                    deferred += 1
+                    deferred += 1        # подряд; сбрасывается ниже успехом
                     stats["deferred_quota"] = deferred
                     print(f"⚠ {inn}: слой карт без квоты — строка отложена на завтра")
                     continue
@@ -525,6 +534,7 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600,
                                "search_attempts=?, search_candidates=? WHERE inn=?",
                                (len(r["cands"]), cand_log, inn))
                 stats["done"] += 1
+                deferred = 0             # строка обработана — счётчик подряд
                 db.commit()
     return stats
 
