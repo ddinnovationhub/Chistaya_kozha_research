@@ -112,7 +112,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: shard-${{ matrix.shard }}
-          path: data/osint.db
+          path: |
+            data/osint.db
+            data/page_texts.db
           retention-days: 7
 
   # СЛИЯНИЕ: один job, один коммит. Идёт даже если часть шардов упала —
@@ -165,6 +167,7 @@ jobs:
           git config user.name "chk-osint-actions"
           git config user.email "actions@users.noreply.github.com"
           git add data/osint.db
+          git add data/page_texts.db || true
           git add output/ || true
           if git diff --cached --quiet; then
             echo "Изменений нет"

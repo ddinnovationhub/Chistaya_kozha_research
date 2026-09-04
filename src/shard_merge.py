@@ -20,10 +20,12 @@ import sys
 # что переносится из шарда: (таблица, ключ, «привязано к ИНН строки»)
 _COPY_TABLES = [
     ("t40_positions", "inn"),
-    ("t40_page_texts", "inn"),
     ("llm_judgments", "inn"),
     ("fetch_attempts", "inn"),
 ]
+# t40_page_texts живёт в отдельном файле data/page_texts.db (2026-09-04:
+# тексты весили 42 из 102 МБ и роняли коммит о лимит GitHub) — сливается
+# отдельно, из page_texts.db шарда
 
 # поля результата работы конвейера (всё, что шард мог добыть по своей строке)
 _RESULT_COLS = [
@@ -111,6 +113,15 @@ def merge_shard(main: sqlite3.Connection, shard_path: str,
         main.commit()
     finally:
         main.execute("DETACH DATABASE s")
+    # тексты страниц шарда — в общий отдельный файл
+    shard_texts = os.path.join(os.path.dirname(shard_path) or ".",
+                               "page_texts.db")
+    if os.path.exists(shard_texts):
+        from src.page_texts import merge_from
+        inns = [r[0] for r in main.execute(
+            "SELECT inn FROM t40_companies WHERE row_no BETWEEN ? AND ?",
+            (row_from, row_to))]
+        out["страниц перенесено"] = merge_from(shard_texts, inns)
     return out
 
 

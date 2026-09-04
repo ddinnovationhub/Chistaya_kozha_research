@@ -157,3 +157,35 @@ def test_budget_ceiling_is_divided_between_shards(monkeypatch, tmp_path):
     assert shard.ceiling_rub == 1800.0
     # сумма долей всех шардов не пробивает общий потолок
     assert 1000 + 5 * (shard.ceiling_rub - 1000) == 5000.0
+
+
+def test_page_texts_live_in_separate_db(tmp_path):
+    """Тексты страниц вынесены в отдельный файл (2026-09-04): в общей базе
+    они весили 42 из 102 МБ и дважды за день роняли коммит о жёсткий лимит
+    GitHub — 100 МБ на файл."""
+    import zlib
+
+    from src.page_texts import delete_pages, merge_from, open_db, save_pages
+    p = str(tmp_path / "pt.db")
+    save_pages("111", {"https://a.ru/": "Дерматология и косметология"}, p)
+    save_pages("222", {"https://b.ru/": "Приём онколога"}, p)
+    db = open_db(p)
+    got = dict(db.execute("SELECT inn, text_gz FROM t40_page_texts"))
+    assert zlib.decompress(got["111"]).decode() == "Дерматология и косметология"
+    assert len(got) == 2
+
+    # чистка по ИНН со сброшенным сайтом
+    assert delete_pages(["111"], p) >= 0
+    left = {r[0] for r in db.execute("SELECT inn FROM t40_page_texts")}
+    assert left == {"222"}
+    db.close()
+
+    # слияние из базы шарда — только по ИНН его диапазона
+    src = str(tmp_path / "shard_pt.db")
+    save_pages("333", {"https://c.ru/": "Трихология"}, src)
+    save_pages("999", {"https://z.ru/": "чужой диапазон"}, src)
+    merge_from(src, ["333"], p)
+    db2 = open_db(p)
+    inns = {r[0] for r in db2.execute("SELECT inn FROM t40_page_texts")}
+    assert inns == {"222", "333"}      # «999» не из нашего диапазона
+    db2.close()

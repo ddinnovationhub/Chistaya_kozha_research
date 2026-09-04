@@ -608,12 +608,10 @@ def crawl_judge(db: sqlite3.Connection, budget_sec: float = 2400,
                                "name_raw, price, page_url) VALUES (?,?,?,?,?)",
                                (inn, dom, s["name"], s.get("price"),
                                 s["page_url"]))
-                db.execute("DELETE FROM t40_page_texts WHERE inn=?", (inn,))
-                for u, p in pages.items():
-                    db.execute("INSERT OR REPLACE INTO t40_page_texts "
-                               "(inn, url, text_gz) VALUES (?,?,?)",
-                               (inn, u, zlib.compress(
-                                   html_to_text(p)[:120000].encode("utf-8"))))
+                # тексты страниц — в отдельный файл data/page_texts.db:
+                # они весили 42 из 102 МБ и роняли коммит о лимит GitHub
+                from src.page_texts import save_pages
+                save_pages(inn, {u: html_to_text(p) for u, p in pages.items()})
                 db.execute(
                     "UPDATE t40_companies SET fetch_status='ok', fetch_level=?, "
                     "pages_seen=?, med_judgment=?, med_basis=?, mgmt_network=?, "

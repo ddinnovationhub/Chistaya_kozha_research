@@ -137,11 +137,12 @@ def prepare(db: sqlite3.Connection) -> dict:
                    "(SELECT inn FROM t40_companies WHERE found_site IS NULL)")
     except sqlite3.OperationalError:   # усечённая схема (легаси/тесты)
         orphans = 0
-    try:
-        db.execute("DELETE FROM t40_page_texts WHERE inn IN "
-                   "(SELECT inn FROM t40_companies WHERE found_site IS NULL)")
-    except sqlite3.OperationalError:
-        pass   # таблицы нет в тестовой базе
+    try:                       # тексты страниц живут в отдельной базе
+        from src.page_texts import delete_pages
+        delete_pages([r[0] for r in db.execute(
+            "SELECT inn FROM t40_companies WHERE found_site IS NULL")])
+    except (sqlite3.OperationalError, OSError):
+        pass
     db.commit()
     return {"возвращено в очередь": reset, "исчерпали повторы": exhausted,
             "очищено остатков сброшенных сайтов": orphans}
