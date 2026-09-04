@@ -51,13 +51,33 @@ _SKIP_URL = re.compile(
     r"\.(jpe?g|png|gif|svg|webp|css|js|ico|mp4|zip)([?#]|$)"
     r"|^(mailto|tel|javascript):|#$", re.I)
 
-_PRICE_LINE = re.compile(r"(\d[\d\s ]{1,9})\s*(?:руб|₽|р\.)", re.I)
+# Число цены (разбор 2026-09-04, заказчик: «скорректировать выборку»).
+# Прежний шаблон (\d[\d\s ]{1,9}) не знал ни копеек, ни точки-разделителя
+# тысяч: «32040.00 ₽» захватывалось как «00» → 0 ₽ (10 368 позиций),
+# «2.500 ₽» → 500 ₽, а склейка двух цен «2 020 30 500 ₽» → 2 030 500 ₽.
+# Теперь: либо число с ГРУППАМИ РОВНО ПО ТРИ цифры (разделитель — пробел,
+# неразрывный пробел, точка или запятая), либо сплошные цифры; в обоих
+# случаях необязательный хвост копеек. Нормализация — в parse_price_value.
+_PRICE_NUM = (r"\d{1,3}(?:[\s  .,]\d{3})+(?:[.,]\d{1,2})?"
+              r"|\d{1,7}(?:[.,]\d{1,2})?")
+_PRICE_LINE = re.compile(rf"({_PRICE_NUM})\s*(?:руб|₽|р\.)", re.I)
 _PRICE_ONLY = re.compile(
     r"^(?:от|до)?\s*[\d\s .,]*(?:у\.?\s?е\.?[\s/]*)?[\d\s .,]+\s*"
     r"(?:руб\.?|₽|р\.)\s*$", re.I)
 _CODE_LINE = re.compile(r"^[A-ZА-Я]{2,10}[\d.-]{1,8}$")
 _FROM_RANGE = re.compile(r"\bот\b|\bдо\b|[-–—]\s*\d", re.I)
 _SECTION = re.compile(r" > |^[А-ЯЁ\d\s,.()-]{8,120}$")
+# Строка-АДРЕС ФИЛИАЛА, а не название услуги (разбор 2026-09-04, nika-nn.ru:
+# блок «Цены по филиалам» — название услуги стоит выше, а дальше идут пары
+# «адрес → цена»; парсер писал адрес в название, 17 639 позиций из 18 955).
+_ADDR_LINE = re.compile(
+    r"^(?:г\.|гор\.|город|пос\.|пгт|с\.|дер\.|мкр)\s|"
+    r"\b(?:ул|пр-?кт|пр-т|просп|пер|ш|шоссе|б-р|бульвар|наб|пл|мкр)\.?\s"
+    r"[А-ЯЁ]|,\s*д\.\s*\d", re.I)
+# служебные подписи интерфейса — не название услуги
+_UI_NOISE = re.compile(
+    r"^(?:цены?\s+по\s+филиал|записаться|подробнее|в\s+корзину|выбрать"
+    r"|заказать|показать|смотреть|все\s+цены|стоимость услуг)", re.I)
 
 
 def link_scent(label: str, href: str) -> int:
@@ -310,11 +330,33 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
         if files:
             break                                  # документ первичен
     db.commit()
-    return {"files": files, "price_pages": price_pages,
-            "route": route, "pages_seen": len(visited)}
+    return {"files": files, "price_pages": price_pages, "route": route,
+            "pages_seen": len(visited), "reachable": bool(route)}
 
 
 # --- парсер прайса: мультипаттерн -------------------------------------------
+
+def normalize_price_number(captured: str) -> float | None:
+    """«368.200» → 368200 · «32040.00» → 32040 · «4 100,50» → 4100.5.
+
+    Разбор 2026-09-04: разделителем тысяч в прайсах бывает пробел, точка и
+    запятая — и та же точка/запятая обозначает копейки. Неоднозначность
+    снимается по длине ПОСЛЕДНЕЙ группы: ровно три цифры → это разряд тысяч
+    («2.500 ₽» = 2500, ks-lazer.ru), одна-две → копейки («32040.00 ₽» =
+    32040, duetclinic.ru)."""
+    s = re.sub(r"[\s\u00a0\u202f]", "", captured or "")
+    if not s:
+        return None
+    parts = re.split(r"[.,]", s)
+    if len(parts) > 1 and len(parts[-1]) == 3:
+        s = "".join(parts)                            # разделители — тысячи
+    elif len(parts) > 1:
+        s = "".join(parts[:-1]) + "." + parts[-1]     # хвост — копейки
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
 
 def parse_price_value(raw: str) -> tuple[float | None, str]:
     """Однозначная цена в рублях или None (вилки/«от» не досчитываются)."""
@@ -323,11 +365,8 @@ def parse_price_value(raw: str) -> tuple[float | None, str]:
     m = _PRICE_LINE.search(raw)
     if not m:
         return None, ""
-    digits = re.sub(r"[\s ]", "", m.group(1))
-    try:
-        return float(digits), "RUB"
-    except ValueError:
-        return None, ""
+    val = normalize_price_number(m.group(1))
+    return (val, "RUB") if val is not None else (None, "")
 
 
 def parse_price_text(text: str) -> list[dict]:
@@ -336,6 +375,7 @@ def parse_price_text(text: str) -> list[dict]:
     lines = [ln.strip() for ln in text.splitlines()]
     lines = [ln for ln in lines if ln]
     items, section, pending_code, pending_name = [], "", None, None
+    last_service = None            # услуга блока «цены по филиалам»
     for ln in lines:
         if len(ln) < 3 or len(ln) > 300:
             pending_code = pending_name = None
@@ -350,8 +390,16 @@ def parse_price_text(text: str) -> list[dict]:
         if _PRICE_ONLY.match(ln):
             if pending_name:                       # пара/триплет закрыт ценой
                 val, cur = parse_price_value(ln)
-                items.append({"section": section, "code": pending_code or "",
-                              "name": pending_name, "price_raw": ln,
+                # адрес вместо названия: услуга — выше по блоку, адрес идёт
+                # в раздел как филиал (иначе в таблице 17 тыс. «услуг»-адресов)
+                if _ADDR_LINE.search(pending_name) and last_service:
+                    name = last_service
+                    sect = (f"{section} · филиал: {pending_name}" if section
+                            else f"филиал: {pending_name}")[:200]
+                else:
+                    name, sect = pending_name, section
+                items.append({"section": sect, "code": pending_code or "",
+                              "name": name, "price_raw": ln,
                               "price_value": val, "currency": cur})
             pending_code = pending_name = None
             continue
@@ -379,6 +427,10 @@ def parse_price_text(text: str) -> list[dict]:
                 pending_name = f"{pending_name}, {ln}"  # уточнение («1 зуба»)
             else:
                 pending_name = ln                  # кандидат пары/триплета
+            if (pending_name and len(pending_name) >= 6
+                    and not _ADDR_LINE.search(pending_name)
+                    and not _UI_NOISE.match(pending_name)):
+                last_service = pending_name        # услуга блока филиалов
     return items
 
 
@@ -513,7 +565,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
     delay = crawl_delay(domain)
     ts = time.strftime("%Y-%m-%d %H:%M")
     files = p0_passport_files(db, inn)             # P0
-    nav = {"files": [], "price_pages": [], "route": [], "pages_seen": 0}
+    nav = {"files": [], "price_pages": [], "route": [], "pages_seen": 0,
+           "reachable": None}
     if not files:
         nav = navigate(db, domain, delay)          # P1
         files = nav["files"]
@@ -559,6 +612,14 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
     if items:
         _save_items(db, inn, domain, src_url, items)
         status = "прайс извлечён"
+    elif nav["reachable"] is False:
+        # ТРИ РАЗНЫХ ИСХОДА, а не один (CLAUDE.md: «нет страницы ≠ нет
+        # услуги»; разбор 2026-09-04: из 335 строк P5 сайт не открылся у 41).
+        status = "сайт недоступен на дату проверки"
+        level = level or "P5:сайт недоступен"
+    elif files:
+        status = "прайс-файл не разобран на дату проверки"
+        level = level or "P5:файл не разобран"
     else:
         status = "прайс не найден на дату проверки"  # P5 — честный статус
         level = level or "P5"
@@ -670,6 +731,102 @@ def remaining(db: sqlite3.Connection) -> int:
     ).fetchone()[0]
 
 
+def reparse(db: sqlite3.Connection, apply: bool = True) -> dict:
+    """Применяет исправления парсера 2026-09-04 к УЖЕ СОБРАННОЙ базе, не
+    ходя в сеть заново (дословная цена и маршрут сохранены — этого хватает):
+
+    1. price_value пересчитывается из дословной цены (копейки, точка как
+       разделитель тысяч, склейка двух цен в строке);
+    2. статус P5 расщепляется по журналу навигатора на «сайт недоступен» /
+       «прайс-файл не разобран» / «прайс не найден»;
+    3. домены, где в названия услуг попали адреса филиалов, теряют
+       чекпойнт — там название услуги в базе утеряно, нужен повторный
+       разбор сайта новым парсером (следующий прогон каскада сделает сам).
+
+    apply=False — только посчитать, ничего не менять."""
+    ensure_price_tables(db)
+    out = {"цен пересчитано": 0,
+           "статус «сайт недоступен»": 0, "статус «файл не разобран»": 0,
+           "доменов на повторный разбор": 0, "позиций удалено": 0}
+
+    # 1 — цены. Пересчёт ТОЛЬКО УТОЧНЯЕТ: если новый разбор ничего не дал,
+    # прежнее значение остаётся (часть цен пришла из числовых ячеек таблиц,
+    # где дословная запись — голое «4900» без знака рубля).
+    fixes = []
+    for pid, raw, old in db.execute(
+            "SELECT id, price_raw, price_value FROM price_items"):
+        text = str(raw or "")
+        new, _ = parse_price_value(text)
+        if new is None and not _FROM_RANGE.search(text):
+            new = normalize_price_number(text)     # голое число из таблицы
+        if new is not None and new != old:
+            fixes.append((new, pid))
+            out["цен пересчитано"] += 1
+    if apply and fixes:
+        db.executemany("UPDATE price_items SET price_value=? WHERE id=?", fixes)
+
+    # 2 — статусы: сайт открывался или нет (журнал навигатора уже есть)
+    for dom, furls in db.execute(
+            "SELECT domain, file_urls FROM price_recipes "
+            "WHERE status='прайс не найден на дату проверки'"):
+        log = [v[0] for v in db.execute(
+            "SELECT verdict FROM price_nav_log WHERE domain=?", (dom,))]
+        if log and all(v == "недоступна" for v in log):
+            out["статус «сайт недоступен»"] += 1
+            if apply:
+                db.execute("UPDATE price_recipes SET status=?, level=? "
+                           "WHERE domain=?", ("сайт недоступен на дату проверки",
+                                              "P5:сайт недоступен", dom))
+        elif not log and furls not in ("", "[]", None):
+            out["статус «файл не разобран»"] += 1
+            if apply:
+                db.execute("UPDATE price_recipes SET status=?, level=? "
+                           "WHERE domain=?",
+                           ("прайс-файл не разобран на дату проверки",
+                            "P5:файл не разобран", dom))
+
+    # 3 — домены с адресами вместо названий услуг
+    # Домены, чей прайс нужно разобрать ЗАНОВО (из базы уже не чинится):
+    #  · адрес филиала попал в название услуги (nika-nn);
+    #  · РАЗОРВАННАЯ ЦЕНА — старый шаблон резал строку по «00» из копеек,
+    #    целая часть осталась в названии («…гигиена 4000,»), в цене «00 руб»
+    #    (радугаздоровья.рф, neplacebo.ru): восстанавливать надо и цену,
+    #    и название.
+    addr_re = re.compile(r"^(?:г|гор|пос|пгт|с|дер)\.\s|,\s*(?:д|ул)\.\s")
+    torn_re = re.compile(r"[\d][.,]\s*$")
+    tot, broken = {}, {}
+    for dom, name, raw, val in db.execute(
+            "SELECT domain, name_raw, price_raw, price_value FROM price_items"):
+        tot[dom] = tot.get(dom, 0) + 1
+        nm, rw = str(name or ""), str(raw or "")
+        if addr_re.search(nm) or (val == 0 and torn_re.search(nm)
+                                  and re.match(r"^\d{1,2}\s*(?:руб|₽)", rw)):
+            broken[dom] = broken.get(dom, 0) + 1
+    bad = [d for d, n in broken.items() if n / tot[d] >= 0.05]
+    out["доменов на повторный разбор"] = len(bad)
+    # недоступный сайт — не приговор: чекпойнт снимается, каскад повторит
+    # попытку (позиций у таких доменов нет, терять нечего)
+    retry = [r[0] for r in db.execute(
+        "SELECT domain FROM price_recipes "
+        "WHERE status='сайт недоступен на дату проверки'")]
+    out["недоступных на повторную попытку"] = len(retry)
+    if apply:
+        for dom in bad:
+            out["позиций удалено"] += db.execute(
+                "DELETE FROM price_items WHERE domain=?", (dom,)).rowcount
+            db.execute("DELETE FROM price_recipes WHERE domain=?", (dom,))
+        for dom in retry:
+            db.execute("DELETE FROM price_recipes WHERE domain=?", (dom,))
+        for pid, name in list(db.execute(
+                "SELECT id, name_raw FROM price_items")):
+            if addr_re.search(str(name or "")):    # единичный мусор в чистом
+                db.execute("DELETE FROM price_items WHERE id=?", (pid,))
+                out["позиций удалено"] += 1
+    if apply:
+        db.commit()
+    return out
+
+
 def export_prices(db: sqlite3.Connection, path: str | None = None,
                   wb=None) -> str:
     """Выгрузка: Рецепты_доменов / Позиции / Выбросы_на_проверку.
@@ -725,6 +882,9 @@ if __name__ == "__main__":
     if cmd == "probe" and len(sys.argv) > 2:       # обкатка одного домена
         print(run_company(db, sys.argv[3] if len(sys.argv) > 3 else "",
                           sys.argv[2]))
+    elif cmd == "reparse":                         # исправления к готовой базе
+        dry = len(sys.argv) > 2 and sys.argv[2] == "--dry"
+        print("реparse:", reparse(db, apply=not dry))
     elif cmd == "export":
         print("файл:", export_prices(db))
     elif cmd == "run":
