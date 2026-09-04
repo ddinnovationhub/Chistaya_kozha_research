@@ -93,6 +93,21 @@ def merge_shard(main: sqlite3.Connection, shard_path: str,
                              f"SELECT * FROM s.{table}")
             except sqlite3.OperationalError:
                 pass
+        # РАСХОД КВОТ СУММИРУЕТСЯ, а не берётся от одного шарда (2026-09-04,
+        # разбор первого прогона: у каждого шарда своя копия счётчика, и без
+        # суммирования основная база видела расход лишь одного из пяти —
+        # следующий прогон считал бы квоту почти нетронутой и пробил бы
+        # суточный лимит ключа).
+        try:
+            for service, day, used in main.execute(
+                    "SELECT service, day, used FROM s.api_quota").fetchall():
+                main.execute("INSERT OR IGNORE INTO api_quota VALUES (?,?,0)",
+                             (service, day))
+                main.execute("UPDATE api_quota SET used=used+? "
+                             "WHERE service=? AND day=?", (used, service, day))
+            out["квоты просуммированы"] = 1
+        except sqlite3.OperationalError:
+            pass
         main.commit()
     finally:
         main.execute("DETACH DATABASE s")

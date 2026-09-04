@@ -437,7 +437,16 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600,
     # падает, чекпойнт сохранён, цепочка автопилота не продолжается
     budget = BudgetTracker()
     _geo_key = os.environ.get("YANDEX_GEOSEARCH_API_KEY")
-    _GEO_RESERVE = 150   # запас суточной квоты Геопоиска под даблчек
+    # Запас суточной квоты Геопоиска под даблчек. ДЕЛИТСЯ НА ШАРДЫ вместе с
+    # самой квотой (разбор первого прогона шардов 2026-09-04): лимит делился
+    # на 5 (1000 → 200), а резерв оставался 150 — поиску доставалось 50
+    # запросов, и он вставал почти сразу. Шард 5 успел обработать 7 строк
+    # вместо сотен, «⛔ квота Геопоиска у резерва».
+    try:
+        _share = max(1, int(os.environ.get("QUOTA_SHARE") or 1))
+    except ValueError:
+        _share = 1
+    _GEO_RESERVE = max(20, 150 // _share)
 
     def _geo_ok() -> bool:
         if not _geo_key:
