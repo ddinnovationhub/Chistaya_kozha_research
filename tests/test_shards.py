@@ -132,3 +132,28 @@ def test_import_takes_only_shard_range(tmp_path, monkeypatch):
     import_t40(str(f), con, 20)
     rows = sorted(r[0] for r in con.execute("SELECT row_no FROM t40_companies"))
     assert rows == [11, 12, 13, 14, 15]
+
+
+def test_budget_ceiling_is_divided_between_shards(monkeypatch, tmp_path):
+    """Счётчик денег лежит в файле репозитория, и каждый шард получает свою
+    копию с одинаковой отметкой. Без деления пять шардов разрешили бы себе
+    по полному потолку — впятеро больше денег, чем есть (2026-09-04)."""
+    import json
+    import pathlib
+
+    from src.budget import BudgetTracker
+    state = tmp_path / "budget.json"
+    state.write_text(json.dumps({"spent_rub": 1000.0, "requests": {}}),
+                     encoding="utf-8")
+    th = pathlib.Path("config/thresholds.yaml")
+
+    monkeypatch.delenv("QUOTA_SHARE", raising=False)
+    solo = BudgetTracker(th, state)
+    assert solo.ceiling_rub == 5000.0
+
+    monkeypatch.setenv("QUOTA_SHARE", "5")
+    shard = BudgetTracker(th, state)
+    # доля остатка: 1000 + (5000-1000)/5 = 1800
+    assert shard.ceiling_rub == 1800.0
+    # сумма долей всех шардов не пробивает общий потолок
+    assert 1000 + 5 * (shard.ceiling_rub - 1000) == 5000.0

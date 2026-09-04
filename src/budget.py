@@ -12,6 +12,7 @@
 """
 
 import json
+import os
 import pathlib
 import threading
 
@@ -35,6 +36,20 @@ class BudgetTracker:
             self.state = json.loads(state_path.read_text(encoding="utf-8"))
         else:
             self.state = {"spent_rub": 0.0, "requests": {}}
+        # ПАРАЛЛЕЛЬНЫЕ ШАРДЫ (2026-09-04): счётчик лежит в файле репозитория,
+        # и при пяти одновременных прогонах каждый получает СВОЮ копию с
+        # одинаковой отметкой израсходованного. Без деления каждый шард
+        # разрешил бы себе тратить до общего потолка — впятеро больше денег,
+        # чем есть. Поэтому шарду достаётся только его доля ОСТАТКА:
+        # потолок_шарда = уже_потрачено + (потолок − уже_потрачено) / шардов.
+        # Сумма долей равна остатку, то есть общий потолок не пробивается.
+        try:
+            share = int(os.environ.get("QUOTA_SHARE") or 1)
+        except ValueError:
+            share = 1
+        if share > 1:
+            rest = max(0.0, self.ceiling_rub - self.spent)
+            self.ceiling_rub = self.spent + rest / share
         self._warned = self.spent >= self.ceiling_rub * self.warn_share
 
     @property
