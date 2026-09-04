@@ -557,12 +557,15 @@ def _save_items(db, inn, domain, url, items):
     # ОДНОЙ пачкой: построчная вставка 18 955 позиций (nika-nn) держала
     # запись базы минуты, и соседние потоки срывались с «database is locked»
     # даже на busy_timeout 30 с (2026-09-04)
+    # ФИО врача в названии позиции/разделе прайса («Приём — Иванова М.П.»)
+    # обезличивается до записи: 152-ФЗ, принцип минимизации (2026-09-04)
+    from src.depersonalize import mask_fio
     db.executemany(
         "INSERT INTO price_items (inn, domain, url, section, code,"
         " name_raw, price_raw, price_value, currency, checked_at)"
         " VALUES (?,?,?,?,?,?,?,?,?,?)",
-        [(inn, domain, url[:300], it["section"], it["code"],
-          it["name"][:300], it["price_raw"][:100],
+        [(inn, domain, url[:300], mask_fio(it["section"]), it["code"],
+          mask_fio(it["name"])[:300], it["price_raw"][:100],
           it["price_value"], it["currency"], ts) for it in items])
 
 

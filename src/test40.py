@@ -77,9 +77,15 @@ def import_t40(path: str, db: sqlite3.Connection,
     wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
     ws = wb[wb.sheetnames[0]]
     stats = {"total": 0, "with_sites": 0, "bad_inn": 0}
+    # шард импортирует ТОЛЬКО свой диапазон строк (2026-09-04): при пяти
+    # параллельных прогонах каждый работает со своим куском файла
+    lo = int(os.environ.get("SHARD_FROM") or 0)
+    hi = int(os.environ.get("SHARD_TO") or 0)
     for i, r in enumerate(ws.iter_rows(min_row=2, values_only=True), 1):
-        if stats["total"] >= first_n:
+        if not lo and stats["total"] >= first_n:
             break
+        if lo and not (lo <= i <= hi):
+            continue
         if not r[1]:
             continue
         num, name, ogrn, sites, inn, region, industry, marker, revenue = r[:9]
@@ -109,6 +115,23 @@ def import_t40(path: str, db: sqlite3.Connection,
              str(revenue) if revenue is not None else None, *manual))
     db.commit()
     return stats
+
+
+def shard_clause(alias: str = "") -> str:
+    """SQL-довесок «только строки моего шарда» или пустая строка.
+
+    ПАРАЛЛЕЛЬНОСТЬ ПО ДИАПАЗОНАМ СТРОК (заказчик, 2026-09-04: «надо плодить
+    actions и раздавать им задания на различный набор строк»). Диапазон
+    задаётся окружением SHARD_FROM/SHARD_TO один раз на весь job, поэтому
+    все этапы конвейера видят его одинаково и шарды не пересекаются —
+    правило «сайт открывается ровно один раз» сохраняется внутри шарда,
+    а между шардами не бывает общих компаний: диапазоны не пересекаются.
+    Без переменных окружения поведение прежнее — весь диапазон."""
+    lo, hi = os.environ.get("SHARD_FROM"), os.environ.get("SHARD_TO")
+    if not lo or not hi:
+        return ""
+    a = f"{alias}." if alias else ""
+    return f" AND {a}row_no BETWEEN {int(lo)} AND {int(hi)}"
 
 
 def _rejected_domains(inn: str) -> set[str]:
@@ -185,7 +208,7 @@ def check_sites(db: sqlite3.Connection, budget_sec: float = 1800,
         # проверяется, пока её ИНН не проверен реестром — иначе 2 из 3
         # ступеней подтверждения слепы
         "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
-        "AND r.status='проверен')")]
+        "AND r.status='проверен')" + shard_clause("c"))]
     t0 = time.time()
     stats = {"confirmed_inn": 0, "confirmed_addr": 0, "no": 0}
 
@@ -426,7 +449,8 @@ def run_search(db: sqlite3.Connection, budget_sec: float = 3600,
         "SELECT inn, name, city FROM t40_companies c "
         "WHERE found_site IS NULL AND search_status IS NULL "
         "AND EXISTS (SELECT 1 FROM rzn_checked r WHERE r.inn=c.inn "
-        "AND r.status='проверен')"))   # гвард: поиск ждёт реестра
+        "AND r.status='проверен')"    # гвард: поиск ждёт реестра
+        + shard_clause("c")))
     addrs = {r[0]: license_addresses(db, r[0]) for r in rows}
     nums = {r[0]: license_numbers(db, r[0]) for r in rows}
     t0 = time.time()
@@ -514,7 +538,8 @@ def crawl_judge(db: sqlite3.Connection, budget_sec: float = 2400,
     ck = load_ck_price_index()
     rows = list(db.execute(
         "SELECT inn, name, city, found_site FROM t40_companies "
-        "WHERE found_site IS NOT NULL AND fetch_status IS NULL"))
+        "WHERE found_site IS NOT NULL AND fetch_status IS NULL"
+        + shard_clause()))
     t0 = time.time()
     stats = {"ok": 0, "unreachable": 0}
 
@@ -608,7 +633,8 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000,
     # 1) свежие карточки — быстро, последовательно (квота карт)
     rows = list(db.execute(
         "SELECT inn, name, city, found_site FROM t40_companies "
-        "WHERE found_site IS NOT NULL AND map_check IS NULL LIMIT ?", (limit,)))
+        "WHERE found_site IS NOT NULL AND map_check IS NULL"
+        + shard_clause() + " LIMIT ?", (limit,)))
     for inn, name, city, site in rows:
         if time.time() - t0 > budget_sec * 0.3:
             print("⏱ даблчек: карточки — бюджет времени, остаток на следующий прогон")
@@ -639,8 +665,8 @@ def map_doublecheck(db: sqlite3.Connection, limit: int = 1000,
     for inn, name, city, site, mc in db.execute(
             "SELECT inn, name, city, found_site, map_check FROM t40_companies "
             "WHERE map_check LIKE 'РАСХОЖДЕНИЕ: в карточке %' "
-            "AND map_check NOT LIKE 'РАСХОЖДЕНИЕ разрешено%' LIMIT ?",
-            (limit,)).fetchall():
+            "AND map_check NOT LIKE 'РАСХОЖДЕНИЕ разрешено%'"
+            + shard_clause() + " LIMIT ?", (limit,)).fetchall():
         m = _re.match(r"РАСХОЖДЕНИЕ: в карточке (\S+)", mc)
         if m:
             todo.append((inn, name, city, site, m.group(1),

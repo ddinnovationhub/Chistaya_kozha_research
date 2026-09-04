@@ -1,0 +1,180 @@
+# ПАРАЛЛЕЛЬНЫЕ ШАРДЫ (заказчик, 2026-09-04: «надо плодить actions и раздавать
+# им задания на параллельный анализ различного набора строк»).
+#
+# Пять прогонов идут ОДНОВРЕМЕННО, каждый со своим диапазоном строк базы
+# (SHARD_FROM/SHARD_TO) и своей копией osint.db. Писать в один файл они не
+# могут — сегодняшний разбор прайсов показал, чем это кончается («database is
+# locked»), — поэтому каждый отдаёт свою базу артефактом, а отдельный job
+# сливает результаты в основную и коммитит ОДИН раз.
+#
+# Зачем: остаток работы ≈ 1100 строк поиска, это 11-13 часов одним потоком.
+# Пятью шардами — около 2,5 часов календарного времени. Минут Actions
+# тратится столько же: на приватном репозитории их лимит 2000/мес НА АККАУНТ
+# (не на репозиторий), на публичном — не тратятся вовсе.
+#
+# Лимит одновременных задач Free-плана — 20, поэтому пять шардов оставляют
+# запас: прайсы и обычный test-40 могут идти рядом, не вставая в очередь.
+name: shards
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_file:
+        description: "Файл базы в репозитории"
+        required: true
+        default: "data/Выборка_компаний_V2.xlsx"
+      total_rows:
+        description: "Верхняя граница строк (вся база V2 — 2337)"
+        required: true
+        default: "2337"
+      search_sec:
+        description: "Бюджет секунд на поиск в каждом шарде"
+        required: true
+        default: "9000"
+
+permissions:
+  contents: write
+
+# шарды одной волны идут вместе; вторую волну очередим за первой
+concurrency:
+  group: shards
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    strategy:
+      fail-fast: false          # упавший шард не рушит остальные четыре
+      matrix:
+        shard: [1, 2, 3, 4, 5]
+    env:
+      YANDEX_API_KEY: ${{ secrets.YANDEX_API_KEY }}
+      YANDEX_FOLDER_ID: ${{ secrets.YANDEX_FOLDER_ID }}
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+      YANDEX_GEOSEARCH_API_KEY: ${{ secrets.YANDEX_GEOSEARCH_API_KEY }}
+      DGIS_API_KEY: ${{ secrets.DGIS_API_KEY }}
+      KEENABLE_API_KEY: ${{ secrets.KEENABLE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Границы шарда
+        id: range
+        run: |
+          TOTAL=${{ inputs.total_rows }}
+          N=5
+          SIZE=$(( (TOTAL + N - 1) / N ))
+          FROM=$(( (${{ matrix.shard }} - 1) * SIZE + 1 ))
+          TO=$(( ${{ matrix.shard }} * SIZE ))
+          [ "$TO" -gt "$TOTAL" ] && TO=$TOTAL
+          echo "шард ${{ matrix.shard }}: строки $FROM-$TO"
+          echo "from=$FROM" >> "$GITHUB_OUTPUT"
+          echo "to=$TO" >> "$GITHUB_OUTPUT"
+
+      - name: Быстрые проверки
+        run: python -m pytest tests/test_shards.py tests/test_t40_rzn.py tests/test_autopilot.py -q
+
+      # ВНИМАНИЕ: суточные квоты карт (Геопоиск 1000, 2ГИС 1000) — общие на
+      # все шарды. Каждый шард берёт себе пятую часть, чтобы соседи не
+      # остались без запасного слоя (квота-честность: строка откладывается,
+      # а не получает «сайт не найден» по неполному каскаду).
+      - name: Прогон шарда ${{ matrix.shard }} (строки ${{ steps.range.outputs.from }}-${{ steps.range.outputs.to }})
+        env:
+          SHARD_FROM: ${{ steps.range.outputs.from }}
+          SHARD_TO: ${{ steps.range.outputs.to }}
+          QUOTA_SHARE: "5"
+        run: |
+          python -m src.test40 import "${{ inputs.base_file }}" "${{ inputs.total_rows }}"
+          python -m src.autopilot prepare
+          python -m src.test40 rzn 300
+          python -m src.test40 sites 1200
+          python -m src.test40 search ${{ inputs.search_sec }}
+          python -m src.test40 judge 4200
+          timeout 300 python -m src.llm_judge run yandexgpt || true
+          timeout 300 python -m src.llm_judge run llm7 || true
+          timeout 900 python -m src.test40 mapcheck 700 || true
+
+      - name: База шарда как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shard-${{ matrix.shard }}
+          path: data/osint.db
+          retention-days: 7
+
+  # СЛИЯНИЕ: один job, один коммит. Идёт даже если часть шардов упала —
+  # работа уцелевших не теряется (fail-fast: false выше).
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: pip install -r requirements.txt
+
+      - name: Забрать базы шардов
+        uses: actions/download-artifact@v4
+        with:
+          pattern: shard-*
+          path: shards
+
+      - name: Слияние в основную базу
+        run: |
+          TOTAL=${{ inputs.total_rows }}
+          N=5
+          SIZE=$(( (TOTAL + N - 1) / N ))
+          SPEC=""
+          for i in 1 2 3 4 5; do
+            FROM=$(( (i - 1) * SIZE + 1 ))
+            TO=$(( i * SIZE ))
+            [ "$TO" -gt "$TOTAL" ] && TO=$TOTAL
+            F="shards/shard-$i/osint.db"
+            [ -f "$F" ] && SPEC="$SPEC $F:$FROM:$TO" || echo "⚠ шард $i без базы"
+          done
+          echo "сливаю:$SPEC"
+          python -m src.shard_merge data/osint.db $SPEC
+
+      - name: Выгрузка
+        run: |
+          python -m src.test40 export "${{ inputs.base_file }}"
+          python -m src.combined_export "${{ inputs.base_file }}" || true
+
+      - name: Коммит результата
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/osint.db
+          git add output/ || true
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "shards: слияние 5 шардов $(date +%F) (run ${{ github.run_id }})"
+            if ! git pull --rebase origin "${{ github.ref_name }}"; then
+              git checkout --theirs data/osint.db 2>/dev/null || true
+              git checkout --theirs -- output/ 2>/dev/null || true
+              git add data/ output/
+              GIT_EDITOR=true git rebase --continue
+            fi
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi

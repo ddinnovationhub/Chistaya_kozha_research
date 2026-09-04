@@ -8,6 +8,7 @@
 """
 
 import datetime
+import os
 import sqlite3
 
 DB_PATH = "data/osint.db"
@@ -28,10 +29,28 @@ def _db() -> sqlite3.Connection:
     return db
 
 
+def limit_for(service: str) -> int | None:
+    """Суточный лимит сервиса с поправкой на число параллельных шардов.
+
+    ПАРАЛЛЕЛЬНЫЕ ШАРДЫ (2026-09-04): квота Геопоиска и 2ГИС — суточная НА
+    КЛЮЧ, а счётчик живёт в базе, и у каждого шарда база своя. Без деления
+    пять шардов независимо израсходовали бы по 1000 запросов при реальном
+    лимите 1000 на всех. QUOTA_SHARE (число шардов волны) выставляет
+    воркфлоу; без него поведение прежнее."""
+    limit = LIMITS.get(service)
+    if limit is None:
+        return None
+    try:
+        share = int(os.environ.get("QUOTA_SHARE") or 1)
+    except ValueError:
+        share = 1
+    return max(1, limit // share) if share > 1 else limit
+
+
 def spend(service: str, n: int = 1) -> bool:
     """True — расход учтён, можно слать запрос; False — суточный лимит
     исчерпан, запрос НЕ отправлять."""
-    limit = LIMITS.get(service)
+    limit = limit_for(service)
     day = datetime.date.today().isoformat()
     db = _db()
     try:
@@ -58,6 +77,6 @@ def status(service: str) -> tuple[int, int | None]:
     try:
         row = db.execute("SELECT used FROM api_quota WHERE service=? AND day=?",
                          (service, day)).fetchone()
-        return (row[0] if row else 0), LIMITS.get(service)
+        return (row[0] if row else 0), limit_for(service)
     finally:
         db.close()

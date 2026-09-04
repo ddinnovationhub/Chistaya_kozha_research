@@ -113,7 +113,12 @@ def price_file_links(html: str, base_domain: str, cap: int = 5) -> list[str]:
 
 def build_passport(domain: str, pages: dict[str, str], data: dict,
                    max_chars: int = 16000) -> str:
-    """{url: html} + сигналы extract_pages → текст паспорта. Дословно, с URL."""
+    """{url: html} + сигналы extract_pages → текст паспорта. Дословно, с URL.
+
+    ФИО врачей обезличиваются ПЕРЕД возвратом (152-ФЗ, принцип минимизации;
+    2026-09-04): паспорт — дословный слепок меню и заголовков, поэтому блок
+    «Наши врачи» попадал в него целиком и уезжал во внешние сервисы к
+    судьям-нейронкам. Для суждения о профиле важны специальности, а не имена."""
     urls = list(pages)
     home_url = urls[0] if urls else ""
     home = pages.get(home_url, "")
@@ -172,5 +177,6 @@ def build_passport(domain: str, pages: dict[str, str], data: dict,
         for s in svcs[:30]:
             price = f" — {s['price']}" if s.get("price") else ""
             lines.append(f"  {s['name'][:120]}{price}")
-    text = "\n".join(lines)
+    from src.depersonalize import mask_fio
+    text = mask_fio("\n".join(lines))   # ФИО не покидают обход (152-ФЗ)
     return text[:max_chars]
