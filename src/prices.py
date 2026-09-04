@@ -112,8 +112,8 @@ PRICES_DB = "data/prices.db"
 OSINT_DB = "data/osint.db"
 
 
-def open_dbs(prices_path: str = PRICES_DB, osint_path: str = OSINT_DB
-             ) -> sqlite3.Connection:
+def open_dbs(prices_path: str = PRICES_DB, osint_path: str = OSINT_DB,
+             clean_orphans: bool = True) -> sqlite3.Connection:
     """Главная база — прайсы (запись); osint.db присоединена только на чтение.
     Разовая синхронизация: записи price_*, оставшиеся в osint.db от обкатки
     28.08 и от прогона test-40 со встроенным шагом прайсов, переносятся
@@ -122,7 +122,12 @@ def open_dbs(prices_path: str = PRICES_DB, osint_path: str = OSINT_DB
     # uri=True: иначе «file:…?mode=ro» в ATTACH прочтётся как имя файла и
     # SQLite молча создаст пустую базу с таким именем
     db = sqlite3.connect(prices_path, uri=True)
-    db.execute("PRAGMA busy_timeout=15000")
+    db.execute("PRAGMA busy_timeout=30000")
+    # WAL НЕ включаем намеренно: воркфлоу коммитит один файл data/prices.db,
+    # а WAL держит свежие транзакции в отдельном -wal — незачекпойнченная
+    # работа потерялась бы при коммите. Блокировки лечатся короткими
+    # транзакциями (журнал навигатора коммитится сразу, позиции пишутся
+    # одной пачкой), а не сменой журнального режима.
     ensure_price_tables(db)
     db.execute("ATTACH DATABASE ? AS o", (f"file:{osint_path}?mode=ro",))
     T40, RZN = "o.t40_companies", "o.rzn_licenses"
@@ -146,7 +151,7 @@ def open_dbs(prices_path: str = PRICES_DB, osint_path: str = OSINT_DB
     # сброшен лестницей/чёрным списком — привязка недоказана, прайс чужого
     # домена не должен числиться за компанией. Удаление снимает чекпойнт:
     # при новом подтверждённом сайте домен разберётся заново
-    orphan_pairs = db.execute(
+    orphan_pairs = [] if not clean_orphans else db.execute(
         "SELECT r.domain, r.inn FROM price_recipes r WHERE NOT EXISTS "
         "(SELECT 1 FROM o.t40_companies c WHERE c.inn=r.inn "
         " AND c.found_site=r.domain)").fetchall()
@@ -306,6 +311,9 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
         db.execute("INSERT INTO price_nav_log VALUES (?,?,?,?,?,?)",
                    (domain, url[:300], depth, score,
                     "ok" if r else "недоступна", ts))
+        db.commit()      # короткая транзакция: иначе запись базы держится
+                         # весь обход (до 12 страниц с паузами), и соседние
+                         # потоки срываются с «database is locked»
         if not r:
             continue
         route.append({"url": url[:300], "label": label[:80], "depth": depth})
@@ -546,13 +554,16 @@ def _save_items(db, inn, domain, url, items):
     ts = time.strftime("%Y-%m-%d")
     db.execute("DELETE FROM price_items WHERE domain=? AND url=?",
                (domain, url))
-    for it in items:
-        db.execute("INSERT INTO price_items (inn, domain, url, section, code,"
-                   " name_raw, price_raw, price_value, currency, checked_at)"
-                   " VALUES (?,?,?,?,?,?,?,?,?,?)",
-                   (inn, domain, url[:300], it["section"], it["code"],
-                    it["name"][:300], it["price_raw"][:100],
-                    it["price_value"], it["currency"], ts))
+    # ОДНОЙ пачкой: построчная вставка 18 955 позиций (nika-nn) держала
+    # запись базы минуты, и соседние потоки срывались с «database is locked»
+    # даже на busy_timeout 30 с (2026-09-04)
+    db.executemany(
+        "INSERT INTO price_items (inn, domain, url, section, code,"
+        " name_raw, price_raw, price_value, currency, checked_at)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        [(inn, domain, url[:300], it["section"], it["code"],
+          it["name"][:300], it["price_raw"][:100],
+          it["price_value"], it["currency"], ts) for it in items])
 
 
 def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
@@ -702,7 +713,8 @@ def run_batch(db: sqlite3.Connection, limit: int = 40,
                     try:
                         res = fut.result()
                     except Exception as e:  # noqa: BLE001 — домен на повтор
-                        print(f"  ⚠ домен упал: {type(e).__name__}", flush=True)
+                        print(f"  ⚠ домен упал: {type(e).__name__}: "
+                              f"{str(e)[:160]}", flush=True)
                         continue
                     print(f"  {res['domain']}: {res['status']} ({res.get('items', 0)} "
                           f"позиций, {res.get('level', '')}, {res['_sec']:.0f} с)",
@@ -890,6 +902,9 @@ if __name__ == "__main__":
     elif cmd == "run":
         n = int(sys.argv[2]) if len(sys.argv) > 2 else 40
         b = float(sys.argv[3]) if len(sys.argv) > 3 else 0
-        res = run_batch(db, n, b, workers=6, db_factory=open_dbs)
+        # чистку сирот делает только главное соединение: одновременный
+        # DELETE из шести потоков ронял домены «database is locked»
+        res = run_batch(db, n, b, workers=6,
+                        db_factory=lambda: open_dbs(clean_orphans=False))
         ok = sum(1 for r in res if r.get("items"))
         print(f"Итог: {ok}/{len(res)} с извлечённым прайсом")
