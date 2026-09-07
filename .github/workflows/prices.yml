@@ -40,8 +40,11 @@ jobs:
         with:
           python-version: "3.12"
           cache: pip
-      - name: Зависимости (без браузеров — Playwright тут не нужен)
-        run: pip install -r requirements.txt
+
+      - name: Зависимости (с браузером — уровень P4 рендерит JS-прайсы)
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
       - name: Быстрые проверки
         run: python -m pytest tests/test_prices.py -q
 

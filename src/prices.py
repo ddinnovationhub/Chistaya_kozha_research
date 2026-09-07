@@ -44,6 +44,8 @@ METER = {"http_requests": 0, "jina_requests": 0, "files_downloaded": 0,
 _SCENT_HIGH = re.compile(
     r"прайс|price|цены|цена|стоимост|тариф|платн\w{0,3}\s+услуг", re.I)
 _SCENT_MID = re.compile(r"пациент|услуг|оплат|посетител|клиент", re.I)
+_PRICE_URL_HINT = re.compile(
+    r"прайс|price|цен|ceny|стоимост|тариф|pra[ij]s|tarif|stoimost", re.I)
 _URL_HIGH = re.compile(
     r"/price|/ceny|/cens|/pra[ij]s|/tarif|/stoimost|/platn|/oplata|price-?list", re.I)
 _FILE_EXT = re.compile(r"\.(pdf|xlsx?|docx?)([?#]|$)", re.I)
@@ -196,6 +198,67 @@ def crawl_delay(domain: str, default: float = 3.0) -> float:
     except Exception:  # noqa: BLE001
         pass
     return default
+
+
+def browser_render(url: str, delay: float, timeout_ms: int = 45000) -> str:
+    """P4 — БРАУЗЕРНЫЙ РЕНДЕР прайс-страницы. Возвращает HTML после
+    выполнения скриптов или пустую строку.
+
+    ЗАЧЕМ (заказчик, 2026-09-07, на примерах 5pmedicina.ru и agk24.ru: «у
+    обоих есть прайсы»). Уровень P4 был описан в дизайне каскада и в шапке
+    этого модуля, но в КОДЕ отсутствовал: после статики и Jina сразу
+    ставился статус «прайс не найден». У сайтов, где цены рисует
+    JavaScript, в сыром HTML нет ни одной цены — ни в тексте, ни в
+    разметке, — поэтому парсер честно возвращал ноль, а конвейер называл
+    это «прайса нет». Разбор базы: навигатор ОТКРЫЛ прайс-страницу у 225
+    доменов из 536 «неудачных», то есть у 42% статус был неверен.
+
+    Правовой режим тот же, что у остальных уровней: robots.txt чтится,
+    пауза домена соблюдается, CAPTCHA и логины не обходятся."""
+    from src.fetch_cascade import robots_allows
+    if not robots_allows(url):
+        return ""
+    try:
+        from playwright.sync_api import sync_playwright
+    except ImportError:
+        print("    ⚠ P4: playwright не установлен — уровень пропущен")
+        return ""
+    html = ""
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(headless=True)
+            page = browser.new_page(
+                viewport={"width": 1400, "height": 1000},
+                user_agent=UA, locale="ru-RU")
+            try:
+                page.goto(url, wait_until="networkidle", timeout=timeout_ms)
+                page.wait_for_timeout(1500)
+                # прайсы часто свёрнуты в аккордеоны и вкладки: раскрываем
+                for sel in ("details", "[aria-expanded='false']",
+                            ".accordion__title", ".accordion-title",
+                            ".t668__title", ".tabs__title", ".price__toggle"):
+                    try:
+                        for el in page.query_selector_all(sel)[:60]:
+                            try:
+                                el.click(timeout=700)
+                            except Exception:  # noqa: BLE001
+                                pass
+                    except Exception:  # noqa: BLE001
+                        pass
+                # ленивая подгрузка длинных прайсов — прокрутка до низа
+                for _ in range(6):
+                    page.mouse.wheel(0, 20000)
+                    page.wait_for_timeout(700)
+                html = page.content()
+            finally:
+                browser.close()
+        METER["http_requests"] += 1
+        METER["bytes"] += len(html)
+    except Exception as e:  # noqa: BLE001 — уровень не валит домен
+        print(f"    ⚠ P4 {url[:60]}: {type(e).__name__}")
+    METER["seconds_sleep"] += delay
+    time.sleep(delay)
+    return html
 
 
 def polite_get(url: str, delay: float) -> httpx.Response | None:
@@ -623,9 +686,37 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                 items.extend(fresh)
                 src_url = src_url or pu
                 level = level or "P3:статика"
+    # P4 — БРАУЗЕРНЫЙ РЕНДЕР там, где страница прайса найдена, а цен из неё
+    # не извлеклось (2026-09-07): у сайтов на Tilda/Bitrix/SPA цены рисует
+    # JavaScript, в сыром HTML их нет ни одной. Без этого уровня 225 доменов
+    # из 536 «неудачных» получали статус «прайс не найден» при открытой и
+    # прочитанной прайс-странице.
+    if not items:
+        pages4 = nav["price_pages"] or [
+            s["url"] for s in nav["route"]
+            if _PRICE_URL_HINT.search(s.get("url", ""))
+            or _PRICE_URL_HINT.search(s.get("label", ""))]
+        for pu in pages4[:3]:
+            rendered = browser_render(pu, delay)
+            if not rendered:
+                continue
+            got = parse_price_text(html_to_text(rendered))
+            got.extend(parse_html_tables(rendered))
+            if got:
+                items, src_url, level = got, pu, "P4:браузер"
+                break
+
     if items:
         _save_items(db, inn, domain, src_url, items)
         status = "прайс извлечён"
+    elif nav["price_pages"] or any(
+            _PRICE_URL_HINT.search(s.get("url", "")) for s in nav["route"]):
+        # страница прайса НАЙДЕНА и прочитана, но цен в ней нет даже после
+        # рендера — это не «прайса нет», а «не смогли извлечь». Разные вещи,
+        # и в таблице они должны выглядеть по-разному (CLAUDE.md: «нет
+        # страницы ≠ нет услуги»)
+        status = "страница прайса найдена, цены не извлечены"
+        level = level or "P5:не извлечено"
     elif nav["reachable"] is False:
         # ТРИ РАЗНЫХ ИСХОДА, а не один (CLAUDE.md: «нет страницы ≠ нет
         # услуги»; разбор 2026-09-04: из 335 строк P5 сайт не открылся у 41).
@@ -855,13 +946,29 @@ def export_prices(db: sqlite3.Connection, path: str | None = None,
     bold = Font(bold=True)
     ws = wb.active if standalone else wb.create_sheet("Прайсы_рецепты")
     ws.title = "Прайсы_рецепты" if not standalone else "Рецепты_доменов"
-    ws.append(["Домен", "ИНН", "Уровень каскада", "Статус",
-               "Страница/файл прайса", "Позиций", "Разделов", "Примечание"])
+    ws.append(["№ строки", "Компания", "Домен", "ИНН", "Уровень каскада",
+               "Статус", "Страница/файл прайса", "Позиций", "Разделов",
+               "Примечание"])
     for c in ws[1]:
         c.font = bold
-    for r in db.execute("SELECT domain, inn, level, status, price_page_url, "
-                        "items_n, sections_n, note FROM price_recipes "
-                        "ORDER BY status, domain"):
+    # ПОРЯДОК СТРОК БАЗЫ, а не группировка по статусу (заказчик, 2026-09-07:
+    # «после 606 строки повально прайсы не найдены»). Прежнее ORDER BY status
+    # складывало все 604 успешных домена в начало листа, а все неуспешные —
+    # подряд следом: выглядело так, будто с 606-й строки конвейер сломался,
+    # хотя по номерам строк выборки успех распределён ровно (39-64% в каждой
+    # сотне). Теперь лист идёт в том же порядке, что и лист ИТОГ, и строки
+    # сопоставляются с ним по номеру.
+    try:
+        rows = db.execute(
+            "SELECT c.row_no, c.name, r.domain, r.inn, r.level, r.status, "
+            "r.price_page_url, r.items_n, r.sections_n, r.note "
+            f"FROM price_recipes r LEFT JOIN {T40} c ON c.found_site=r.domain "
+            "ORDER BY COALESCE(c.row_no, 999999), r.domain").fetchall()
+    except sqlite3.OperationalError:      # прайсовая база без основной
+        rows = [(None, None) + tuple(r) for r in db.execute(
+            "SELECT domain, inn, level, status, price_page_url, items_n, "
+            "sections_n, note FROM price_recipes ORDER BY domain")]
+    for r in rows:
         ws.append(xl_row(r))
     ws2 = wb.create_sheet("Позиции")
     ws2.append(["ИНН", "Домен", "Раздел", "Код", "Название (дословно)",

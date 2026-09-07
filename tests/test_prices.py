@@ -270,3 +270,68 @@ def test_reparse_resets_domains_with_address_names():
     assert res["позиций удалено"] == 6
     doms = {r[0] for r in db.execute("SELECT domain FROM price_recipes")}
     assert doms == {"ok.ru"}          # чистый домен не тронут
+
+
+def test_p4_runs_when_price_page_found_but_empty(monkeypatch, tmp_path):
+    """Уровень P4 был описан в дизайне, но в коде отсутствовал: после
+    статики и Jina сразу ставился статус «прайс не найден». У сайтов, где
+    цены рисует JavaScript (Tilda, Bitrix, SPA), в сыром HTML нет ни одной
+    цены — заказчик поймал это на 5pmedicina.ru и agk24.ru (2026-09-07).
+    Разбор базы: навигатор открыл прайс-страницу у 225 доменов из 536
+    «неудачных»."""
+    import sqlite3
+
+    from src import prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+
+    # навигатор нашёл прайс-страницу, но статика с неё ничего не дала
+    monkeypatch.setattr(prices, "navigate", lambda db, d, delay, **k: {
+        "files": [], "price_pages": ["https://x.ru/price"],
+        "route": [{"url": "https://x.ru/price", "label": "Цены", "depth": 1}],
+        "pages_seen": 2, "reachable": True})
+    monkeypatch.setattr(prices, "polite_get", lambda u, d: None)
+    monkeypatch.setattr(prices, "p0_passport_files", lambda db, inn: [])
+
+    calls = []
+
+    def fake_browser(url, delay, **kw):
+        calls.append(url)
+        return ("<html><body>Приём дерматолога первичный 1 800 ₽"
+                "<br>Удаление невуса 2 500 ₽</body></html>")
+
+    monkeypatch.setattr(prices, "browser_render", fake_browser)
+    res = prices.run_company(db, "77", "x.ru")
+
+    assert calls == ["https://x.ru/price"]        # P4 вызван на найденной странице
+    assert res["status"] == "прайс извлечён"
+    assert res["level"] == "P4:браузер"
+    names = [r[0] for r in db.execute("SELECT name_raw FROM price_items")]
+    assert any("дерматолог" in n for n in names)
+
+
+def test_found_page_without_prices_is_not_called_missing(monkeypatch):
+    """Когда страница прайса открыта, а цен нет даже после рендера, это
+    «не извлечено», а не «прайса нет» — разные вещи, и в таблице должны
+    выглядеть по-разному (CLAUDE.md: «нет страницы ≠ нет услуги»)."""
+    import sqlite3
+
+    from src import prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+    monkeypatch.setattr(prices, "navigate", lambda db, d, delay, **k: {
+        "files": [], "price_pages": ["https://y.ru/ceny"],
+        "route": [{"url": "https://y.ru/ceny", "label": "Цены", "depth": 1}],
+        "pages_seen": 3, "reachable": True})
+    monkeypatch.setattr(prices, "polite_get", lambda u, d: None)
+    monkeypatch.setattr(prices, "p0_passport_files", lambda db, inn: [])
+    monkeypatch.setattr(prices, "browser_render", lambda u, d, **k: "")
+
+    res = prices.run_company(db, "88", "y.ru")
+    assert res["status"] == "страница прайса найдена, цены не извлечены"
