@@ -335,3 +335,227 @@ def test_found_page_without_prices_is_not_called_missing(monkeypatch):
 
     res = prices.run_company(db, "88", "y.ru")
     assert res["status"] == "страница прайса найдена, цены не извлечены"
+
+
+# --- РАЗВЕТВЛЁННЫЙ ПРАЙС (заказчик, 2026-09-07) ------------------------------
+# «На сайтах, на которые я опирался, прайсы разветвлённые. Одно меню, и
+# чтобы скачать всё — необходимо походить по страницам».
+
+class _Resp:
+    """Минимальный ответ вместо httpx.Response."""
+
+    def __init__(self, text: str):
+        self.text = text
+        self.content = text.encode("utf-8")
+        self.status_code = 200
+
+
+def _category_html(n: int) -> str:
+    return ("<html><body>"
+            f"<h1>Раздел {n}</h1>"
+            f"Приём дерматолога {n} 1 800 ₽<br>"
+            f"Удаление невуса {n} 2 500 ₽<br>"
+            f"Дерматоскопия {n} 900 ₽<br>"
+            f"Криодеструкция {n} 1 200 ₽"
+            "</body></html>")
+
+
+def test_navigate_gives_price_branch_its_own_budget(monkeypatch):
+    """Общий бюджет обхода — 12 страниц на весь сайт. Разветвлённое меню
+    прайса из двадцати категорий в него не помещалось: в таблицу попадала
+    одна категория из двадцати и называлась прайсом. Ветка прайса должна
+    иметь СВОЙ бюджет."""
+    import sqlite3
+
+    from src import prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    monkeypatch.setattr(prices, "sitemap_price_urls", lambda d, delay: [])
+
+    menu = "".join(f'<a href="/price/cat{i:02d}/">Раздел {i}</a>'
+                   for i in range(1, 21))
+    pages = {"https://d.ru/": '<html><a href="/price/">Цены</a></html>',
+             "https://d.ru/price/": f"<html><body>{menu}</body></html>"}
+    for i in range(1, 21):
+        pages[f"https://d.ru/price/cat{i:02d}/"] = _category_html(i)
+
+    monkeypatch.setattr(prices, "polite_get",
+                        lambda u, d: _Resp(pages[u]) if u in pages else None)
+    nav = prices.navigate(db, "d.ru", 0.0)
+
+    # все двадцать категорий пройдены, хотя общий бюджет — 12 страниц
+    assert len(nav["price_pages"]) == 20, nav["price_pages"]
+    assert nav["branch_pages"] >= 20
+    assert nav["pages_seen"] == 22          # главная + меню + 20 категорий
+
+
+def test_p3_sums_prices_across_whole_branch(monkeypatch):
+    """Позиции суммируются по ВСЕМ страницам меню (прежний код брал
+    первые шесть и терял остальные)."""
+    import sqlite3
+
+    from src import fetch_cascade, prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+
+    urls = [f"https://b.ru/price/cat{i:02d}/" for i in range(1, 13)]
+    body = {u: _category_html(i) for i, u in enumerate(urls, 1)}
+    monkeypatch.setattr(prices, "p0_passport_files", lambda db, inn: [])
+    monkeypatch.setattr(prices, "navigate", lambda db, d, delay, **k: {
+        "files": [], "price_pages": urls,
+        "route": [{"url": u, "label": "Цены", "depth": 2} for u in urls],
+        "pages_seen": 14, "branch_pages": 12, "reachable": True})
+    monkeypatch.setattr(prices, "polite_get",
+                        lambda u, d: _Resp(body[u]) if u in body else None)
+    monkeypatch.setattr(fetch_cascade, "_level1_jina", lambda u: ("", "", ""))
+    monkeypatch.setattr(prices, "browser_render", lambda u, d, **k: "")
+
+    res = prices.run_company(db, "99", "b.ru")
+    assert res["status"] == "прайс извлечён"
+    assert res["items"] >= 40, res            # 12 разделов × 4 позиции
+    doms = db.execute("SELECT COUNT(DISTINCT url) FROM price_items").fetchone()
+    assert doms[0] == 12                      # каждая страница ветки в базе
+
+
+def test_p4_follows_menu_drawn_by_script(monkeypatch):
+    """Меню прайса, нарисованное скриптом, в сыром HTML отсутствует —
+    ссылки на категории видны только после рендера. P4 обязан пройти по
+    ним, иначе с разветвлённого JS-прайса берётся одна страница."""
+    import sqlite3
+
+    from src import fetch_cascade, prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+
+    monkeypatch.setattr(prices, "p0_passport_files", lambda db, inn: [])
+    monkeypatch.setattr(prices, "navigate", lambda db, d, delay, **k: {
+        "files": [], "price_pages": ["https://z.ru/price/"],
+        "route": [{"url": "https://z.ru/price/", "label": "Цены", "depth": 1}],
+        "pages_seen": 2, "branch_pages": 1, "reachable": True})
+    monkeypatch.setattr(prices, "polite_get", lambda u, d: None)
+    monkeypatch.setattr(fetch_cascade, "_level1_jina", lambda u: ("", "", ""))
+
+    rendered = []
+
+    def fake_browser(url, delay, **kw):
+        rendered.append(url)
+        if url == "https://z.ru/price/":      # индекс: только меню, без цен
+            return ('<html><body><a href="/price/derma/">Дерматология</a>'
+                    '<a href="/price/trih/">Трихология</a>'
+                    '<a href="/o-nas/">О нас</a></body></html>')
+        return _category_html(len(rendered))
+
+    monkeypatch.setattr(prices, "browser_render", fake_browser)
+    res = prices.run_company(db, "111", "z.ru")
+
+    assert rendered == ["https://z.ru/price/", "https://z.ru/price/derma/",
+                        "https://z.ru/price/trih/"]   # «О нас» не ветка
+    assert res["status"] == "прайс извлечён"
+    assert res["items"] >= 8                  # обе категории, а не одна
+
+
+def test_p2_sums_several_price_documents(monkeypatch):
+    """Разветвлённый прайс выкладывают несколькими файлами — по одному на
+    раздел. Прежнее правило «взять документ с наибольшим числом позиций»
+    оставляло от такого прайса один раздел из нескольких."""
+    import sqlite3
+
+    from src import prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+
+    files = ["https://f.ru/derma.pdf", "https://f.ru/trih.pdf"]
+    monkeypatch.setattr(prices, "p0_passport_files", lambda db, inn: files)
+    monkeypatch.setattr(prices, "polite_get", lambda u, d: _Resp("x"))
+
+    def fake_parse(content, ext):
+        n = fake_parse.calls = getattr(fake_parse, "calls", 0) + 1
+        names = ([f"Дерма {i}" for i in range(1, 5)] if n == 1
+                 else ["Дерма 4", "Трихология 1", "Трихология 2"])
+        return [{"section": "", "code": "", "name": nm, "price_raw": "100 ₽",
+                 "price_value": 100.0, "currency": "RUB"} for nm in names]
+
+    monkeypatch.setattr(prices, "parse_price_file", fake_parse)
+    res = prices.run_company(db, "222", "f.ru")
+
+    assert res["level"] == "P2:документ"
+    assert res["items"] == 6           # 4 + 3 − 1 дубль, а не «толще из двух»
+    urls = {r[0] for r in db.execute("SELECT url FROM price_items")}
+    assert urls == set(files)          # у позиции — свой документ-источник
+
+
+def test_rerun_picks_branchy_and_failed(monkeypatch):
+    """Перепрогон берёт неудачные домены и успешные с разветвлённым меню
+    (две и более прайс-страницы в маршруте): прежний код суммировал
+    максимум шесть страниц и такой прайс собирал частично."""
+    import sqlite3
+
+    from src.prices import ensure_price_tables, rerun_branch
+    db = sqlite3.connect(":memory:")
+    ensure_price_tables(db)
+    route2 = ('[{"url":"https://a.ru/price/derma"},'
+              ' {"url":"https://a.ru/price/trih"}]')
+    route1 = '[{"url":"https://b.ru/price"}]'
+    db.execute("INSERT INTO price_recipes VALUES ('a.ru','1','P3:статика',"
+               "'прайс извлечён','u','[]',?,3,40,'','2026-09-05')", (route2,))
+    db.execute("INSERT INTO price_recipes VALUES ('b.ru','2','P3:статика',"
+               "'прайс извлечён','u','[]',?,1,12,'','2026-09-05')", (route1,))
+    db.execute("INSERT INTO price_recipes VALUES ('c.ru','3','P5',"
+               "'прайс не найден на дату проверки','','[]','[]',0,0,'','d')")
+
+    res = rerun_branch(db, "all")
+    assert res["на перепрогон: разветвлённые"] == 1     # a.ru
+    assert res["на перепрогон: неудачные"] == 1         # c.ru
+    st = dict(db.execute("SELECT domain, status FROM price_recipes"))
+    assert st["a.ru"] == "в работе" and st["c.ru"] == "в работе"
+    assert st["b.ru"] == "прайс извлечён"               # одностраничный не тронут
+    prev = db.execute("SELECT prev_items FROM price_rerun "
+                      "WHERE domain='a.ru'").fetchone()
+    assert prev[0] == 40                                # прежний итог записан
+
+
+def test_rerun_never_makes_result_worse(monkeypatch):
+    """Если сайт с тех пор лёг, повторный проход не затирает прежний
+    разбор своим нулём (CLAUDE.md: «прозрачная неполнота ценнее выдуманной
+    полноты», но и терять доказанное нельзя)."""
+    import sqlite3
+
+    from src import prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+    db.execute("INSERT INTO price_rerun VALUES ('old.ru','прайс извлечён',"
+               "'P3:статика',40,'https://old.ru/price','2026-09-07')")
+    db.execute("INSERT INTO price_recipes VALUES ('old.ru','7','P3:статика',"
+               "'в работе','https://old.ru/price','[]','[]',3,40,'','2026-09-05')")
+    db.execute("INSERT INTO price_items (inn, domain, url, section, code, "
+               "name_raw, price_raw, price_value, currency, checked_at) "
+               "VALUES ('7','old.ru','https://old.ru/price','','',"
+               "'Приём дерматолога','900 ₽',900.0,'RUB','2026-09-05')")
+
+    monkeypatch.setattr(prices, "p0_passport_files", lambda db, inn: [])
+    monkeypatch.setattr(prices, "navigate", lambda db, d, delay, **k: {
+        "files": [], "price_pages": [], "route": [], "pages_seen": 0,
+        "branch_pages": 0, "reachable": False})
+    monkeypatch.setattr(prices, "polite_get", lambda u, d: None)
+    monkeypatch.setattr(prices, "browser_render", lambda u, d, **k: "")
+
+    res = prices.run_company(db, "7", "old.ru")
+    assert res["kept"] is True
+    assert res["status"] == "прайс извлечён"
+    assert db.execute("SELECT COUNT(*) FROM price_items "
+                      "WHERE domain='old.ru'").fetchone()[0] == 1
+    note = db.execute("SELECT note FROM price_recipes "
+                      "WHERE domain='old.ru'").fetchone()[0]
+    assert "прежний разбор сохранён" in note

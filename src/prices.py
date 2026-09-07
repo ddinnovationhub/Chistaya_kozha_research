@@ -2,10 +2,14 @@
 
 P0  ссылки на прайс-файлы, уже собранные паспортами прома (бесплатно)
 P1  навигатор «по запаху»: sitemap → оценка ссылок (текст/URL/расширение) →
-    приоритетный обход, глубина ≤3, бюджет ≤12 страниц на сайт
-P2  документ найден → скачать и парсить файл (pdfplumber/openpyxl)
-P3  документов нет → страница: статический HTML → Jina-рендер
-P4  Playwright с интерактивом (раскрытие details/aria-expanded/«показать все»)
+    приоритетный обход, глубина ≤3, бюджет ≤12 страниц на сайт + ОТДЕЛЬНЫЙ
+    бюджет прайс-ветки (до 45 страниц одного меню, глубина +3)
+P2  документ найден → скачать и парсить файл (pdfplumber/openpyxl); файлов
+    несколько → позиции СУММИРУЮТСЯ с дедупликацией, а не берётся один
+P3  документов нет → страницы ветки: статика → Jina, сумма по всей ветке
+P4  Playwright с интерактивом (раскрытие details/aria-expanded/«показать
+    все»); идёт по «сухим» страницам ветки и добирает меню, нарисованное
+    скриптом
 P5  честный статус «прайс не найден на дату проверки» → лаборатория ключиков
 
 ИЗОЛЯЦИЯ (заказчик: «главное не сломать поиск»): модуль НЕ трогает конвейер
@@ -46,6 +50,16 @@ _SCENT_HIGH = re.compile(
 _SCENT_MID = re.compile(r"пациент|услуг|оплат|посетител|клиент", re.I)
 _PRICE_URL_HINT = re.compile(
     r"прайс|price|цен|ceny|стоимост|тариф|pra[ij]s|tarif|stoimost", re.I)
+# РАЗВЕТВЛЁННЫЙ ПРАЙС (заказчик, 2026-09-07: «на сайтах, на которые я
+# опирался, прайсы разветвлённые. Одно меню, и чтобы скачать всё —
+# необходимо походить по страницам»). Каждая категория услуг — своя
+# страница одного меню; общего бюджета обхода (12 страниц на весь сайт)
+# на такое меню не хватало, и в прайс попадала одна категория из тридцати.
+# Прайс-ветка получает СВОЙ бюджет, отдельный от общего обхода.
+PRICE_BRANCH_PAGES = 45      # страниц ветки прайса на домен (сверх общих 12)
+PRICE_PAGES_CAP = 40         # сколько страниц ветки суммирует P3
+P4_PAGES_CAP = 12            # сколько «сухих» страниц ветки рендерит браузер
+
 _URL_HIGH = re.compile(
     r"/price|/ceny|/cens|/pra[ij]s|/tarif|/stoimost|/platn|/oplata|price-?list", re.I)
 _FILE_EXT = re.compile(r"\.(pdf|xlsx?|docx?)([?#]|$)", re.I)
@@ -178,6 +192,12 @@ def ensure_price_tables(db: sqlite3.Connection):
         inn TEXT, domain TEXT, url TEXT, section TEXT, code TEXT,
         name_raw TEXT, price_raw TEXT, price_value REAL, currency TEXT,
         checked_at TEXT)""")
+    # журнал перепрогона: чем закончился ПРЕЖНИЙ разбор домена. Нужен,
+    # чтобы повторный проход не ухудшал уже собранное (сайт мог лечь,
+    # прайс — переехать): результат хуже прежнего не записывается.
+    db.execute("""CREATE TABLE IF NOT EXISTS price_rerun (
+        domain TEXT PRIMARY KEY, prev_status TEXT, prev_level TEXT,
+        prev_items INTEGER, prev_page TEXT, ts TEXT)""")
     db.execute("""CREATE TABLE IF NOT EXISTS price_nav_log (
         domain TEXT, url TEXT, depth INTEGER, score INTEGER,
         verdict TEXT, ts TEXT)""")
@@ -352,24 +372,68 @@ def page_links(html: str, base_url: str) -> list[tuple[str, str]]:
     return out
 
 
-def navigate(db: sqlite3.Connection, domain: str, delay: float,
-             max_pages: int = 12, max_depth: int = 3) -> dict:
-    """Навигатор: приоритетная очередь по запаху. Возвращает
-    {'files': [...], 'price_pages': [...], 'route': [...], 'pages_seen': n}."""
-    start = f"https://{domain}/"
-    queue = [(90, 0, start, "главная")]           # (score, depth, url, label)
-    for u in sitemap_price_urls(domain, delay):
-        queue.append((85, 0, u, "sitemap"))
-    visited, files, price_pages, route = set(), [], [], []
-    ts = time.strftime("%Y-%m-%d %H:%M")
+def _same_host(domain: str, href: str) -> bool:
     host = re.sub(r"^www\.", "", domain.lower())
-    while queue and len(visited) < max_pages:
+    return re.sub(r"^www\.", "", urlparse(href).netloc.lower()) == host
+
+
+def _branch_child(base_url: str, href: str) -> bool:
+    """href — ребёнок или сосед base_url по ОДНОМУ разделу меню.
+
+    /price/ → /price/dermatologiya/ (ребёнок);
+    /price/dermatologiya/ → /price/kosmetologiya/ (сосед по меню);
+    /price/ → /uslugi/ — нет, это другой раздел."""
+    b = [x for x in urlparse(base_url).path.split("/") if x]
+    h = [x for x in urlparse(href).path.split("/") if x]
+    if not b or not h:
+        return False
+    parent = b[:-1] if len(b) > 1 else b
+    return len(h) > len(parent) and h[:len(parent)] == parent
+
+
+def navigate(db: sqlite3.Connection, domain: str, delay: float,
+             max_pages: int = 12, max_depth: int = 3,
+             price_max_pages: int = PRICE_BRANCH_PAGES) -> dict:
+    """Навигатор: приоритетная очередь по запаху. Возвращает
+    {'files': [...], 'price_pages': [...], 'route': [...], 'pages_seen': n}.
+
+    ДВА БЮДЖЕТА (заказчик, 2026-09-07). Общий обход ищет вход в прайс и
+    ограничен max_pages — иначе навигатор гуляет по новостям и врачам.
+    Как только страница опознана прайсовой, её дети и соседи по разделу
+    («одно меню») переходят в ПРАЙС-ВЕТКУ со своим бюджетом
+    price_max_pages и увеличенной глубиной: у разветвлённого прайса
+    категорий бывает три десятка, и обрезать их общим бюджетом — значит
+    записать в таблицу одну категорию из тридцати и назвать это прайсом."""
+    start = f"https://{domain}/"
+    # (score, depth, url, label, ветка_прайса)
+    queue = [(90, 0, start, "главная", False)]
+    for u in sitemap_price_urls(domain, delay):
+        queue.append((85, 0, u, "sitemap", True))
+    visited, files, price_pages, route = set(), [], [], []
+    dry_branch = []          # страницы ветки, открывшиеся БЕЗ цен в статике:
+    general_seen = branch_seen = 0    # кандидаты на браузерный рендер (P4)
+    ts = time.strftime("%Y-%m-%d %H:%M")
+    while queue:
         queue.sort(key=lambda x: -x[0])
-        score, depth, url, label = queue.pop(0)
-        if url in visited or re.sub(
-                r"^www\.", "", urlparse(url).netloc.lower()) != host:
+        pick = None                    # берём лучший из тех, чей бюджет цел
+        for idx, item in enumerate(queue):
+            if item[4]:
+                if branch_seen < price_max_pages:
+                    pick = queue.pop(idx)
+                    break
+            elif general_seen < max_pages:
+                pick = queue.pop(idx)
+                break
+        if pick is None:               # оба бюджета исчерпаны
+            break
+        score, depth, url, label, branch = pick
+        if url in visited or not _same_host(domain, url):
             continue
         visited.add(url)
+        if branch:
+            branch_seen += 1
+        else:
+            general_seen += 1
         r = polite_get(url, delay)
         db.execute("INSERT INTO price_nav_log VALUES (?,?,?,?,?,?)",
                    (domain, url[:300], depth, score,
@@ -382,9 +446,18 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
         route.append({"url": url[:300], "label": label[:80], "depth": depth})
         text_prices = (len(_PRICE_LINE.findall(html_to_text(r.text)))
                        + len(parse_html_tables(r.text)))
-        if text_prices >= 8 and url not in price_pages:
+        looks_price = bool(_PRICE_URL_HINT.search(url)
+                           or _PRICE_URL_HINT.search(label))
+        # порог ниже для страниц с прайс-адресом: категория разветвлённого
+        # прайса («Трихология — 6 позиций») до восьми строк не дотягивает,
+        # а прайсом является
+        is_price = text_prices >= 8 or (text_prices >= 3 and looks_price)
+        if is_price and url not in price_pages:
             price_pages.append(url)               # страница-прайс найдена
         on_services = bool(re.search(r"/uslugi|/servic|/napravlen", url, re.I))
+        in_branch = branch or is_price or bool(_URL_HIGH.search(url))
+        if in_branch and not is_price and url not in dry_branch:
+            dry_branch.append(url)
         for lbl, href in page_links(r.text, url):
             s = link_scent(lbl, href)
             # кейс azbuka-samara (заказчик): цены живут на подстраницах
@@ -396,13 +469,22 @@ def navigate(db: sqlite3.Connection, domain: str, delay: float,
             if s >= 100:
                 if href not in files:
                     files.append(href)            # документ — терминал
+                continue
+            if (in_branch and href not in visited
+                    and not _SKIP_URL.search(href)
+                    and not _FILE_EXT.search(href)
+                    and _same_host(domain, href)
+                    and _branch_child(url, href)
+                    and depth + 1 <= max_depth + 3):
+                queue.append((95, depth + 1, href, lbl, True))
             elif s >= 20 and depth + 1 <= max_depth and href not in visited:
-                queue.append((s, depth + 1, href, lbl))
+                queue.append((s, depth + 1, href, lbl, False))
         if files:
             break                                  # документ первичен
     db.commit()
     return {"files": files, "price_pages": price_pages, "route": route,
-            "pages_seen": len(visited), "reachable": bool(route)}
+            "dry_branch": dry_branch, "pages_seen": len(visited),
+            "branch_pages": branch_seen, "reachable": bool(route)}
 
 
 # --- парсер прайса: мультипаттерн -------------------------------------------
@@ -614,9 +696,11 @@ def parse_price_file(data: bytes, ext: str) -> list[dict]:
 # --- каскад по одной компании -----------------------------------------------
 
 def _save_items(db, inn, domain, url, items):
+    """url — источник по умолчанию; у позиции с разветвлённого прайса свой
+    (`_url`): доказательство привязано к той странице, где цена и стоит,
+    а не к первой странице меню (CLAUDE.md: факт без своего URL — не факт)."""
     ts = time.strftime("%Y-%m-%d")
-    db.execute("DELETE FROM price_items WHERE domain=? AND url=?",
-               (domain, url))
+    db.execute("DELETE FROM price_items WHERE domain=?", (domain,))
     # ОДНОЙ пачкой: построчная вставка 18 955 позиций (nika-nn) держала
     # запись базы минуты, и соседние потоки срывались с «database is locked»
     # даже на busy_timeout 30 с (2026-09-04)
@@ -627,7 +711,8 @@ def _save_items(db, inn, domain, url, items):
         "INSERT INTO price_items (inn, domain, url, section, code,"
         " name_raw, price_raw, price_value, currency, checked_at)"
         " VALUES (?,?,?,?,?,?,?,?,?,?)",
-        [(inn, domain, url[:300], mask_fio(it["section"]), it["code"],
+        [(inn, domain, (it.get("_url") or url)[:300],
+          mask_fio(it["section"]), it["code"],
           mask_fio(it["name"])[:300], it["price_raw"][:100],
           it["price_value"], it["currency"], ts) for it in items])
 
@@ -648,6 +733,7 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         nav = navigate(db, domain, delay)          # P1
         files = nav["files"]
     level, status, items, src_url = "", "", [], ""
+    file_keys = set()
     for f in files:                                # P2 — документ первичен
         r = polite_get(f, delay)
         if not r:
@@ -658,15 +744,32 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         except Exception as e:  # noqa: BLE001
             print(f"    ⚠ файл {f[:80]}: {type(e).__name__} — пропущен")
             continue
-        if len(got) > len(items):
-            items, src_url, level = got, f, "P2:документ"
+        # СУММА ПО ФАЙЛАМ, а не «самый толстый» (2026-09-07): разветвлённый
+        # прайс выкладывают несколькими документами — по одному на раздел;
+        # прежнее правило «взять файл с наибольшим числом позиций» оставляло
+        # от такого прайса один раздел из нескольких.
+        fresh = [g for g in got
+                 if (g["name"], g["price_raw"]) not in file_keys]
+        for g in fresh:
+            file_keys.add((g["name"], g["price_raw"]))
+        if fresh:
+            for g in fresh:
+                g["_url"] = f
+            items.extend(fresh)
+            src_url = src_url or f
+            level = "P2:документ"
+    seen_keys = {(i["name"], i["price_raw"]) for i in items}
+    dry_pages, pages_parsed = [], 0
     if not items:                                  # P3 — страницы (сумма!)
         pages = nav["price_pages"] or [f"https://{domain}/price/",
                                        f"https://{domain}/ceny/"]
         from src.fetch_cascade import _level1_jina
-        seen_keys = set()                          # прайс бывает размазан по
-        for pu in pages[:6]:                       # страницам (кейс azbuka) —
-            r = polite_get(pu, delay)              # суммируем, не берём одну
+        # ВСЯ ВЕТКА, а не первые шесть страниц (заказчик, 2026-09-07:
+        # «прайсы разветвлённые… чтобы скачать всё — надо походить по
+        # страницам»). Позиции суммируются по всем страницам меню с
+        # дедупликацией по (название, дословная цена).
+        for pu in pages[:PRICE_PAGES_CAP]:
+            r = polite_get(pu, delay)
             got = parse_price_text(html_to_text(r.text)) if r else []
             if r:                                  # + таблицы с голыми числами
                 got.extend(parse_html_tables(r.text))
@@ -678,34 +781,93 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                 if len(got2) > len(got):
                     got = got2
                     level = "P3:jina"
+            pages_parsed += 1
             fresh = [g for g in got
                      if (g["name"], g["price_raw"]) not in seen_keys]
             for g in fresh:
                 seen_keys.add((g["name"], g["price_raw"]))
             if fresh:
+                for g in fresh:
+                    g["_url"] = pu
                 items.extend(fresh)
                 src_url = src_url or pu
                 level = level or "P3:статика"
+            elif r is not None and not got:
+                # страница ветки ОТКРЫЛАСЬ, а цен из неё не извлеклось —
+                # кандидат на браузерный рендер, даже если соседние
+                # страницы уже что-то дали. Не открывшаяся (404 от догадки
+                # «/price/») кандидатом не считается: рендерить нечего.
+                dry_pages.append(pu)
     # P4 — БРАУЗЕРНЫЙ РЕНДЕР там, где страница прайса найдена, а цен из неё
     # не извлеклось (2026-09-07): у сайтов на Tilda/Bitrix/SPA цены рисует
     # JavaScript, в сыром HTML их нет ни одной. Без этого уровня 225 доменов
     # из 536 «неудачных» получали статус «прайс не найден» при открытой и
     # прочитанной прайс-странице.
-    if not items:
-        pages4 = nav["price_pages"] or [
+    # страницы ветки, которые навигатор ОТКРЫЛ, а цен в статике не нашёл
+    # (случай 5pmedicina.ru: обход прошёл 45 страниц меню, цен в сыром HTML
+    # нет ни на одной — их рисует скрипт). Это главные кандидаты на рендер
+    dry_pages += [u for u in nav.get("dry_branch", []) if u not in dry_pages]
+    if not items or dry_pages:
+        # кандидаты на рендер: «сухие» страницы ветки + всё, что навигатор
+        # опознал как прайс. Если статика не показала НИЧЕГО (сайт целиком
+        # рисуется скриптом — случай agk24.ru: пять страниц обхода, ни
+        # одной ссылки), рендерится главная: меню прайса видно только там.
+        pages4 = dry_pages + nav["price_pages"] + [
             s["url"] for s in nav["route"]
             if _PRICE_URL_HINT.search(s.get("url", ""))
             or _PRICE_URL_HINT.search(s.get("label", ""))]
-        for pu in pages4[:3]:
+        if not pages4 and not items:
+            pages4 = [f"https://{domain}/"]
+        queue4 = list(dict.fromkeys(pages4))
+        rendered_n, k = 0, 0
+        while k < len(queue4) and rendered_n < P4_PAGES_CAP:
+            pu = queue4[k]
+            k += 1
             rendered = browser_render(pu, delay)
             if not rendered:
                 continue
+            rendered_n += 1
             got = parse_price_text(html_to_text(rendered))
             got.extend(parse_html_tables(rendered))
-            if got:
-                items, src_url, level = got, pu, "P4:браузер"
-                break
+            fresh = [g for g in got
+                     if (g["name"], g["price_raw"]) not in seen_keys]
+            for g in fresh:
+                seen_keys.add((g["name"], g["price_raw"]))
+            if fresh:
+                for g in fresh:
+                    g["_url"] = pu
+                items.extend(fresh)
+                src_url = src_url or pu
+                level = f"{level}+P4:браузер" if level else "P4:браузер"
+            # МЕНЮ, НАРИСОВАННОЕ СКРИПТОМ, видно только после рендера:
+            # ссылки на категории прайса добираются здесь же
+            for lbl, href in page_links(rendered, pu):
+                if (href not in queue4 and _same_host(domain, href)
+                        and (_branch_child(pu, href)
+                             or _PRICE_URL_HINT.search(href)
+                             or _PRICE_URL_HINT.search(lbl or ""))
+                        and not _SKIP_URL.search(href)
+                        and not _FILE_EXT.search(href)):
+                    queue4.append(href)
+        pages_parsed += rendered_n
 
+    prev = db.execute("SELECT prev_status, prev_level, prev_items, prev_page "
+                      "FROM price_rerun WHERE domain=?", (domain,)).fetchone()
+    if prev and len(items) < (prev[2] or 0):
+        # ПЕРЕПРОГОН НЕ УХУДШАЕТ (2026-09-07). Домены гоняются повторно
+        # ради разветвлённых прайсов; если сайт с тех пор лёг или прайс
+        # переехал, новый проход даст меньше — прежний разбор остаётся как
+        # был, а факт неудачной попытки уходит в примечание.
+        db.execute("UPDATE price_recipes SET status=?, level=?, items_n=?, "
+                   "price_page_url=?, note=? WHERE domain=?",
+                   (prev[0], prev[1], prev[2], prev[3],
+                    f"перепрогон {ts}: получено {len(items)} позиций из "
+                    f"{prev[2]} — прежний разбор сохранён", domain))
+        db.execute("DELETE FROM price_rerun WHERE domain=?", (domain,))
+        db.commit()
+        return {"domain": domain, "status": prev[0], "level": prev[1],
+                "items": prev[2], "kept": True}
+    db.execute("DELETE FROM price_rerun WHERE domain=?", (domain,))
     if items:
         _save_items(db, inn, domain, src_url, items)
         status = "прайс извлечён"
@@ -734,7 +896,9 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                 json.dumps(files, ensure_ascii=False),
                 json.dumps(nav["route"], ensure_ascii=False),
                 len({i['section'] for i in items}), len(items),
-                f"страниц навигатора: {nav['pages_seen']}", ts))
+                f"страниц навигатора: {nav['pages_seen']} · ветка прайса: "
+                f"{nav.get('branch_pages', 0)} · разобрано страниц: "
+                f"{pages_parsed}", ts))
     db.commit()
     return {"domain": domain, "status": status, "level": level,
             "items": len(items), "files_found": len(files)}
@@ -835,6 +999,63 @@ def remaining(db: sqlite3.Connection) -> int:
         "AND NOT EXISTS (SELECT 1 FROM price_recipes r "
         "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе'))"
     ).fetchone()[0]
+
+
+_BRANCH_HINT = re.compile(
+    r"прайс|price|цен|ceny|стоимост|тариф|uslugi|servic|napravlen", re.I)
+
+
+def rerun_branch(db: sqlite3.Connection, mode: str = "all",
+                 apply: bool = True) -> dict:
+    """Снимает чекпойнт с доменов, которые надо пройти каскадом заново
+    после доработки разветвлённого прайса (заказчик, 2026-09-07: «прайсы
+    разветвлённые… чтобы скачать всё — надо походить по страницам»).
+
+    Кого гоняем заново:
+    · failed  — всё, кроме «прайс извлечён»: у них теперь есть P4 по всей
+                ветке и своя глубина обхода;
+    · branchy — успешные домены, в маршруте которых ДВЕ И БОЛЬШЕ страниц с
+                прайс-адресом: прежний код суммировал максимум шесть
+                страниц и не спускался в подкатегории, поэтому такой прайс
+                собран частично;
+    · all     — и то и другое.
+
+    Прежний результат домена записывается в price_rerun: если новый проход
+    даст меньше позиций, он не заменит собой старый."""
+    ensure_price_tables(db)
+    out = {"на перепрогон: неудачные": 0, "на перепрогон: разветвлённые": 0}
+    picked = []
+    for dom, inn, status, level, items_n, page, route in db.execute(
+            "SELECT domain, inn, status, level, items_n, price_page_url, route "
+            "FROM price_recipes"):
+        ok = status == "прайс извлечён"
+        if not ok and mode in ("all", "failed"):
+            picked.append((dom, status, level, items_n, page))
+            out["на перепрогон: неудачные"] += 1
+            continue
+        if ok and mode in ("all", "branchy"):
+            try:
+                rt = json.loads(route or "[]")
+            except (ValueError, TypeError):
+                rt = []
+            hits = {s.get("url", "") for s in rt
+                    if _BRANCH_HINT.search(s.get("url", ""))}
+            if len(hits) >= 2:
+                picked.append((dom, status, level, items_n, page))
+                out["на перепрогон: разветвлённые"] += 1
+    if apply and picked:
+        ts = time.strftime("%Y-%m-%d %H:%M")
+        db.executemany(
+            "INSERT OR REPLACE INTO price_rerun VALUES (?,?,?,?,?,?)",
+            [(d, st, lv, it or 0, pg, ts) for d, st, lv, it, pg in picked])
+        # чекпойнт снимается статусом «в работе», а не удалением строки:
+        # маршрут навигатора и прежние счётчики нужны и для отбора, и для
+        # гварда «перепрогон не ухудшает»
+        db.executemany("UPDATE price_recipes SET status='в работе' "
+                       "WHERE domain=?", [(d,) for d, *_ in picked])
+        db.commit()
+    out["итого"] = len(picked)
+    return out
 
 
 def reparse(db: sqlite3.Connection, apply: bool = True) -> dict:
@@ -1004,6 +1225,13 @@ if __name__ == "__main__":
     if cmd == "probe" and len(sys.argv) > 2:       # обкатка одного домена
         print(run_company(db, sys.argv[3] if len(sys.argv) > 3 else "",
                           sys.argv[2]))
+    elif cmd == "rerun":                           # перепрогон ветки прайса
+        mode = "all"
+        for a in sys.argv[2:]:
+            if a in ("failed", "branchy", "all"):
+                mode = a
+        dry = "--dry" in sys.argv
+        print("перепрогон:", rerun_branch(db, mode, apply=not dry))
     elif cmd == "reparse":                         # исправления к готовой базе
         dry = len(sys.argv) > 2 and sys.argv[2] == "--dry"
         print("реparse:", reparse(db, apply=not dry))
