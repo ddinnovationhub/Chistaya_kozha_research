@@ -243,13 +243,23 @@ def browser_render(url: str, delay: float, timeout_ms: int = 45000) -> str:
     except ImportError:
         print("    ⚠ P4: playwright не установлен — уровень пропущен")
         return ""
+    # прокси окружения (песочница агента гоняет весь HTTPS через прокси;
+    # в Actions переменная не задана и ветка не работает). Без этого
+    # chromium получает ERR_CONNECTION_RESET и уровень P4 не проверить
+    import os
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
     html = ""
     try:
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=True)
+            browser = pw.chromium.launch(
+                headless=True,
+                proxy={"server": proxy} if proxy else None)
             page = browser.new_page(
                 viewport={"width": 1400, "height": 1000},
-                user_agent=UA, locale="ru-RU")
+                user_agent=UA, locale="ru-RU",
+                # сертификат подменяет сам прокси песочницы — проверять
+                # его нечем; в Actions прокси нет и проверка обычная
+                ignore_https_errors=bool(proxy))
             try:
                 page.goto(url, wait_until="networkidle", timeout=timeout_ms)
                 page.wait_for_timeout(1500)
