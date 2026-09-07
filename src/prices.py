@@ -26,9 +26,11 @@ CAPTCHA/логины не обходятся, ajax-эндпоинты под Dis
 
 import gzip
 import json
+import os
 import re
 import sqlite3
 import time
+import zlib
 from urllib.parse import urljoin, urlparse
 
 import httpx
@@ -917,6 +919,32 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
             "items": len(items), "files_found": len(files)}
 
 
+# ── ШАРДИРОВАНИЕ ПО ДОМЕНАМ (заказчик, 2026-09-07: «можно на большее
+# число?» — 15 шардов). У прайсов нет платных квот (HTTP + Jina + локальный
+# Playwright), поэтому делить нечего и шардов может быть больше, чем у
+# поиска. Разбиение — стабильный хэш домена (crc32), НЕ диапазоны строк:
+# один домен всегда попадает в один и тот же шард, сколько бы волн ни шло,
+# и шарды не пересекаются по доменам — вежливость к сайту не страдает. ──
+
+def shard_of(domain: str, shards: int) -> int:
+    """Номер шарда домена, 1..shards. Детерминирован между процессами
+    (crc32, не hash() — у того соль на каждый запуск интерпретатора)."""
+    key = re.sub(r"^www\.", "", (domain or "").strip().lower())
+    return zlib.crc32(key.encode("utf-8")) % shards + 1
+
+
+def _shard_env() -> tuple[int, int]:
+    """(мой номер, всего шардов) из окружения; (1, 1) = без шардирования."""
+    try:
+        shards = int(os.environ.get("PRICE_SHARDS", "1") or 1)
+        shard = int(os.environ.get("PRICE_SHARD", "1") or 1)
+    except ValueError:
+        return 1, 1
+    if shards < 2 or not (1 <= shard <= shards):
+        return 1, 1
+    return shard, shards
+
+
 def run_batch(db: sqlite3.Connection, limit: int = 40,
               budget_sec: float = 0, workers: int = 1,
               db_factory=None) -> list[dict]:
@@ -936,12 +964,21 @@ def run_batch(db: sqlite3.Connection, limit: int = 40,
         "  OR l.specialties LIKE '%косметологи%')) "
         "AND NOT EXISTS (SELECT 1 FROM price_recipes r "
         "  WHERE r.domain=c.found_site AND r.status NOT IN ('', 'в работе')) "
-        "ORDER BY c.row_no LIMIT ?", (limit,)).fetchall()
+        "ORDER BY c.row_no").fetchall()
+    # лимит применяется ПОСЛЕ фильтра шарда: иначе SQL-LIMIT отдал бы шарду
+    # первые N строк базы, из которых свои — лишь каждая пятнадцатая
+    shard, shards = _shard_env()
+    if shards > 1:
+        print(f"шард {shard}/{shards}: беру только свои домены", flush=True)
     out, seen_domains, todo = [], set(), []
     for inn, site in rows:
         if site in seen_domains:                   # один домен — один разбор
             continue
         seen_domains.add(site)
+        if shards > 1 and shard_of(site, shards) != shard:
+            continue
+        if len(todo) >= limit:
+            break
         todo.append((inn, site))
     t_start = time.time()
 
@@ -1255,7 +1292,8 @@ if __name__ == "__main__":
         b = float(sys.argv[3]) if len(sys.argv) > 3 else 0
         # чистку сирот делает только главное соединение: одновременный
         # DELETE из шести потоков ронял домены «database is locked»
-        res = run_batch(db, n, b, workers=6,
+        workers = int(os.environ.get("PRICE_WORKERS", "6") or 6)
+        res = run_batch(db, n, b, workers=workers,
                         db_factory=lambda: open_dbs(clean_orphans=False))
         ok = sum(1 for r in res if r.get("items"))
         print(f"Итог: {ok}/{len(res)} с извлечённым прайсом")

@@ -1,0 +1,160 @@
+# ПРАЙС-КАСКАД В 15 ПАРАЛЛЕЛЬНЫХ ШАРДОВ (заказчик, 2026-09-07: «Можно на
+# большее число? — 15»).
+#
+# Почему у поиска шардов 5, а тут 15: поиск делит суточные квоты платных
+# API (Геопоиск/2ГИС по 1000/сутки — при 15 шардах каждому досталось бы по
+# 66 запросов и слой карт умер бы). У прайсов платных каналов НЕТ — HTTP,
+# Jina Reader и локальный Playwright, — делить нечего. Потолок здесь другой:
+# 20 одновременных job на аккаунт Free-плана; 15 шардов + merge оставляют
+# запас под идущий test-40.
+#
+# Разбиение — стабильный хэш домена (src.prices.shard_of), не диапазоны
+# строк: домен всегда в одном шарде, шарды не пересекаются, вежливость к
+# сайту (1 запрос / 3 с на домен) не страдает. Каждый шард пишет СВОЮ копию
+# data/prices.db и отдаёт её артефактом; отдельный job сливает только
+# терминальные домены каждого шарда и коммитит ОДИН раз.
+#
+# Потоков внутри шарда 4, а не 6: раннер двухъядерный, а уровень P4 рендерит
+# страницы chromium'ом — шесть браузеров на два ядра душат друг друга.
+name: prices-shards
+
+on:
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: "Потолок доменов на шард за прогон"
+        required: true
+        default: "999"
+      chain:
+        description: "Номер перезапуска (не трогать руками)"
+        required: false
+        default: "0"
+
+permissions:
+  contents: write
+  actions: write
+
+# группа общая с воркфлоу prices: оба в итоге пишут data/prices.db,
+# одновременный запуск дал бы гонку за файл при коммите
+concurrency:
+  group: prices
+  cancel-in-progress: false
+
+jobs:
+  shard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 200
+    strategy:
+      fail-fast: false          # упавший шард не рушит остальные
+      matrix:
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    env:
+      JINA_API_KEY: ${{ secrets.JINA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости (с браузером — уровень P4 рендерит JS-прайсы)
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Быстрые проверки
+        run: python -m pytest tests/test_prices.py tests/test_prices_shards.py -q
+
+      # бюджет 165 мин: выгрузка, артефакт и хвост job успевают до timeout
+      - name: Прайс-каскад — шард ${{ matrix.shard }}/15
+        env:
+          PRICE_SHARD: ${{ matrix.shard }}
+          PRICE_SHARDS: "15"
+          PRICE_WORKERS: "4"
+        run: python -m src.prices run "${{ inputs.rows }}" 9900
+
+      - name: База шарда как artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prices-shard-${{ matrix.shard }}
+          path: data/prices.db
+          retention-days: 7
+
+  # СЛИЯНИЕ: один job, один коммит. Идёт даже если часть шардов упала —
+  # работа уцелевших не теряется (fail-fast: false выше).
+  merge:
+    needs: shard
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Зависимости
+        run: pip install -r requirements.txt
+
+      - name: Забрать базы шардов
+        uses: actions/download-artifact@v4
+        with:
+          pattern: prices-shard-*
+          path: shards
+
+      - name: Слияние в основную базу
+        run: |
+          SPEC=""
+          for i in $(seq 1 15); do
+            F="shards/prices-shard-$i/prices.db"
+            [ -f "$F" ] && SPEC="$SPEC $F:$i:15" || echo "⚠ шард $i без базы"
+          done
+          echo "сливаю:$SPEC"
+          python -m src.prices_shard_merge data/prices.db $SPEC
+
+      - name: Выгрузка (отдельная + сводный файл двух конвейеров)
+        run: |
+          python -m src.prices export
+          python -m src.combined_export || true
+
+      - name: Остаток работы
+        id: rem
+        run: |
+          r=$(python -m src.prices remaining | tail -1)
+          echo "остаток профильных доменов без разбора: $r"
+          echo "left=$r" >> "$GITHUB_OUTPUT"
+
+      # коммитятся ТОЛЬКО свои файлы — osint.db и выгрузки test-40 не трогаем
+      - name: Коммит результатов
+        if: always()
+        run: |
+          git config user.name "chk-osint-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/prices.db
+          git add output/Прайсы_профиль_*.xlsx 2>/dev/null || true
+          git add output/ЧК_ОСИНТ_сводный_*.xlsx 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "Изменений нет"
+          else
+            git commit -m "prices-shards: слияние 15 шардов $(date +%F) (run ${{ github.run_id }}, цепочка ${{ inputs.chain }})"
+            if ! git pull --rebase origin "${{ github.ref_name }}"; then
+              git checkout --theirs -- data/prices.db 2>/dev/null || true
+              git checkout --theirs -- output/ 2>/dev/null || true
+              git add data/prices.db output/
+              GIT_EDITOR=true git rebase --continue
+            fi
+            git push origin "HEAD:${{ github.ref_name }}"
+          fi
+
+      - name: Продолжение (пока остаток > 0, потолок 6 перезапусков)
+        if: steps.rem.outputs.left != '0' && fromJSON(inputs.chain) < 6
+        run: |
+          NEXT=$(( ${{ inputs.chain }} + 1 ))
+          echo "перезапуск: rows=${{ inputs.rows }}, цепочка $NEXT, остаток ${{ steps.rem.outputs.left }}"
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/prices_shards.yml/dispatches" \
+            -d "{\"ref\":\"${{ github.ref_name }}\",\"inputs\":{\"rows\":\"${{ inputs.rows }}\",\"chain\":\"$NEXT\"}}"
