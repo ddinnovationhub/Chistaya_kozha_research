@@ -628,6 +628,56 @@ _NAKED_RANGE = re.compile(r"^(?:от\s*)?\d[\d\s ]{0,8}(?:[-–—]|до)\s*"
                           r"\d[\d\s ]{0,8}(?:руб\.?|₽)?$", re.I)
 
 
+# ── САНАЦИЯ ПОЗИЦИЙ (заказчик, 2026-09-07, разбор листа «Выбросы_на_
+# проверку»: «там явно что-то с разметкой страницы» — подтверждено, три
+# класса дефектов). Применяется ко ВСЕМ уровням каскада до записи. ──
+
+# «1 р.д.» — срок готовности анализа, не цена (кейс nmclinika.ru:
+# колонки лаборатории «название · цена · срок», парсер брал третью)
+_RAW_LEAD_TIME = re.compile(r"^\d{1,2}\s*(?:р|раб)\.?\s*д(?:\.|н|$)", re.I)
+# цена, прилипшая к концу названия («…количеств. 390»)
+_NAME_TAIL_PRICE = re.compile(r"[\s·](\d{2,6})\s*$")
+# разорванная тысячная группа (кейс leface.ru: имя «…;16», цена «000 ₽»)
+_NAME_SPLIT_KEY = re.compile(r";\s*(\d{1,3})\s*$")
+_RAW_SPLIT_GROUP = re.compile(r"^(\d{3})(?:[.,]\d{2})?\s*₽")
+# посимвольная перемешка колонок PDF (кейс радугаздоровья.рф:
+# «B01.003.00Т4.о0т0а9льная…» — код вклинен в название знак через знак)
+_GARBLED = re.compile(r"[а-яё]\d+[а-яё]|\d[а-яё]{1,3}\d", re.I)
+
+
+def sanitize_items(items: list[dict]) -> tuple[list[dict], int]:
+    """Чинит детерминированно восстановимое, отбрасывает неремонтируемый
+    брак разметки. Возвращает (чистые, сколько отброшено). Правило
+    CLAUDE.md: разобранное значение — только однозначное; сомнительное
+    не «чинится наугад», а не попадает в таблицу вовсе."""
+    clean, dropped = [], 0
+    for it in items:
+        name = (it.get("name") or "").strip()
+        raw = (it.get("price_raw") or "").strip()
+        if len(_GARBLED.findall(name)) >= 2:
+            dropped += 1                  # перемешка колонок — имя утеряно
+            continue
+        m_key = _NAME_SPLIT_KEY.search(name)
+        m_grp = _RAW_SPLIT_GROUP.match(raw)
+        if m_key and m_grp and (it.get("price_value") or 0) < 1000:
+            # «…;16» + «000 ₽» → на странице стояло «16 000 ₽»
+            thousands = int(m_key.group(1))
+            it["name"] = name[:m_key.start()].rstrip(" ;")
+            it["price_raw"] = f"{thousands} {m_grp.group(1)} ₽"
+            it["price_value"] = float(thousands * 1000 + int(m_grp.group(1)))
+        elif _RAW_LEAD_TIME.match(raw):
+            m = _NAME_TAIL_PRICE.search(name)
+            if not m:
+                dropped += 1              # цены в разметке не оказалось
+                continue
+            it["name"] = name[:m.start()].rstrip()
+            it["price_raw"] = m.group(1)
+            it["price_value"] = float(m.group(1))
+        it["name"] = (it.get("name") or name).rstrip(" ;")
+        clean.append(it)
+    return clean, dropped
+
+
 def parse_html_tables(html: str) -> list[dict]:
     """Таблицы «Услуга | Цена» с ГОЛЫМИ числами без «руб» (кейс
     azbuka-samara, заказчик: «от 200 до 800», «100-500»). Голые числа
@@ -746,7 +796,7 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         nav = navigate(db, domain, delay)          # P1
         files = nav["files"]
     level, status, items, src_url = "", "", [], ""
-    file_keys = set()
+    file_keys, bad_p2, bad_total = set(), 0, 0
     for f in files:                                # P2 — документ первичен
         r = polite_get(f, delay)
         if not r:
@@ -761,6 +811,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         # прайс выкладывают несколькими документами — по одному на раздел;
         # прежнее правило «взять файл с наибольшим числом позиций» оставляло
         # от такого прайса один раздел из нескольких.
+        got, bad = sanitize_items(got)
+        bad_p2 += bad
         fresh = [g for g in got
                  if (g["name"], g["price_raw"]) not in file_keys]
         for g in fresh:
@@ -773,7 +825,14 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
             level = "P2:документ"
     seen_keys = {(i["name"], i["price_raw"]) for i in items}
     dry_pages, pages_parsed = [], 0
-    if not items:                                  # P3 — страницы (сумма!)
+    if bad_p2 > len(items):
+        # документ повреждён в источнике (кейс радугаздоровья.рф: PDF с
+        # перемешанными колонками) — уцелевшее сохраняем, но за полным
+        # прайсом идём на страницы сайта
+        print(f"    ⚠ документ повреждён: {bad_p2} позиций-брака — "
+              f"добираю со страниц", flush=True)
+    bad_total += bad_p2
+    if not items or bad_p2 > len(items):           # P3 — страницы (сумма!)
         pages = nav["price_pages"] or [f"https://{domain}/price/",
                                        f"https://{domain}/ceny/"]
         from src.fetch_cascade import _level1_jina
@@ -795,6 +854,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                     got = got2
                     level = "P3:jina"
             pages_parsed += 1
+            got, bad = sanitize_items(got)
+            bad_total += bad
             fresh = [g for g in got
                      if (g["name"], g["price_raw"]) not in seen_keys]
             for g in fresh:
@@ -842,6 +903,8 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                 continue                           # обходится вся очередь
             got = parse_price_text(html_to_text(rendered))
             got.extend(parse_html_tables(rendered))
+            got, bad = sanitize_items(got)
+            bad_total += bad
             fresh = [g for g in got
                      if (g["name"], g["price_raw"]) not in seen_keys]
             for g in fresh:
@@ -913,7 +976,9 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                 len({i['section'] for i in items}), len(items),
                 f"страниц навигатора: {nav['pages_seen']} · ветка прайса: "
                 f"{nav.get('branch_pages', 0)} · разобрано страниц: "
-                f"{pages_parsed}", ts))
+                f"{pages_parsed}"
+                + (f" · отброшено как брак разметки: {bad_total}"
+                   if bad_total else ""), ts))
     db.commit()
     return {"domain": domain, "status": status, "level": level,
             "items": len(items), "files_found": len(files)}
@@ -1071,8 +1136,27 @@ def rerun_branch(db: sqlite3.Connection, mode: str = "all",
     · all     — и то и другое.
 
     Прежний результат домена записывается в price_rerun: если новый проход
-    даст меньше позиций, он не заменит собой старый."""
+    даст меньше позиций, он не заменит собой старый.
+
+    · outliers — домены из листа «Выбросы_на_проверку» (есть позиции с
+      ценой <50 ₽ или >1 млн ₽). Заказчик (2026-09-07): «система ещё раз
+      собрала карты сайта и прайсы… используя НОВЫЙ прогон, а не обращение
+      к уже полученным данным». Поэтому сброс ПОЛНЫЙ — рецепт, позиции,
+      журнал навигатора и запись price_rerun удаляются: никакого гварда,
+      прогон идёт с чистого листа улучшенным парсером (sanitize_items)."""
     ensure_price_tables(db)
+    if mode == "outliers":
+        doms = [r[0] for r in db.execute(
+            "SELECT DISTINCT domain FROM price_items "
+            "WHERE price_value < 50 OR price_value > 1000000")]
+        if apply:
+            for d in doms:
+                db.execute("DELETE FROM price_recipes WHERE domain=?", (d,))
+                db.execute("DELETE FROM price_items WHERE domain=?", (d,))
+                db.execute("DELETE FROM price_nav_log WHERE domain=?", (d,))
+                db.execute("DELETE FROM price_rerun WHERE domain=?", (d,))
+            db.commit()
+        return {"на полный пересбор (выбросы)": len(doms), "итого": len(doms)}
     out = {"на перепрогон: неудачные": 0, "на перепрогон: разветвлённые": 0}
     picked = []
     for dom, inn, status, level, items_n, page, route in db.execute(
@@ -1278,7 +1362,7 @@ if __name__ == "__main__":
     elif cmd == "rerun":                           # перепрогон ветки прайса
         mode = "all"
         for a in sys.argv[2:]:
-            if a in ("failed", "branchy", "all"):
+            if a in ("failed", "branchy", "all", "outliers"):
                 mode = a
         dry = "--dry" in sys.argv
         print("перепрогон:", rerun_branch(db, mode, apply=not dry))

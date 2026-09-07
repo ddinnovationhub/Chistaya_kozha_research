@@ -559,3 +559,138 @@ def test_rerun_never_makes_result_worse(monkeypatch):
     note = db.execute("SELECT note FROM price_recipes "
                       "WHERE domain='old.ru'").fetchone()[0]
     assert "прежний разбор сохранён" in note
+
+
+# --- САНАЦИЯ РАЗМЕТКИ (заказчик, 2026-09-07, разбор «Выбросов») -------------
+
+def test_sanitize_repairs_split_thousands():
+    """Кейс leface.ru: имя «Введение Stylage S;16», цена «000 ₽; А11.01.013»
+    — на странице стояло «16 000 ₽», разметка с «;» разорвала число."""
+    from src.prices import sanitize_items
+    clean, dropped = sanitize_items([
+        {"section": "", "code": "", "name": "Введение Stylage S;16",
+         "price_raw": "000 ₽; А11.01.013", "price_value": 0.0,
+         "currency": "RUB"}])
+    assert dropped == 0
+    assert clean[0]["name"] == "Введение Stylage S"
+    assert clean[0]["price_value"] == 16000.0
+    assert clean[0]["price_raw"] == "16 000 ₽"
+
+
+def test_sanitize_lead_time_is_not_a_price():
+    """Кейс nmclinika.ru: колонки лаборатории «название · цена · срок».
+    «1 р.д.» — срок готовности, не цена; настоящая цена прилипла к
+    названию («…количеств. 390»)."""
+    from src.prices import sanitize_items
+    clean, dropped = sanitize_items([
+        {"section": "", "code": "", "price_raw": "1 р.д.", "price_value": 1.0,
+         "name": "Общий анализ крови количеств. 390", "currency": "RUB"},
+        {"section": "", "code": "", "price_raw": "2 р.д.", "price_value": 2.0,
+         "name": "Анализ без цены в разметке", "currency": "RUB"}])
+    assert clean[0]["price_value"] == 390.0
+    assert clean[0]["price_raw"] == "390"
+    assert "390" not in clean[0]["name"]
+    assert dropped == 1                    # без цены — брак, не «1 ₽»
+
+
+def test_sanitize_drops_garbled_pdf_columns():
+    """Кейс радугаздоровья.рф: PDF с посимвольной перемешкой колонок —
+    «B01.003.00Т4.о0т0а9льная внутривенная анестезия». Название утеряно,
+    ремонту не подлежит — позиция отбрасывается, а не пишется в таблицу."""
+    from src.prices import sanitize_items
+    clean, dropped = sanitize_items([
+        {"section": "", "code": "", "price_value": 8500.0, "currency": "RUB",
+         "name": "B01.003.00Т4.о0т0а9льная внутривенная анестезия",
+         "price_raw": "8500,00 руб"},
+        {"section": "", "code": "", "price_value": 2500.0, "currency": "RUB",
+         "name": "Прием врача акушера-гинеколога первичный",
+         "price_raw": "2500,00 руб"},
+        # легитимные цифры в названии не считаются перемешкой
+        {"section": "", "code": "", "price_value": 900.0, "currency": "RUB",
+         "name": "УЗИ 2 зоны, витамин D3 и В12",
+         "price_raw": "900 ₽"}])
+    assert dropped == 1
+    names = [c["name"] for c in clean]
+    assert "Прием врача акушера-гинеколога первичный" in names
+    assert "УЗИ 2 зоны, витамин D3 и В12" in names
+
+
+def test_damaged_p2_document_falls_through_to_pages(monkeypatch):
+    """Документ, где брака больше, чем чистого (перемешанный PDF), не
+    глушит каскад: уцелевшее сохраняется, но за полным прайсом конвейер
+    идёт на страницы сайта."""
+    import sqlite3
+
+    from src import fetch_cascade, prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+    monkeypatch.setattr(prices, "p0_passport_files",
+                        lambda db, inn: ["https://g.ru/price.pdf"])
+    monkeypatch.setattr(prices, "parse_price_file", lambda content, ext: [
+        {"section": "", "code": "", "name": "B01.00П2.р0и2ем в8р0ача",
+         "price_raw": "0,00 руб", "price_value": 0.0, "currency": "RUB"},
+        {"section": "", "code": "", "name": "A16.У0д7аление н5о0в0о",
+         "price_raw": "00 руб", "price_value": 0.0, "currency": "RUB"},
+        {"section": "", "code": "", "name": "Приём дерматолога",
+         "price_raw": "1500 руб", "price_value": 1500.0, "currency": "RUB"}])
+    pages = {"https://g.ru/price/": _category_html(1),
+             "https://g.ru/price.pdf": "pdf-байты"}
+
+    class _R(_Resp):
+        pass
+    monkeypatch.setattr(prices, "navigate", lambda db, d, delay, **k: {
+        "files": [], "price_pages": ["https://g.ru/price/"], "dry_branch": [],
+        "route": [{"url": "https://g.ru/price/", "label": "Цены", "depth": 1}],
+        "pages_seen": 2, "branch_pages": 1, "reachable": True})
+    monkeypatch.setattr(prices, "polite_get",
+                        lambda u, d: _R(pages[u]) if u in pages else None)
+    monkeypatch.setattr(fetch_cascade, "_level1_jina", lambda u: ("", "", ""))
+    monkeypatch.setattr(prices, "browser_render", lambda u, d, **k: "")
+
+    res = prices.run_company(db, "55", "g.ru")
+    assert res["status"] == "прайс извлечён"
+    names = [r[0] for r in db.execute("SELECT name_raw FROM price_items")]
+    assert "Приём дерматолога" in names            # уцелевшее из документа
+    assert any("Дерматоскопия" in n for n in names)  # добрано со страниц
+    assert not any("У0д7" in n for n in names)     # брак не в таблице
+    note = db.execute("SELECT note FROM price_recipes WHERE domain='g.ru'"
+                      ).fetchone()[0]
+    assert "брак разметки: 2" in note
+
+
+def _mk_recipe(db, dom, status, items=0):
+    db.execute("INSERT INTO price_recipes VALUES (?,?,?,?,'','[]','[]',1,?,"
+               "'','2026-09-07')", (dom, "1", "P3", status, items))
+
+
+def test_rerun_outliers_resets_fully(tmp_path):
+    """Полный пересбор доменов с выбросами: рецепт, позиции, журнал
+    навигатора и гвард удаляются — прогон идёт с чистого листа (заказчик:
+    «новый прогон, а не обращение к уже полученным данным»)."""
+    import sqlite3
+
+    from src.prices import ensure_price_tables, rerun_branch
+    db = sqlite3.connect(":memory:")
+    ensure_price_tables(db)
+    _mk_recipe(db, "bad.ru", "прайс извлечён", 2)
+    _mk_recipe(db, "good.ru", "прайс извлечён", 1)
+    for dom, val in (("bad.ru", 0.0), ("bad.ru", 900.0), ("good.ru", 900.0)):
+        db.execute("INSERT INTO price_items (inn, domain, url, section, code,"
+                   " name_raw, price_raw, price_value, currency, checked_at)"
+                   " VALUES ('1',?,'u','','','Приём','x',?,'RUB','d')",
+                   (dom, val))
+    db.execute("INSERT INTO price_nav_log VALUES ('bad.ru','u',1,90,'ok','t')")
+    db.execute("INSERT INTO price_rerun VALUES ('bad.ru','прайс извлечён',"
+               "'P3',2,'','t')")
+    res = rerun_branch(db, "outliers")
+    assert res["на полный пересбор (выбросы)"] == 1
+    doms = {r[0] for r in db.execute("SELECT domain FROM price_recipes")}
+    assert doms == {"good.ru"}
+    for t in ("price_items", "price_nav_log", "price_rerun"):
+        assert db.execute(f"SELECT COUNT(*) FROM {t} WHERE domain='bad.ru'"
+                          ).fetchone()[0] == 0
+    assert db.execute("SELECT COUNT(*) FROM price_items "
+                      "WHERE domain='good.ru'").fetchone()[0] == 1
