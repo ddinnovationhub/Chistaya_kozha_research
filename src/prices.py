@@ -285,7 +285,8 @@ def browser_render(url: str, delay: float, timeout_ms: int = 45000) -> str:
         METER["http_requests"] += 1
         METER["bytes"] += len(html)
     except Exception as e:  # noqa: BLE001 — уровень не валит домен
-        print(f"    ⚠ P4 {url[:60]}: {type(e).__name__}")
+        print(f"    ⚠ P4 {url[:60]}: {type(e).__name__} "
+              f"{str(e).splitlines()[0][:90]}")
     METER["seconds_sleep"] += delay
     time.sleep(delay)
     return html
@@ -833,10 +834,10 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         while k < len(queue4) and rendered_n < P4_PAGES_CAP:
             pu = queue4[k]
             k += 1
-            rendered = browser_render(pu, delay)
-            if not rendered:
-                continue
-            rendered_n += 1
+            rendered_n += 1        # бюджет тратит ЛЮБАЯ попытка, включая
+            rendered = browser_render(pu, delay)   # неудачную: иначе при
+            if not rendered:                       # неработающем браузере
+                continue                           # обходится вся очередь
             got = parse_price_text(html_to_text(rendered))
             got.extend(parse_html_tables(rendered))
             fresh = [g for g in got
@@ -848,7 +849,9 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
                     g["_url"] = pu
                 items.extend(fresh)
                 src_url = src_url or pu
-                level = f"{level}+P4:браузер" if level else "P4:браузер"
+                if "P4:браузер" not in level:      # метка ставится один раз,
+                    level = (f"{level}+P4:браузер"     # сколько бы страниц
+                             if level else "P4:браузер")  # ни отрендерили
             # МЕНЮ, НАРИСОВАННОЕ СКРИПТОМ, видно только после рендера:
             # ссылки на категории прайса добираются здесь же
             for lbl, href in page_links(rendered, pu):
