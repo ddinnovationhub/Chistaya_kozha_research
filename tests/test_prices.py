@@ -694,3 +694,96 @@ def test_rerun_outliers_resets_fully(tmp_path):
                           ).fetchone()[0] == 0
     assert db.execute("SELECT COUNT(*) FROM price_items "
                       "WHERE domain='good.ru'").fetchone()[0] == 1
+
+
+def test_sanitize_serial_numbers_are_not_prices():
+    """Кейс altermedplus.ru: колонка «№» таблицы принята за цену —
+    значения идут подряд 10, 11, 12… Номер строки ценой не записывается;
+    настоящая цена в такой разметке утеряна → брак."""
+    from src.prices import sanitize_items
+    items = [{"section": "", "code": "", "name": f"Услуга номер {i}",
+              "price_raw": str(v), "price_value": float(v), "currency": "RUB"}
+             for i, v in enumerate([10, 11, 12, 13, 14, 15, 16])]
+    items.append({"section": "", "code": "", "name": "Приём дерматолога",
+                  "price_raw": "1800 ₽", "price_value": 1800.0,
+                  "currency": "RUB"})
+    clean, dropped = sanitize_items(items)
+    assert dropped == 7
+    assert [c["name"] for c in clean] == ["Приём дерматолога"]
+    # короткая случайная пара (999, 1000) серией не считается
+    clean2, dropped2 = sanitize_items([
+        {"section": "", "code": "", "name": "А", "price_raw": "999",
+         "price_value": 999.0, "currency": "RUB"},
+        {"section": "", "code": "", "name": "Б", "price_raw": "1000",
+         "price_value": 1000.0, "currency": "RUB"}])
+    assert dropped2 == 0 and len(clean2) == 2
+
+
+def test_sanitize_variant_glued_to_price():
+    """Кейс euromednsk.ru: «ФДТ молочной железы, вариант» + «1 112 000 ₽»
+    — это вариант 1 за 112 000 ₽, а не миллион."""
+    from src.prices import sanitize_items
+    clean, dropped = sanitize_items([
+        {"section": "", "code": "оон.фдт.001", "currency": "RUB",
+         "name": "ФДТ молочной железы, вариант",
+         "price_raw": "1 112 000 ₽", "price_value": 1112000.0}])
+    assert dropped == 0
+    assert clean[0]["name"] == "ФДТ молочной железы, вариант 1"
+    assert clean[0]["price_value"] == 112000.0
+    assert clean[0]["price_raw"] == "112 000 ₽"
+
+
+def test_sanitize_article_number_is_not_a_service():
+    """Кейс samara.medguard.ru: «Артикул: 13468» — товарная карточка,
+    название услуги осталось в другой ячейке. Такая позиция — брак."""
+    from src.prices import sanitize_items
+    clean, dropped = sanitize_items([
+        {"section": "", "code": "", "name": "Артикул: 13468",
+         "price_raw": "49 ₽", "price_value": 49.0, "currency": "RUB"},
+        {"section": "", "code": "", "name": "Крем защитный",
+         "price_raw": "490 ₽", "price_value": 490.0, "currency": "RUB"}])
+    assert dropped == 1
+    assert [c["name"] for c in clean] == ["Крем защитный"]
+
+
+def test_damaged_p0_document_triggers_navigator(monkeypatch):
+    """Кейс радугаздоровья.рф: файлы пришли из паспорта (P0), навигатор не
+    запускался; документ оказался перемешанным PDF — добор со страниц шёл
+    по слепым догадкам и давал 0. Теперь повреждённый документ запускает
+    навигатор."""
+    import sqlite3
+
+    from src import fetch_cascade, prices
+    db = sqlite3.connect(":memory:")
+    prices.ensure_price_tables(db)
+    db.execute("""CREATE TABLE t40_companies (inn TEXT, found_site TEXT,
+                  row_no INTEGER, name TEXT)""")
+    prices.T40 = "t40_companies"
+    monkeypatch.setattr(prices, "p0_passport_files",
+                        lambda db, inn: ["https://r.ru/p.pdf"])
+    monkeypatch.setattr(prices, "parse_price_file", lambda content, ext: [
+        {"section": "", "code": "", "name": "B01.У0д7аление н5о0в0о",
+         "price_raw": "00 руб", "price_value": 0.0, "currency": "RUB"},
+        {"section": "", "code": "", "name": "A16.П2р0и2ём в8р0ача",
+         "price_raw": "0,00 руб", "price_value": 0.0, "currency": "RUB"}])
+    nav_calls = []
+
+    def fake_nav(db, d, delay, **k):
+        nav_calls.append(d)
+        return {"files": [], "price_pages": ["https://r.ru/ceny/"],
+                "dry_branch": [], "route": [{"url": "https://r.ru/ceny/",
+                                             "label": "Цены", "depth": 1}],
+                "pages_seen": 3, "branch_pages": 1, "reachable": True}
+
+    monkeypatch.setattr(prices, "navigate", fake_nav)
+    pages = {"https://r.ru/p.pdf": "pdf", "https://r.ru/ceny/": _category_html(1)}
+    monkeypatch.setattr(prices, "polite_get",
+                        lambda u, d: _Resp(pages[u]) if u in pages else None)
+    monkeypatch.setattr(fetch_cascade, "_level1_jina", lambda u: ("", "", ""))
+    monkeypatch.setattr(prices, "browser_render", lambda u, d, **k: "")
+
+    res = prices.run_company(db, "66", "r.ru")
+    assert nav_calls == ["r.ru"]                  # навигатор запущен
+    assert res["status"] == "прайс извлечён"
+    names = [r[0] for r in db.execute("SELECT name_raw FROM price_items")]
+    assert any("Дерматоскопия" in n for n in names)

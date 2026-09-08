@@ -643,6 +643,14 @@ _RAW_SPLIT_GROUP = re.compile(r"^(\d{3})(?:[.,]\d{2})?\s*₽")
 # посимвольная перемешка колонок PDF (кейс радугаздоровья.рф:
 # «B01.003.00Т4.о0т0а9льная…» — код вклинен в название знак через знак)
 _GARBLED = re.compile(r"[а-яё]\d+[а-яё]|\d[а-яё]{1,3}\d", re.I)
+# «вариант 1» слит с ценой (кейс euromednsk.ru: «…, вариант» + «1 112 000 ₽»
+# = вариант 1 за 112 000 ₽ — счёт с классификатором вариантов)
+_TAIL_QUALIFIER = re.compile(
+    r"(?:вариант|категори[яи]|кат\.?|степень|этап|тип|зона|уровень)\s*$", re.I)
+_RAW_QUAL_SPLIT = re.compile(r"^(\d)\s((?:\d{3})(?:\s\d{3})+)\s*₽")
+# «Артикул: 13468» вместо названия услуги (кейс samara.medguard.ru:
+# товарные карточки магазина, название осталось в другой ячейке)
+_ARTICLE_NAME = re.compile(r"^артикул[\s:№]", re.I)
 
 
 def sanitize_items(items: list[dict]) -> tuple[list[dict], int]:
@@ -657,9 +665,20 @@ def sanitize_items(items: list[dict]) -> tuple[list[dict], int]:
         if len(_GARBLED.findall(name)) >= 2:
             dropped += 1                  # перемешка колонок — имя утеряно
             continue
+        if _ARTICLE_NAME.match(name):
+            dropped += 1                  # артикул — не название услуги
+            continue
+        m_qual = (_RAW_QUAL_SPLIT.match(raw)
+                  if (it.get("price_value") or 0) > 1000000
+                  and _TAIL_QUALIFIER.search(name) else None)
         m_key = _NAME_SPLIT_KEY.search(name)
         m_grp = _RAW_SPLIT_GROUP.match(raw)
-        if m_key and m_grp and (it.get("price_value") or 0) < 1000:
+        if m_qual:
+            # «…, вариант» + «1 112 000 ₽» → «…, вариант 1» за 112 000 ₽
+            it["name"] = f"{name} {m_qual.group(1)}"
+            it["price_raw"] = f"{m_qual.group(2)} ₽"
+            it["price_value"] = float(m_qual.group(2).replace(" ", ""))
+        elif m_key and m_grp and (it.get("price_value") or 0) < 1000:
             # «…;16» + «000 ₽» → на странице стояло «16 000 ₽»
             thousands = int(m_key.group(1))
             it["name"] = name[:m_key.start()].rstrip(" ;")
@@ -675,6 +694,26 @@ def sanitize_items(items: list[dict]) -> tuple[list[dict], int]:
             it["price_value"] = float(m.group(1))
         it["name"] = (it.get("name") or name).rstrip(" ;")
         clean.append(it)
+    # СЕРИИ «цен», идущих подряд с шагом +1 (кейс altermedplus.ru: колонка
+    # «№» таблицы принята за цену — 10, 11, 12, …, 322 позиции). Настоящая
+    # цена в такой разметке утеряна; номер строки ценой не записывается
+    serial = [False] * len(clean)
+    i = 0
+    while i < len(clean):
+        j = i
+        while (j + 1 < len(clean)
+               and clean[j].get("price_value") is not None
+               and clean[j + 1].get("price_value") is not None
+               and float(clean[j]["price_value"]).is_integer()
+               and clean[j + 1]["price_value"] == clean[j]["price_value"] + 1):
+            j += 1
+        if j - i + 1 >= 5:
+            for k in range(i, j + 1):
+                serial[k] = True
+        i = j + 1
+    if any(serial):
+        dropped += sum(serial)
+        clean = [c for c, flag in zip(clean, serial) if not flag]
     return clean, dropped
 
 
@@ -831,8 +870,19 @@ def run_company(db: sqlite3.Connection, inn: str, domain: str) -> dict:
         # прайсом идём на страницы сайта
         print(f"    ⚠ документ повреждён: {bad_p2} позиций-брака — "
               f"добираю со страниц", flush=True)
+    if not items and files and nav["pages_seen"] == 0:
+        # файлы пришли из паспорта (P0), навигатор не запускался, а
+        # документы ничего не дали (мертвы, не разобрались или целиком
+        # ушли в брак) — без навигатора добор шёл бы по слепым догадкам
+        # /price/ и /ceny/, и строка получала «файл не разобран», хотя
+        # прайс лежит на страницах сайта
+        nav = navigate(db, domain, delay)
     bad_total += bad_p2
-    if not items or bad_p2 > len(items):           # P3 — страницы (сумма!)
+    # добор со страниц: документов нет, документы пусты или заметно
+    # повреждены (>10% брака); пара случайных браков на тысячи позиций
+    # не гоняет обход по 40 страницам впустую
+    if not items or (bad_p2 >= 2 and bad_p2 > len(items) // 10):  # P3
+
         pages = nav["price_pages"] or [f"https://{domain}/price/",
                                        f"https://{domain}/ceny/"]
         from src.fetch_cascade import _level1_jina
