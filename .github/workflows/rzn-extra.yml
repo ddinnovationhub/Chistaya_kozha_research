@@ -1,18 +1,27 @@
 # РЗН-ДОБОР ПО СПИСКУ ИНН (проверка таблицы типизации, заказчик 2026-09-15).
 # Запуск кнопкой на обычном раннере GitHub, как остальные экшнс репо
 # (заказчик, 2026-09-15: «сделать так, чтобы запускался кнопкой»).
-# В августе 2026 реестр глушил облачные IP, поэтому первый шаг — обязательная
-# самопроверка канала по контрольным ИНН с известными лицензиями: пусто по
-# всем → прогон ПАДАЕТ с понятным сообщением (не пишет ложное «не найдено»).
-# Пауза 3 с/запрос. Список: data/rzn_extra_inns.txt (261 ИНН ≈ 15-20 минут).
-# Результат коммитится в data/osint.db.
+# Первый шаг — обязательная самопроверка канала по контрольным ИНН с
+# известными лицензиями: пусто по всем → прогон ПАДАЕТ с понятным
+# сообщением (не пишет ложное «не найдено»). Пауза 3 с/запрос.
+# Реестр троттлит IP после ~20-25 запросов (прогон №3: 23 ИНН, затем
+# ConnectTimeout ×6 → остановка по правилу >20% ошибок) — поэтому
+# самопродолжение по образцу prices.yml: пока остаток > 0, воркфлоу
+# перезапускает сам себя, каждый перезапуск = свежий раннер со свежим IP.
+# Список: data/rzn_extra_inns.txt (261 ИНН). Результат коммитится в osint.db.
 name: rzn-extra
 
 on:
   workflow_dispatch:
+    inputs:
+      chain:
+        description: "Номер перезапуска (не трогать руками)"
+        required: false
+        default: "0"
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: test-40        # общая группа: не пересекаться за osint.db
@@ -35,6 +44,18 @@ jobs:
       - name: Сводка
         if: always()
         run: python -m src.rzn_extra report
+      - name: Остаток очереди
+        id: rem
+        if: always()
+        run: |
+          LEFT=$(python -c "
+          import sqlite3
+          db = sqlite3.connect('data/osint.db')
+          print(db.execute(\"\"\"SELECT COUNT(*) FROM extra_inns e
+              LEFT JOIN rzn_checked k ON k.inn=e.inn
+              WHERE k.inn IS NULL OR k.status!='проверен'\"\"\").fetchone()[0])")
+          echo "left=$LEFT" >> "$GITHUB_OUTPUT"
+          echo "остаток: $LEFT"
       - name: Коммит результатов
         if: always()
         run: |
@@ -44,7 +65,18 @@ jobs:
           if git diff --cached --quiet; then
             echo "Изменений нет"
           else
-            git commit -m "rzn-extra: лицензии по ИНН таблицы типизации $(date +%F)"
+            git commit -m "rzn-extra: лицензии по ИНН таблицы типизации $(date +%F), цепочка ${{ inputs.chain }}"
             git pull --rebase origin "${{ github.ref_name }}"
             git push origin "HEAD:${{ github.ref_name }}"
           fi
+      - name: Продолжение (пока остаток > 0, потолок 20 перезапусков)
+        if: always() && steps.rem.outputs.left != '0' && fromJSON(inputs.chain || '0') < 20
+        run: |
+          NEXT=$(( ${{ inputs.chain || 0 }} + 1 ))
+          echo "перезапуск: цепочка $NEXT, остаток ${{ steps.rem.outputs.left }}"
+          sleep 60
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/workflows/rzn-extra.yml/dispatches" \
+            -d "{\"ref\":\"${{ github.ref_name }}\",\"inputs\":{\"chain\":\"$NEXT\"}}"
