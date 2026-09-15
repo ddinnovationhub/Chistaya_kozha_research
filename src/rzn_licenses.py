@@ -89,8 +89,12 @@ def fetch_licenses(inn: str, client: httpx.Client) -> list[dict] | None:
     """Все лицензии ИНН из Единого реестра. None = запрос не удался
     (НЕ то же самое, что пустой список — «лицензий не найдено»)."""
     try:
+        # i_am_human=1 — флажок «Я не робот» формы реестра (появился к
+        # сентябрю 2026): без него реестр отдаёт «200 OK» с пустым data
+        # всем, с любого IP. Это поле формы, не CAPTCHA (challenge нет).
         r = client.post(RZN_AJAX, data={"draw": "1", "start": "0",
-                                        "length": "100", "q_no": inn})
+                                        "length": "100", "q_no": inn,
+                                        "i_am_human": "1"})
         if r.status_code != 200:
             return None
         data = r.json().get("data") or []

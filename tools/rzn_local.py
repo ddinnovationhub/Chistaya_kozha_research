@@ -2168,8 +2168,11 @@ def main():
     ok = fail = 0
     out = open(OUT, "a", encoding="utf-8")
     for n, inn in enumerate(todo, 1):
+        # i_am_human=1 — флажок «Я не робот» формы реестра (сентябрь 2026):
+        # без него реестр отдаёт «200 OK» с пустым data. Поле формы, не CAPTCHA.
         body = urllib.parse.urlencode({"draw": "1", "start": "0",
-                                       "length": "100", "q_no": inn}).encode()
+                                       "length": "100", "q_no": inn,
+                                       "i_am_human": "1"}).encode()
         data = None
         for att in range(3):
             try:
