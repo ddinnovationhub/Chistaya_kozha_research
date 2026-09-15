@@ -5,7 +5,7 @@
 серверные прогоны получают ConnectError), но обычным пользователям открыт.
 Этот скрипт опрашивает реестр с вашего компьютера по 261 ИНН (добор для
 таблицы типизации, 2026-09-15) и складывает
-сырые ответы в файл rzn_extra_dump2.jsonl рядом с собой. Файл отправьте агенту.
+сырые ответы в файл rzn_extra_dump.jsonl рядом с собой. Файл отправьте агенту.
 
 КАК ЗАПУСТИТЬ (Windows): установите Python с python.org если нет
 (галочка "Add to PATH"), затем двойной клик по этому файлу, либо в
@@ -26,7 +26,7 @@ from http.cookiejar import CookieJar
 
 RZN_URL = "https://roszdravnadzor.gov.ru/services/licenses"
 RZN_AJAX = "https://roszdravnadzor.gov.ru/ajax/services/licenses"
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rzn_extra_dump2.jsonl")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "rzn_extra_dump.jsonl")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -313,7 +313,7 @@ def main():
         print("Продолжаю: уже собрано", len(done))
     todo = [i for i in INNS if i not in done]
     if not todo:
-        print("Всё уже собрано. Отправьте файл rzn_extra_dump2.jsonl агенту:", OUT)
+        print("Всё уже собрано. Отправьте файл rzn_extra_dump.jsonl агенту:", OUT)
         return
     # ПОРЦИЯ ЗА ЗАХОД (заказчик, 2026-08-29: «забирать по 200 штук для
     # конвейерности»). Enter = 200; число = столько; «все» = весь остаток.
@@ -374,11 +374,8 @@ def main():
     ok = fail = 0
     out = open(OUT, "a", encoding="utf-8")
     for n, inn in enumerate(todo, 1):
-        # i_am_human=1 — флажок «Я не робот» формы реестра (сентябрь 2026):
-        # без него реестр отдаёт «200 OK» с пустым data. Поле формы, не CAPTCHA.
         body = urllib.parse.urlencode({"draw": "1", "start": "0",
-                                       "length": "100", "q_no": inn,
-                                       "i_am_human": "1"}).encode()
+                                       "length": "100", "q_no": inn}).encode()
         data = None
         for att in range(3):
             try:
