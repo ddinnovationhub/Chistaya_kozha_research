@@ -9,18 +9,12 @@
 та же вежливость (пауза 3 с), те же таблицы rzn_licenses / rzn_checked
 в data/osint.db, тот же source_id (URL реестра + дата).
 
-Запуск — workflow rzn-extra.yml кнопкой (заказчик, 2026-09-15: «сделать
-так, чтобы запускался кнопкой в репозитарии») на обычном раннере GitHub,
-как остальные экшнс репо. В августе 2026 реестр блокировал облачные IP
-(ConnectError), поэтому перед прогоном ОБЯЗАТЕЛЬНА самопроверка канала:
-запрос 3 контрольных ИНН с заведомо известными лицензиями. Реестр отдаёт
-всем «200 OK», но с заблокированного IP — пустой data: формальный успех
-без данных (suspicious_zero). Все 3 контрольных пусты → прогон падает с
-явным сообщением, НЕ пишет «лицензий не найдено» по 261 ИНН.
+Запуск — workflow rzn-extra.yml на self-hosted раннере заказчика
+(реестр РЗН блокирует IP облачных датацентров — с раннеров GitHub
+не работает; это не обход, а легитимный доступ обычного пользователя).
 
 Команды:
-  python -m src.rzn_extra load       # data/rzn_extra_inns.txt → таблица extra_inns
-  python -m src.rzn_extra selfcheck  # канал до прогона; код 1 = облако глушится
+  python -m src.rzn_extra load    # data/rzn_extra_inns.txt → таблица extra_inns
   python -m src.rzn_extra run [бюджет_сек=5400]
   python -m src.rzn_extra report
 """
@@ -48,40 +42,6 @@ def cmd_load():
     print(f"в списке файла: {len(inns)} · в таблице extra_inns: {n}")
 
 
-def cmd_selfcheck():
-    """Канал к РЗН с текущего IP. Контрольные ИНН берутся из уже собранных
-    лицензий (rzn_licenses) — по ним реестр обязан вернуть строки. Все
-    контрольные пусты/сбой → выход с кодом 1 и понятным сообщением."""
-    import time
-    from src.rzn_licenses import make_client, fetch_licenses
-    db = open_db()
-    controls = [r[0] for r in db.execute(
-        "SELECT DISTINCT inn FROM rzn_licenses LIMIT 3")]
-    if not controls:
-        print("⚠ Самопроверка пропущена: в rzn_licenses нет контрольных ИНН")
-        return
-    client = make_client()
-    if client is None:
-        print("⛔ РЗН недоступен: сессия не открылась. Прогон остановлен.")
-        sys.exit(1)
-    got = 0
-    for inn in controls:
-        rows = fetch_licenses(inn, client)
-        n = len(rows) if rows else 0
-        print(f"  контроль {inn}: {'строк ' + str(n) if rows is not None else 'запрос не удался'}")
-        got += n
-        time.sleep(3)
-    if got == 0:
-        print("⛔ СТОП. Реестр РЗН отвечает «200 OK», но по всем контрольным ИНН "
-              "с заведомо существующими лицензиями отдаёт пустые данные — "
-              "IP этого раннера глушится реестром (формальный успех без данных). "
-              "Прогон остановлен, чтобы не записать ложное «лицензий не найдено». "
-              "Вариант: self-hosted раннер (Settings → Actions → Runners) "
-              "или локальный скрипт tools/rzn_extra_local.py.")
-        sys.exit(1)
-    print(f"✓ Канал к РЗН работает: контрольные ИНН вернули {got} строк(и)")
-
-
 def cmd_run(budget_sec: float):
     from src.rzn_licenses import batch, ensure_tables
     db = open_db()
@@ -107,8 +67,6 @@ if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "report"
     if cmd == "load":
         cmd_load()
-    elif cmd == "selfcheck":
-        cmd_selfcheck()
     elif cmd == "run":
         cmd_run(float(sys.argv[2]) if len(sys.argv) > 2 else 5400)
     else:
