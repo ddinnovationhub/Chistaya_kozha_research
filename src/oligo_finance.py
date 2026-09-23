@@ -50,12 +50,18 @@ def inn_norm(x):
 # ------------------------------------------------------------ источники
 
 def load_segments(wb):
-    """ИНН → (компания, город, комбинация, набор направлений) для олигопрофилей."""
+    """ИНН → (компания, город, комбинация, направления, олиго/моно).
+
+    С 2026-09-24 (решение заказчика) в выборку входят и монопрофильные:
+    сегмент отражается колонкой «Олиго/моно», отдельная таблица не создаётся.
+    """
     out = {}
     for r in wb["1_Сегменты_клиник"].iter_rows(min_row=2, values_only=True):
-        if r[7] and "олиго" in str(r[7]):
+        seg = str(r[7] or "")
+        if "олиго" in seg or "моно" in seg:
             dirs = sorted(x.strip() for x in str(r[10]).split(";") if x.strip())
-            out[inn_norm(r[0])] = (r[1], r[2], " + ".join(dirs), dirs)
+            out[inn_norm(r[0])] = (r[1], r[2], " + ".join(dirs), dirs,
+                                   "олиго" if "олиго" in seg else "моно")
     return out
 
 
@@ -183,8 +189,8 @@ def build():
     ws = wb.create_sheet(SHEET)
     H = Font(bold=True)
     FILL = PatternFill("solid", fgColor="DDEBF7")
-    ws.append([f"Все {len(seg)} компаний из блока «ПОЛНЫЕ КОМБИНАЦИИ» листа "
-               f"7_Сочетания_направлений. Финансы за {YEAR} год."])
+    ws.append([f"Все {len(seg)} компаний сегментов «олигопрофильная» и «монопрофильная» "
+               f"(колонка «Олиго/моно»). Финансы за {YEAR} год."])
     ws.append(["Доля профиля = позиций этого направления / всех позиций прайса компании; доли комбинации и "
                "остального прайса в сумме дают 100%. "
                "Медиана прайса — по позициям с ценой, без помеченных «Брак парсинга (цена)»."])
@@ -193,7 +199,7 @@ def build():
                "упрощённой формы проверена на 256 полных формах и расходится с фактом более чем на 1% в трети "
                "случаев, поэтому не применяется. Сопоставимый по покрытию показатель — рентабельность продаж."])
     ws.append([])
-    cols = ["ИНН", "Компания", "Город", "Комбинация", "Направлений",
+    cols = ["ИНН", "Компания", "Город", "Олиго/моно", "Комбинация", "Направлений",
             "Комбинация с долей в прайсе", "Доля комбинации в прайсе",
             "Остальной прайс (все направления с долями)",
             "Доля лаборатории в прайсе", "Признак лабораторного профиля",
@@ -213,7 +219,7 @@ def build():
 
     import datetime
     today = datetime.date.today()
-    for inn, (comp, city, combo, dirs) in sorted(seg.items(), key=lambda kv: kv[1][0] or ""):
+    for inn, (comp, city, combo, dirs, seg_kind) in sorted(seg.items(), key=lambda kv: kv[1][0] or ""):
         tot, prs, cnt = prices.get(inn, (0, [], {}))
         shares = [(d, cnt.get(d, 0) / tot) for d in dirs] if tot else []
         shares.sort(key=lambda x: -x[1])
@@ -283,7 +289,7 @@ def build():
             except ValueError:
                 age = None
 
-        ws.append([inn, comp, city, combo, len(dirs), combo_sh,
+        ws.append([inn, comp, city, seg_kind, combo, len(dirs), combo_sh,
                    round(share_sum, 3) if share_sum is not None else None,
                    rest_s, round(lab, 3) if lab is not None else None, lab_flag,
                    tot or None, median,
@@ -292,7 +298,7 @@ def build():
                    ebit_m, ebit_src, roa, roa_src,
                    pts, per_point, reg, age, o[1]])
 
-    for i, w in enumerate([13, 38, 17, 60, 12, 70, 16, 90, 16, 24, 14, 15, 22, 20, 20, 20,
+    for i, w in enumerate([13, 38, 17, 12, 60, 12, 70, 16, 90, 16, 24, 14, 15, 22, 20, 20, 20,
                            20, 18, 34, 16, 30, 12, 34, 14, 18, 18, 14, 14], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A6"
