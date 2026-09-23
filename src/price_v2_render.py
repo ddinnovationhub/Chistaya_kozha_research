@@ -21,7 +21,8 @@ from playwright.async_api import async_playwright
 
 DB = "data/price_v2.db"
 CACHE = "data/price_html_cache"
-PRICE_HINT = re.compile(r"прайс|price|цен|ceny|стоимост|тариф|uslug|услуг", re.I)
+PRICE_HINT = re.compile(
+    r"прайс|price|цен|ceny|стоимост|тариф|prajs|tarif|stoimost|uslug|услуг", re.I)
 PER_DOMAIN = 8
 
 CLICK_JS = """
