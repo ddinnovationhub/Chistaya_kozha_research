@@ -37,7 +37,7 @@ from openpyxl.utils import get_column_letter
 
 from src.direction_map import norm, strip_ui
 
-XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-24.xlsx"
+XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-22.xlsx"
 SHEET = "8_Олигопрофили_финансы"
 YEAR = "2025"
 
@@ -50,34 +50,35 @@ def inn_norm(x):
 # ------------------------------------------------------------ источники
 
 def load_segments(wb):
-    """ИНН → (компания, город, комбинация, направления, олиго/моно).
-
-    С 2026-09-24 (решение заказчика) в выборку входят и монопрофильные:
-    сегмент отражается колонкой «Олиго/моно», отдельная таблица не создаётся.
-    """
+    """ИНН → (компания, город, комбинация, набор направлений) для олигопрофилей."""
     out = {}
     for r in wb["1_Сегменты_клиник"].iter_rows(min_row=2, values_only=True):
-        seg = str(r[7] or "")
-        if "олиго" in seg or "моно" in seg:
+        if r[7] and "олиго" in str(r[7]):
             dirs = sorted(x.strip() for x in str(r[10]).split(";") if x.strip())
-            out[inn_norm(r[0])] = (r[1], r[2], " + ".join(dirs), dirs,
-                                   "олиго" if "олиго" in seg else "моно")
+            out[inn_norm(r[0])] = (r[1], r[2], " + ".join(dirs), dirs)
     return out
 
 
 def load_prices(inns):
-    """ИНН → (всего позиций, цены, Counter направлений). База v2 (2026-09-24)."""
-    from src.v2_adapter import load_items, UNMAPPED as UM
+    """ИНН → (всего позиций, медиана цены, Counter направлений по позициям)."""
+    dmap = {}
+    dd = sqlite3.connect("file:data/directions.db?mode=ro", uri=True)
+    for k, d in dd.execute("select name_norm, direction from name_directions"):
+        dmap[k] = d
+    p = sqlite3.connect("file:data/prices.db?mode=ro", uri=True)
+    bad = {r[0] for r in p.execute("select price_item_id from price_flags")}
     res = {}
-    for pid, inn, dom, sec, name, price, d, flags in load_items():
+    q = "select id, inn, name_raw, price_value from price_items"
+    for pid, inn, name, price in p.execute(q):
         i = inn_norm(inn)
         if i not in inns:
             continue
         a = res.setdefault(i, [0, [], {}])
         a[0] += 1
-        if d and d != UM:
+        d = dmap.get(norm(strip_ui(name or "")))
+        if d:
             a[2][d] = a[2].get(d, 0) + 1
-        if price:
+        if price and pid not in bad:
             a[1].append(price)
     return res
 
@@ -182,21 +183,17 @@ def build():
     ws = wb.create_sheet(SHEET)
     H = Font(bold=True)
     FILL = PatternFill("solid", fgColor="DDEBF7")
-    ws.append([f"Все {len(seg)} компаний сегментов «олигопрофильная» и «монопрофильная» "
-               f"(колонка «Олиго/моно»). Финансы за {YEAR} год."])
-    ws.append(["Доля профиля = позиций этого направления / всех позиций прайса компании; доли комбинации и "
-               "остального прайса в сумме дают 100%. "
+    ws.append([f"Все {len(seg)} компаний из блока «ПОЛНЫЕ КОМБИНАЦИИ» листа "
+               f"7_Сочетания_направлений. Финансы за {YEAR} год."])
+    ws.append(["Доля профиля = позиций этого направления / всех позиций прайса компании. "
                "Медиана прайса — по позициям с ценой, без помеченных «Брак парсинга (цена)»."])
     ws.append(["EBIT = стр. 2300 + стр. 2330 формы 0710002; ROA = стр. 2400 / среднегодовые активы (стр. 1600). "
                "Где строк нет (упрощённая отчётность МСП) — «Не найдено», без оценок: реконструкция EBIT из "
                "упрощённой формы проверена на 256 полных формах и расходится с фактом более чем на 1% в трети "
                "случаев, поэтому не применяется. Сопоставимый по покрытию показатель — рентабельность продаж."])
     ws.append([])
-    cols = ["ИНН", "Компания", "Город", "Олиго/моно", "Комбинация", "Направлений",
+    cols = ["ИНН", "Компания", "Город", "Комбинация", "Направлений",
             "Комбинация с долей в прайсе", "Доля комбинации в прайсе",
-            "Остальной прайс (все направления с долями)",
-            "Вне состава (причина)",
-            "Доля лаборатории в прайсе", "Признак лабораторного профиля",
             "Позиций в прайсе", "Медиана прайса ₽",
             "Выручка 2025 ₽ (выгрузка заказчика)", "Выручка 2025 ₽ (ГИР БО)",
             "Чистая прибыль 2025 ₽", "Активы на конец 2025 ₽",
@@ -213,37 +210,13 @@ def build():
 
     import datetime
     today = datetime.date.today()
-    from src.v2_adapter import clinic_dir_statuses
-    dir_st = clinic_dir_statuses()
-    def excl_reason(inn, dirs):
-        out = []
-        for d, st in sorted(dir_st.get(inn, {}).items()):
-            if d in dirs or st in ("подтверждено (сайт+прайс)", "по прайсу"):
-                continue
-            if st == "вне лицензии (исключено)":
-                out.append(f"{d} — вне лицензии")
-            elif st == "только сайт (не подтверждено прайсом)":
-                out.append(f"{d} — только сайт")
-            elif st == "след в прайсе (<порога)":
-                out.append(f"{d} — мало позиций")
-        return "; ".join(out) or "—"
-    for inn, (comp, city, combo, dirs, seg_kind) in sorted(seg.items(), key=lambda kv: kv[1][0] or ""):
+    for inn, (comp, city, combo, dirs) in sorted(seg.items(), key=lambda kv: kv[1][0] or ""):
         tot, prs, cnt = prices.get(inn, (0, [], {}))
         shares = [(d, cnt.get(d, 0) / tot) for d in dirs] if tot else []
         shares.sort(key=lambda x: -x[1])
         combo_sh = "; ".join(f"{d} {s:.0%}" for d, s in shares)
         share_sum = sum(s for _, s in shares) if shares else None
         median = round(statistics.median(prs)) if prs else None
-        # остальной прайс: всё, что не вошло в комбинацию, включая сервисные
-        # направления и неклассифицированное — сумма всех долей даёт 100%
-        rest = {d: n for d, n in cnt.items() if d not in dirs}
-        unmapped = tot - sum(cnt.values()) if tot else 0
-        if unmapped > 0:
-            rest["— не классифицировано —"] = rest.get("— не классифицировано —", 0) + unmapped
-        rest_s = "; ".join(f"{d} {n / tot:.0%}" for d, n in
-                           sorted(rest.items(), key=lambda kv: -kv[1])) if tot else None
-        lab = (cnt.get("Лаборатория", 0) / tot) if tot else None
-        lab_flag = ("да" if lab is not None and lab > 0.5 else "нет")
 
         rev_s = spark_rev.get(inn)
         f = fin.get(inn) or {}
@@ -297,17 +270,15 @@ def build():
             except ValueError:
                 age = None
 
-        ws.append([inn, comp, city, seg_kind, combo, len(dirs), combo_sh,
+        ws.append([inn, comp, city, combo, len(dirs), combo_sh,
                    round(share_sum, 3) if share_sum is not None else None,
-                   rest_s, excl_reason(inn, set(dirs)),
-                   round(lab, 3) if lab is not None else None, lab_flag,
                    tot or None, median,
                    rev_s if rev_s not in (None, "") else None, rev_g,
                    prof, act, sales, sales_m, sales_src,
                    ebit_m, ebit_src, roa, roa_src,
                    pts, per_point, reg, age, o[1]])
 
-    for i, w in enumerate([13, 38, 17, 12, 60, 12, 70, 16, 90, 55, 16, 24, 14, 15, 22, 20, 20, 20,
+    for i, w in enumerate([13, 38, 17, 60, 12, 70, 16, 14, 15, 22, 20, 20, 20,
                            20, 18, 34, 16, 30, 12, 34, 14, 18, 18, 14, 14], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A6"
