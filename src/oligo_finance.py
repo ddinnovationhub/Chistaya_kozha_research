@@ -185,7 +185,8 @@ def build():
     FILL = PatternFill("solid", fgColor="DDEBF7")
     ws.append([f"Все {len(seg)} компаний из блока «ПОЛНЫЕ КОМБИНАЦИИ» листа "
                f"7_Сочетания_направлений. Финансы за {YEAR} год."])
-    ws.append(["Доля профиля = позиций этого направления / всех позиций прайса компании. "
+    ws.append(["Доля профиля = позиций этого направления / всех позиций прайса компании; доли комбинации и "
+               "остального прайса в сумме дают 100%. "
                "Медиана прайса — по позициям с ценой, без помеченных «Брак парсинга (цена)»."])
     ws.append(["EBIT = стр. 2300 + стр. 2330 формы 0710002; ROA = стр. 2400 / среднегодовые активы (стр. 1600). "
                "Где строк нет (упрощённая отчётность МСП) — «Не найдено», без оценок: реконструкция EBIT из "
@@ -194,6 +195,8 @@ def build():
     ws.append([])
     cols = ["ИНН", "Компания", "Город", "Комбинация", "Направлений",
             "Комбинация с долей в прайсе", "Доля комбинации в прайсе",
+            "Остальной прайс (все направления с долями)",
+            "Доля лаборатории в прайсе", "Признак лабораторного профиля",
             "Позиций в прайсе", "Медиана прайса ₽",
             "Выручка 2025 ₽ (выгрузка заказчика)", "Выручка 2025 ₽ (ГИР БО)",
             "Чистая прибыль 2025 ₽", "Активы на конец 2025 ₽",
@@ -217,6 +220,16 @@ def build():
         combo_sh = "; ".join(f"{d} {s:.0%}" for d, s in shares)
         share_sum = sum(s for _, s in shares) if shares else None
         median = round(statistics.median(prs)) if prs else None
+        # остальной прайс: всё, что не вошло в комбинацию, включая сервисные
+        # направления и неклассифицированное — сумма всех долей даёт 100%
+        rest = {d: n for d, n in cnt.items() if d not in dirs}
+        unmapped = tot - sum(cnt.values()) if tot else 0
+        if unmapped > 0:
+            rest["— не классифицировано —"] = rest.get("— не классифицировано —", 0) + unmapped
+        rest_s = "; ".join(f"{d} {n / tot:.0%}" for d, n in
+                           sorted(rest.items(), key=lambda kv: -kv[1])) if tot else None
+        lab = (cnt.get("Лаборатория", 0) / tot) if tot else None
+        lab_flag = ("да" if lab is not None and lab > 0.5 else "нет")
 
         rev_s = spark_rev.get(inn)
         f = fin.get(inn) or {}
@@ -272,13 +285,14 @@ def build():
 
         ws.append([inn, comp, city, combo, len(dirs), combo_sh,
                    round(share_sum, 3) if share_sum is not None else None,
+                   rest_s, round(lab, 3) if lab is not None else None, lab_flag,
                    tot or None, median,
                    rev_s if rev_s not in (None, "") else None, rev_g,
                    prof, act, sales, sales_m, sales_src,
                    ebit_m, ebit_src, roa, roa_src,
                    pts, per_point, reg, age, o[1]])
 
-    for i, w in enumerate([13, 38, 17, 60, 12, 70, 16, 14, 15, 22, 20, 20, 20,
+    for i, w in enumerate([13, 38, 17, 60, 12, 70, 16, 90, 16, 24, 14, 15, 22, 20, 20, 20,
                            20, 18, 34, 16, 30, 12, 34, 14, 18, 18, 14, 14], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A6"
