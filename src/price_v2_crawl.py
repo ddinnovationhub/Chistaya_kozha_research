@@ -28,6 +28,7 @@ import sqlite3
 import sys
 import time
 import threading
+import urllib.robotparser
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin, urlparse
 
@@ -49,48 +50,6 @@ SKIP_EXT = re.compile(
     r"\.(jpe?g|png|gif|svg|webp|ico|css|js|mp4|avi|zip|rar|woff2?|ttf)($|\?)", re.I)
 
 _db_lock = threading.Lock()
-
-
-class Robots:
-    """Матчер robots.txt по RFC 9309 вместо urllib.robotparser: стандартный
-    парсер превращает вордпрессовское «Disallow: /?» (запрет query-URL) в
-    «Disallow: /» и запрещает весь сайт (дефект 2026-09-23, десятки доменов).
-    Семантика: * — любая подстрока, $ — конец URL, приоритет у самого длинного
-    совпавшего правила, при равной длине Allow побеждает Disallow."""
-
-    def __init__(self, text):
-        self.rules = []          # (allow: bool, длина правила, regex)
-        self.delay = None
-        ua = None
-        for raw in text.splitlines():
-            line = raw.split("#", 1)[0].strip()
-            if not line or ":" not in line:
-                continue
-            k, v = line.split(":", 1)
-            k, v = k.strip().lower(), v.strip()
-            if k == "user-agent":
-                ua = v
-            elif k in ("allow", "disallow") and ua == "*" and v:
-                pat = re.escape(v).replace(r"\*", ".*")
-                if pat.endswith(r"\$"):
-                    pat = pat[:-2] + "$"
-                self.rules.append((k == "allow", len(v), re.compile("^" + pat)))
-            elif k == "crawl-delay" and ua == "*":
-                try:
-                    self.delay = float(v)
-                except ValueError:
-                    pass
-
-    def allowed(self, url):
-        pu = urlparse(url)
-        path = pu.path or "/"
-        if pu.query:
-            path += "?" + pu.query
-        best = (True, -1)
-        for allow, ln, rx in self.rules:
-            if rx.match(path) and (ln > best[1] or (ln == best[1] and allow)):
-                best = (allow, ln)
-        return best[0]
 
 
 def db():
@@ -141,19 +100,14 @@ def fetch(client, url):
 def crawl_domain(domain, inn, seed_urls):
     con = db()
     os.makedirs(f"{CACHE}/{domain}", exist_ok=True)
-    # robots.txt забираем сами с браузерным UA (rp.read() ходит с питоньим UA,
-    # ловит 403 от WAF и это читалось как «запрещено всё») и матчим классом
-    # Robots (см. выше). По RFC 9309 4xx = allow; содержимое (200) чтится.
-    rp = None
+    rp = urllib.robotparser.RobotFileParser()
     delay = DELAY
     try:
-        rr = httpx.get(f"https://{domain}/robots.txt",
-                       headers={"User-Agent": UA}, timeout=15,
-                       follow_redirects=True, verify=False)
-        if rr.status_code == 200 and rr.text.strip():
-            rp = Robots(rr.text)
-            if rp.delay:
-                delay = max(delay, min(rp.delay, 10.0))
+        rp.set_url(f"https://{domain}/robots.txt")
+        rp.read()
+        cd = rp.crawl_delay(UA) or rp.crawl_delay("*")
+        if cd:
+            delay = max(delay, min(float(cd), 10.0))
     except Exception:
         rp = None
 
@@ -161,15 +115,13 @@ def crawl_domain(domain, inn, seed_urls):
         if rp is None:
             return True
         try:
-            return rp.allowed(u)
+            return rp.can_fetch("*", u)
         except Exception:
             return True
 
     seen, queue = set(), []
     for u in sorted(seed_urls):
         queue.append((u, 0))
-    # http-фолбэк последним: часть сайтов живёт только на http
-    queue.append((f"http://{domain}/", 0))
     pages = files = 0
     price_paths = {urlparse(u).path.rstrip("/") for u in seed_urls
                    if PRICE_HINT.search(u)}
