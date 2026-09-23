@@ -217,12 +217,12 @@ def extract_page(html):
             continue
         row = el.parent
         hops = 0
-        while row is not None and hops < 4:
+        while row is not None and hops < 6:
             txt = row.get_text(" ", strip=True)
-            # длина содержательной части: без цен и без служебных ярлыков
-            # («Цены по филиалам», «стоимость») — иначе подъём останавливается,
-            # не дойдя до названия услуги
-            name_len = len(GENERIC_LBL.sub("", PRICE_RE.sub("", txt)))
+            # длина содержательной части: без цен, служебных ярлыков («Цены по
+            # филиалам») и UI-текста («Запись онлайн») — иначе подъём
+            # останавливается, не дойдя до названия услуги (ekbclinic.ru)
+            name_len = len(GENERIC_LBL.sub("", UI_SUB.sub("", PRICE_RE.sub("", txt))))
             if name_len >= 12 and len(txt) < 500:
                 break
             row = row.parent
