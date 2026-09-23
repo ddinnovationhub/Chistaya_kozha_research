@@ -53,6 +53,7 @@ PRICE_RE = re.compile(
     r"(?<![\d.,])(\d{1,3}(?:[   ]\d{3})+|\d{3,7})(?:[.,]\d{2})?"
     r"\s*(?:₽|руб|р\.|р\b|rub)?", re.I)
 CUR_HINT = re.compile(r"₽|руб|р\.|price|cena|цен|стоимост", re.I)
+PRICEISH = re.compile(r"price|прайс|prais|ceny|цен|stoimost|стоимост|tarif", re.I)
 
 
 def parse_price(text):
@@ -111,10 +112,12 @@ def sig(node):
     return ">".join(parts)
 
 
-def clean_name(row, price_texts):
-    txt = row.get_text(" ", strip=True)
-    for pt in price_texts:
-        txt = txt.replace(pt, " ")
+GENERIC_LBL = re.compile(
+    r"цены?(\s+по\s+филиалам)?|стоимость(\s+услуг)?|прайс(-лист)?|price|₽|руб\.?",
+    re.I)
+
+
+def clean_text(txt):
     txt = UI_SUB.sub(" ", txt)
     txt = UI_STOP.sub(" ", txt)
     txt = re.sub(r"^\s*(?:₽|руб\.?|р\.?)\s+", " ", txt)
@@ -124,9 +127,29 @@ def clean_name(row, price_texts):
     # дозировки препаратов («Диспорт 300») трёхзначны и не трогаются
     txt = re.sub(r"\s+\d{4,7}$", "", txt).rstrip(" .,;:–—-")
     txt = re.sub(r"\s+(?:Описание|Подробности)$", "", txt)
+    txt = re.sub(r"\s*цены?\s+по\s+филиалам\s*$", "", txt, flags=re.I)
     if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
         return ""
     return txt
+
+
+def clean_name(row, price_texts):
+    txt = row.get_text(" ", strip=True)
+    for pt in price_texts:
+        txt = txt.replace(pt, " ")
+    return clean_text(txt)
+
+
+def row_name(row):
+    """Название строки прайса структурно: самый длинный прямой потомок
+    без цены внутри (аналог «колонки названий» в таблице). Спасает вёрстку,
+    где строка содержит и название, и блок цен по филиалам (nika-nn.ru)."""
+    best = ""
+    for ch in row.find_all(True, recursive=False):
+        t = ch.get_text(" ", strip=True)
+        if t and not PRICE_RE.search(t) and len(t) > len(best):
+            best = t
+    return clean_text(best) if best else ""
 
 
 def extract_page(html):
@@ -134,9 +157,26 @@ def extract_page(html):
     soup = BeautifulSoup(html, "lxml")
     for t in soup(KILL_TAGS):
         t.decompose()
+    # зачистка зон — С ПРЕДОХРАНИТЕЛЯМИ (дефект 2026-09-23: класс темы на <body>
+    # вида «ast-hfb-header … jet-mega-menu-location» сносил всю страницу;
+    # «dropdown-menu-price» — контент прайса, а не навигация)
+    page_len = len(soup.get_text()) or 1
     for t in soup.find_all(attrs={"class": KILL_ZONES}):
+        if t.decomposed or t.name in ("body", "html", "main"):
+            continue
+        cls = " ".join(t.get("class", []))
+        if PRICEISH.search(cls):
+            continue
+        if len(t.get_text()) > 0.4 * page_len:
+            continue
         t.decompose()
+    # незакрытый <header> (nika-nn.ru) заставляет lxml вложить в него всю
+    # страницу — структурный тег с большей частью текста не сносится;
+    # базу доли пересчитываем после зачистки зон
+    page_len = len(soup.get_text()) or 1
     for t in soup.find_all(["header", "footer", "nav", "aside"]):
+        if t.decomposed or len(t.get_text()) > 0.4 * page_len:
+            continue
         t.decompose()
     out = []
 
@@ -179,7 +219,10 @@ def extract_page(html):
         hops = 0
         while row is not None and hops < 4:
             txt = row.get_text(" ", strip=True)
-            name_len = len(PRICE_RE.sub("", txt))
+            # длина содержательной части: без цен и без служебных ярлыков
+            # («Цены по филиалам», «стоимость») — иначе подъём останавливается,
+            # не дойдя до названия услуги
+            name_len = len(GENERIC_LBL.sub("", PRICE_RE.sub("", txt)))
             if name_len >= 12 and len(txt) < 500:
                 break
             row = row.parent
@@ -197,7 +240,7 @@ def extract_page(html):
             if id(row) in seen_rows:
                 continue
             seen_rows.add(id(row))
-            name = clean_name(row, [ptxt])
+            name = row_name(row) or clean_name(row, [ptxt])
             if len(name) >= 5:
                 out.append((name, price, f"паттерн:{len(items)}"))
     # дедуп в рамках страницы
@@ -219,8 +262,11 @@ def gates(items):
     mt = {"позиций": len(items), "с ценой": round(with_price / len(items), 2),
           "UI-мусор": round(ui / len(items), 3), "мед. длина": med,
           "дубли": round(dup, 2)}
+    # дубли ≤0.6, а не ≤0.15: после дедупа (название, цена) остаток «дублей» —
+    # это одна услуга по разным ценам (филиалы/категории), легитимно (azmc.ru,
+    # effi-clinic.ru срезались зря, дефект 2026-09-23)
     ok = (with_price / len(items) >= 0.7 and ui / len(items) <= 0.02
-          and med >= 15 and dup <= 0.15 and len(items) >= 5)
+          and med >= 15 and dup <= 0.6 and len(items) >= 5)
     return ok, mt
 
 
