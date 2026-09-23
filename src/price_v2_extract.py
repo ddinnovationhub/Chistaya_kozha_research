@@ -41,8 +41,7 @@ BTN = re.compile(r"btn|button|order|zapis|callback|more|link-arrow", re.I)
 UI_SUB = re.compile(
     r"оставить заявку|запис[аь]ться(\s+(на\s+)?при[её]м)?|онлайн[- ]запись|"
     r"запись онлайн|заказать звонок|обратный звонок|узнать цену|подробнее|"
-    r"читать далее|смотреть все|показать все|показать скидку|показать цену|"
-    r"скрыть скидку|в корзину|заказать|выбрать|читать полностью|развернуть|свернуть",
+    r"читать далее|смотреть все|показать все|в корзину|заказать|выбрать",
     re.I)
 UI_STOP = re.compile(
     r"^(записаться|запись|заказать|подробнее|узнать|позвонить|смотреть|читать|"
@@ -53,7 +52,6 @@ PRICE_RE = re.compile(
     r"(?<![\d.,])(\d{1,3}(?:[   ]\d{3})+|\d{3,7})(?:[.,]\d{2})?"
     r"\s*(?:₽|руб|р\.|р\b|rub)?", re.I)
 CUR_HINT = re.compile(r"₽|руб|р\.|price|cena|цен|стоимост", re.I)
-PRICEISH = re.compile(r"price|прайс|prais|ceny|цен|stoimost|стоимост|tarif", re.I)
 
 
 def parse_price(text):
@@ -77,29 +75,6 @@ def parse_price(text):
     return v
 
 
-LETTERS = re.compile(r"[а-яёa-z]", re.I)
-EMB_PRICE = re.compile(r"\d{3,}\s*(?:₽|руб\.?|р\b)", re.I)
-
-
-def valid_name(name):
-    """Отсев мусорных «названий» (сверка 2026-09-23): последовательности цифр,
-    склейки нескольких услуг в одну строку, цены внутри названия."""
-    if len(LETTERS.findall(name)) < 5:
-        return False                       # «2000 2000», «600 500»
-    if sum(c.isdigit() for c in name) / max(len(name), 1) > 0.35:
-        return False                       # преимущественно цифры
-    if "●" in name or "•" in name:
-        return False                       # склейка пунктов списка
-    if EMB_PRICE.search(name):
-        return False                       # цена другой позиции внутри названия
-    words = name.lower().split()
-    if len(words) >= 4:                    # повтор начального фрагмента —
-        head = " ".join(words[:2])         # конкатенация двух позиций
-        if len(head) >= 12 and head in " ".join(words[2:]):
-            return False
-    return True
-
-
 def sig(node):
     parts = []
     cur = node
@@ -112,44 +87,17 @@ def sig(node):
     return ">".join(parts)
 
 
-GENERIC_LBL = re.compile(
-    r"цены?(\s+по\s+филиалам)?|стоимость(\s+услуг)?|прайс(-лист)?|price|₽|руб\.?",
-    re.I)
-
-
-def clean_text(txt):
-    txt = UI_SUB.sub(" ", txt)
-    txt = UI_STOP.sub(" ", txt)
-    txt = re.sub(r"^\s*(?:₽|руб\.?|р\.?)\s+", " ", txt)
-    txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-●•*")
-    txt = re.sub(r"(?:\s+(?:руб\.?|₽|р\.)|\s+от)+$", "", txt, flags=re.I).rstrip(" .,;:–—-")
-    # хвостовое голое число ≥4 знаков — приклеенная цена (зачёркнутая/вторая колонка);
-    # дозировки препаратов («Диспорт 300») трёхзначны и не трогаются
-    txt = re.sub(r"\s+\d{4,7}$", "", txt).rstrip(" .,;:–—-")
-    txt = re.sub(r"\s+(?:Описание|Подробности)$", "", txt)
-    txt = re.sub(r"\s*цены?\s+по\s+филиалам\s*$", "", txt, flags=re.I)
-    if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
-        return ""
-    return txt
-
-
 def clean_name(row, price_texts):
     txt = row.get_text(" ", strip=True)
     for pt in price_texts:
         txt = txt.replace(pt, " ")
-    return clean_text(txt)
-
-
-def row_name(row):
-    """Название строки прайса структурно: самый длинный прямой потомок
-    без цены внутри (аналог «колонки названий» в таблице). Спасает вёрстку,
-    где строка содержит и название, и блок цен по филиалам (nika-nn.ru)."""
-    best = ""
-    for ch in row.find_all(True, recursive=False):
-        t = ch.get_text(" ", strip=True)
-        if t and not PRICE_RE.search(t) and len(t) > len(best):
-            best = t
-    return clean_text(best) if best else ""
+    txt = UI_SUB.sub(" ", txt)
+    txt = UI_STOP.sub(" ", txt)
+    txt = re.sub(r"^\s*(?:₽|руб\.?|р\.?)\s+", " ", txt)
+    txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-")
+    if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
+        return ""
+    return txt
 
 
 def extract_page(html):
@@ -157,26 +105,9 @@ def extract_page(html):
     soup = BeautifulSoup(html, "lxml")
     for t in soup(KILL_TAGS):
         t.decompose()
-    # зачистка зон — С ПРЕДОХРАНИТЕЛЯМИ (дефект 2026-09-23: класс темы на <body>
-    # вида «ast-hfb-header … jet-mega-menu-location» сносил всю страницу;
-    # «dropdown-menu-price» — контент прайса, а не навигация)
-    page_len = len(soup.get_text()) or 1
     for t in soup.find_all(attrs={"class": KILL_ZONES}):
-        if t.decomposed or t.name in ("body", "html", "main"):
-            continue
-        cls = " ".join(t.get("class", []))
-        if PRICEISH.search(cls):
-            continue
-        if len(t.get_text()) > 0.4 * page_len:
-            continue
         t.decompose()
-    # незакрытый <header> (nika-nn.ru) заставляет lxml вложить в него всю
-    # страницу — структурный тег с большей частью текста не сносится;
-    # базу доли пересчитываем после зачистки зон
-    page_len = len(soup.get_text()) or 1
     for t in soup.find_all(["header", "footer", "nav", "aside"]):
-        if t.decomposed or len(t.get_text()) > 0.4 * page_len:
-            continue
         t.decompose()
     out = []
 
@@ -200,7 +131,7 @@ def extract_page(html):
             if price is None:
                 continue
             name = max(cells[:pi], key=len, default="")
-            name = re.sub(r"\s+", " ", name).strip(" .,;:–—-●•*")
+            name = re.sub(r"\s+", " ", name).strip()
             if len(name) >= 5 and not UI_STOP.match(name):
                 got.append((name, price, "таблица"))
         if len(got) >= 3:
@@ -217,12 +148,9 @@ def extract_page(html):
             continue
         row = el.parent
         hops = 0
-        while row is not None and hops < 6:
+        while row is not None and hops < 4:
             txt = row.get_text(" ", strip=True)
-            # длина содержательной части: без цен, служебных ярлыков («Цены по
-            # филиалам») и UI-текста («Запись онлайн») — иначе подъём
-            # останавливается, не дойдя до названия услуги (ekbclinic.ru)
-            name_len = len(GENERIC_LBL.sub("", UI_SUB.sub("", PRICE_RE.sub("", txt))))
+            name_len = len(PRICE_RE.sub("", txt))
             if name_len >= 12 and len(txt) < 500:
                 break
             row = row.parent
@@ -240,7 +168,7 @@ def extract_page(html):
             if id(row) in seen_rows:
                 continue
             seen_rows.add(id(row))
-            name = row_name(row) or clean_name(row, [ptxt])
+            name = clean_name(row, [ptxt])
             if len(name) >= 5:
                 out.append((name, price, f"паттерн:{len(items)}"))
     # дедуп в рамках страницы
@@ -262,11 +190,8 @@ def gates(items):
     mt = {"позиций": len(items), "с ценой": round(with_price / len(items), 2),
           "UI-мусор": round(ui / len(items), 3), "мед. длина": med,
           "дубли": round(dup, 2)}
-    # дубли ≤0.6, а не ≤0.15: после дедупа (название, цена) остаток «дублей» —
-    # это одна услуга по разным ценам (филиалы/категории), легитимно (azmc.ru,
-    # effi-clinic.ru срезались зря, дефект 2026-09-23)
     ok = (with_price / len(items) >= 0.7 and ui / len(items) <= 0.02
-          and med >= 15 and dup <= 0.6 and len(items) >= 5)
+          and med >= 15 and dup <= 0.15 and len(items) >= 5)
     return ok, mt
 
 
@@ -314,7 +239,7 @@ def extract_file(path, url):
                             if not price:
                                 continue
                             name = max(cells[:pi], key=len, default="")
-                            name = re.sub(r"\s+", " ", name).strip(" .,;:–—-●•*")
+                            name = re.sub(r"\s+", " ", name)
                             if len(name) >= 5 and not UI_STOP.match(name):
                                 out.append((name, price, "pdf"))
     except Exception:
@@ -351,7 +276,7 @@ def run_domain(domain, con):
     ded = {}
     for url, n, p, m in items_all:
         ded.setdefault((n.lower(), p), (url, n, p, m))
-    items = [it for it in ded.values() if valid_name(it[1])]
+    items = list(ded.values())
     ok, mt = gates([(n, p, m) for _, n, p, m in items])
     return items, ok, mt
 
