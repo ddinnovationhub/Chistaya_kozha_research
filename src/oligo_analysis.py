@@ -4,16 +4,11 @@
 data/directions.db по ключу norm(strip_ui(name_raw)); позиции с флагом
 «Брак парсинга (цена)» в ценовые метрики не идут.
 
-Сегмент клиники считается по числу КЛИНИЧЕСКИХ направлений. Решение
-заказчика 2026-09-23: НЕ считаются направлениями только УЗИ/лучевая,
-Вакцинация, Функциональная диагностика, Справки/профосмотры, Лаборатория,
-Анестезиология (плюс не-специализации: брак разметки, брак парсинга,
-неклассифицированное, приём без указания специальности, процедурный
-кабинет, спа, выездные услуги). Генетика и репродуктология — клинические.
-ПОРОГА ПРЕДСТАВЛЕННОСТИ НЕТ: любая позиция клинического направления
-засчитывает его клинике (прежний порог ≥3 позиций / ≥2% отменён
-заказчиком 2026-09-23 — из-за него специализации с 1–2 позициями
-выпадали из комбинации).
+Сегмент клиники считается по числу КЛИНИЧЕСКИХ направлений: сервисные
+(лаборатория, лучевая, функциональная диагностика, процедурный кабинет,
+анестезиология, справки, вакцинация, выезды, спа, генетика, брак разметки,
+приём без указания специальности) из счёта исключаются. Направление
+засчитывается клинике при ≥3 позициях ИЛИ ≥2% её прайса.
 
 Комплементарность: lift = (доля клиник среза с направлением) /
 (доля клиник базы с ним), значимость — точный тест Фишера (через lgamma,
@@ -31,20 +26,14 @@ from openpyxl.utils import get_column_letter
 
 from src.direction_map import norm, strip_ui
 
-XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-24.xlsx"
-# сервисные — закрытый список заказчика (2026-09-23): «УЗИ, вакцинации,
-# функциональную диагностику, справки, лаборатории, анестезиологию не выносим»
+XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-22.xlsx"
 SERVICE = {
-    "Лаборатория", "УЗИ/лучевая", "Функциональная диагностика",
-    "Справки/профосмотры", "Вакцинация", "Анестезиология",
+    "Лаборатория", "УЗИ/лучевая", "Функциональная диагностика", "Процедурный кабинет",
+    "Анестезиология", "Справки/профосмотры", "Вакцинация", "Выездные услуги", "Спа",
+    "Брак разметки (UI-текст)", "Брак разметки (обрывок)",
+    "Приём без указания специальности", "Генетика", "Брак парсинга (цена)",
+    "Приём смежного специалиста",
 }
-# не специализации вовсе: качество данных и форматы обслуживания
-NONSPEC = {
-    "Брак разметки (UI-текст)", "Брак разметки (обрывок)", "Брак парсинга (цена)",
-    "Приём без указания специальности", "Приём смежного специалиста",
-    "Процедурный кабинет", "Спа", "Выездные услуги",
-}
-SERVICE = SERVICE | NONSPEC
 UNMAPPED = "— НЕ КЛАССИФИЦИРОВАНО —"
 H = Font(bold=True)
 FILL = PatternFill("solid", fgColor="DDEBF7")
@@ -57,16 +46,19 @@ def seg_name(k):
 
 
 def load():
-    """База v2 (2026-09-24): позиции из items_v2, направления из directions_v2.
-    Направление, не вошедшее в СОСТАВ клиники (правило трёх источников,
-    src/clinic_profile.py: сайт+прайс / по прайсу, вето лицензии), считается
-    в прайсе, но в клинические направления клиники не идёт."""
-    from src.v2_adapter import load_items, clinic_composition
-    comp = clinic_composition()
+    dd = sqlite3.connect("file:data/directions.db?mode=ro", uri=True)
+    dmap = {k: v for k, v in dd.execute("select name_norm, direction from name_directions")}
+    p = sqlite3.connect("file:data/prices.db?mode=ro", uri=True)
+    bad = {r[0] for r in p.execute("select price_item_id from price_flags")}
+    comp = {}
+    for inn, name, city, region in p.execute(
+            "select distinct inn, null, null, null from price_items limit 0"):
+        pass
     rows = collections.defaultdict(list)          # инн -> [(направление, цена, название)]
-    for pid, inn, dom, sec, name, price, d, flags in load_items():
-        rows[inn].append((d, price, name or ""))
-    load.composition = comp
+    for pid, inn, name, price in p.execute(
+            "select id, inn, name_raw, price_value from price_items"):
+        d = dmap.get(norm(strip_ui(name or ""))) or UNMAPPED
+        rows[inn].append((d, None if (price and pid in bad) else price, name or ""))
     return rows
 
 
@@ -78,11 +70,11 @@ def meta_from_sheet(wb):
     return out
 
 
-def profile(rows_of_clinic, composition=None):
+def profile(rows_of_clinic):
     tot = len(rows_of_clinic)
     cnt = collections.Counter(d for d, _, _ in rows_of_clinic)
-    dirs = [d for d, n in cnt.items() if d not in SERVICE and d != UNMAPPED
-            and (composition is None or d in composition)]
+    dirs = [d for d, n in cnt.items()
+            if d not in SERVICE and d != UNMAPPED and (n >= 3 or n / tot >= 0.02)]
     return tot, cnt, sorted(dirs)
 
 
@@ -106,27 +98,13 @@ def fisher_p(a, b, c, d):
 
 
 def build():
-    import os
-    if os.path.exists(XLSX):
-        wb = openpyxl.load_workbook(XLSX)
-    else:
-        wb = openpyxl.Workbook()
-        wb.create_sheet("1_Сегменты_клиник")
-        wb.create_sheet("2_Комплементарность")
-        wb.create_sheet("3_Медианы_клиника_направление")
-        wb.create_sheet("4_Дорогие_услуги")
-        for sh in list(wb.sheetnames):
-            if sh == "Sheet":
-                del wb[sh]
-    from src.v2_adapter import companies as v2_companies
-    comp_db = v2_companies()
-    meta = {i: (n, c, r) for i, (n, c, r) in comp_db.items()}
+    wb = openpyxl.load_workbook(XLSX)
+    meta = meta_from_sheet(wb)
     rows = load()
-    composition = load.composition
 
     prof = {}
     for inn, rr in rows.items():
-        tot, cnt, dirs = profile(rr, composition.get(inn, set()))
+        tot, cnt, dirs = profile(rr)
         prof[inn] = (tot, cnt, dirs, seg_name(len(dirs)))
 
     # ---------------- лист 1
@@ -139,7 +117,7 @@ def build():
         c.font = H
         c.fill = FILL
     DERM = {"Дерматовенерология", "Косметология", "Трихология",
-            "Удаление новообразований (дерматохирургия)", "Онкология (онкодерматология)", "Подология"}
+            "Удаление новообразований (дерматохирургия)", "Онкодерматология", "Подология"}
     for inn, (tot, cnt, dirs, seg) in sorted(prof.items(),
                                              key=lambda kv: -kv[1][0]):
         comp, city, region = meta.get(inn, (None, None, None))
