@@ -76,17 +76,22 @@ async def main(shard_file, workers=5):
     con = sqlite3.connect(DB, timeout=60)
     con.execute("pragma journal_mode=WAL")
     fail = {r[0] for r in con.execute("select domain from extract_v2 where gate_ok=0")}
-    hasjs = {r[0] for r in con.execute("select distinct domain from pages_v2 where url like '%#js'")}
-    fail -= hasjs
+    rendered = {r[0] for r in con.execute("select url from pages_v2 where url like '%#js'")}
     todo = [l.strip() for l in open(shard_file, encoding="utf-8")
             if l.strip() in fail]
     urls_by = {}
-    for d in todo:
+    for d in list(todo):
         rows = [r[0] for r in con.execute(
             "select url from pages_v2 where domain=? and kind='html' and status=200 "
             "and url not like '%#js'", (d,))]
         pri = [u for u in rows if PRICE_HINT.search(u)] or rows
-        urls_by[d] = pri
+        # пропуск по-URL, а не по-доменно: домен с одной отрендеренной
+        # страницей раньше выпадал из волны целиком
+        pri = [u for u in pri if u + "#js" not in rendered]
+        if pri:
+            urls_by[d] = pri
+        else:
+            todo.remove(d)
     print(f"рендер {shard_file}: доменов {len(todo)}", flush=True)
     async with async_playwright() as pw:
         import os
