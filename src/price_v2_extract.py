@@ -182,6 +182,11 @@ def clean_text(txt):
     txt = re.sub(r"\s+\d{4,7}$", "", txt).rstrip(" .,;:–—-")
     txt = re.sub(r"\s+(?:Описание|Подробности)$", "", txt)
     txt = re.sub(r"\s*цены?\s+по\s+филиалам\s*$", "", txt, flags=re.I)
+    # хвост «Врачи: Фамилия И.О., …» и любые «Фамилия И.О.» — не часть услуги,
+    # и по 152-ФЗ ФИО врачей не собираем
+    txt = re.sub(r"\s*врачи?:.*$", "", txt, flags=re.I)
+    txt = re.sub(r"[А-ЯЁ][а-яё]+\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.(?:\s*,)?", " ", txt)
+    txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-")
     if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
         return ""
     return txt
@@ -253,8 +258,7 @@ def extract_page(html):
                     break
             if price is None:
                 continue
-            name = max(cells[:pi], key=len, default="")
-            name = re.sub(r"\s+", " ", name).strip(" .,;:–—-●•*")
+            name = clean_text(max(cells[:pi], key=len, default=""))
             if len(name) >= 5 and not UI_STOP.match(name):
                 got.append((name, price, "таблица"))
         if len(got) >= 3:
@@ -324,7 +328,7 @@ def gates(items):
     # ekaterinburg.billprof.ru), не проходит, какой бы чистой ни была структура
     ok = (with_price / len(items) >= 0.7 and ui / len(items) <= 0.02
           and med >= 15 and dup <= 0.6 and len(items) >= 5
-          and med_share >= 0.2)
+          and med_share > 0.2)
     return ok, mt
 
 
@@ -349,8 +353,8 @@ def extract_file(path, url):
                             break
                     if not price:
                         continue
-                    name = max((t for t in texts if not parse_price(t)),
-                               key=len, default="")
+                    name = clean_text(max((t for t in texts if not parse_price(t)),
+                                          key=len, default=""))
                     if len(name) >= 5 and not UI_STOP.match(name):
                         out.append((name, price, "xlsx"))
         elif re.search(r"\.pdf($|\?)", url, re.I):
@@ -371,8 +375,7 @@ def extract_file(path, url):
                                     break
                             if not price:
                                 continue
-                            name = max(cells[:pi], key=len, default="")
-                            name = re.sub(r"\s+", " ", name).strip(" .,;:–—-●•*")
+                            name = clean_text(max(cells[:pi], key=len, default=""))
                             if len(name) >= 5 and not UI_STOP.match(name):
                                 out.append((name, price, "pdf"))
     except Exception:
