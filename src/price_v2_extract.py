@@ -36,7 +36,11 @@ DB = "data/price_v2.db"
 KILL_TAGS = ["script", "style", "noscript", "svg", "iframe", "form"]
 KILL_ZONES = re.compile(
     r"header|footer|nav|menu|breadcrumb|cookie|popup|modal|sidebar|widget-cart|"
-    r"basket|social|subscribe", re.I)
+    r"basket|social|subscribe|"
+    # карусели карточек врачей: «Ярощук М.С. … от 3000 ₽ Тургеневская»
+    # (mcvrach.ru expert__item, kdmcenter.ru «Стаж - 9 лет …») — цена приёма
+    # в карточке врача не строка прайса
+    r"expert|doctor|vrach|staff|team|specialist|sotrudnik|employe", re.I)
 BTN = re.compile(r"btn|button|order|zapis|callback|more|link-arrow", re.I)
 UI_SUB = re.compile(
     r"оставить заявку|запис[аь]ться(\s+(на\s+)?при[её]м)?|онлайн[- ]запись|"
@@ -124,7 +128,11 @@ MED_LEX = re.compile(
 FIO_RE = re.compile(
     r"^[А-ЯЁ][а-яё]+(?:-[А-ЯЁ][а-яё]+)?\s+[А-ЯЁ][а-яё]+\s+"
     r"[А-ЯЁ][а-яё]*(?:вна|ична|инична|евич|ович|ич|оглы|кызы)$")
-JUNK_START = re.compile(r"^(?:на сайте|доступно|недоступно|опыт работы|стаж работы)\b", re.I)
+JUNK_START = re.compile(r"^(?:на сайте|доступно|недоступно|опыт\b|стаж\b)", re.I)
+# полное ФИО внутри строки — карточка врача, не услуга (и 152-ФЗ)
+FIO_INNER = re.compile(
+    r"[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]*(?:вна|ична|инична|евич|ович|ич|оглы|кызы)\b")
+BREADCRUMB = re.compile(r"^\s*/|\bглавная\b.*/|/\s*$", re.I)
 
 
 def valid_name(name):
@@ -144,8 +152,12 @@ def valid_name(name):
         return False                       # рубрика раздела, не позиция
     if FIO_RE.match(name.strip()):
         return False                       # ФИО врача — не услуга (и 152-ФЗ)
+    if FIO_INNER.search(name):
+        return False                       # карточка врача с полным ФИО внутри
     if JUNK_START.match(name.strip()):
-        return False                       # «на сайте», «Доступно», «Опыт работы…»
+        return False                       # «на сайте», «Доступно», «Стаж…»
+    if BREADCRUMB.search(name):
+        return False                       # хлебные крошки «/ Главная … /»
     words = name.lower().split()
     if len(words) >= 4:                    # повтор начального фрагмента —
         head = " ".join(words[:2])         # конкатенация двух позиций
@@ -211,8 +223,26 @@ def row_name(row):
     return clean_text(best) if best else ""
 
 
+def nearest_heading(node, cap=300):
+    """Ближайший предшествующий заголовок (h1–h6/caption) — раздел прайса.
+    «Верхняя губа» без раздела «Эпиляция лица» и «РАБОТНИКИ ЖКХ» без
+    «Медосмотры» нечитаемы (заказчик, 2026-09-23): раздел тянется вместе
+    со строкой, а не выбрасывается."""
+    n = 0
+    for prev in node.previous_elements:
+        n += 1
+        if n > cap:
+            break
+        if getattr(prev, "name", None) in ("h1", "h2", "h3", "h4", "h5", "h6",
+                                           "caption"):
+            t = clean_text(prev.get_text(" ", strip=True))
+            if 3 <= len(t) <= 120 and not PRICE_RE.search(t):
+                return t
+    return ""
+
+
 def extract_page(html):
-    """→ список (название, цена, метод). Таблицы + паттерн-майнинг."""
+    """→ список (название, цена, метод, раздел). Таблицы + паттерн-майнинг."""
     soup = BeautifulSoup(html, "lxml")
     for t in soup(KILL_TAGS):
         t.decompose()
@@ -244,6 +274,7 @@ def extract_page(html):
         rows = table.find_all("tr")
         if len(rows) < 3:
             continue
+        sec = nearest_heading(table)
         got = []
         for tr in rows:
             cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
@@ -260,7 +291,7 @@ def extract_page(html):
                 continue
             name = clean_text(max(cells[:pi], key=len, default=""))
             if len(name) >= 5 and not UI_STOP.match(name):
-                got.append((name, price, "таблица"))
+                got.append((name, price, "таблица", sec))
         if len(got) >= 3:
             out.extend(got)
         for tr in rows:
@@ -300,11 +331,12 @@ def extract_page(html):
             seen_rows.add(id(row))
             name = row_name(row) or clean_name(row, [ptxt])
             if len(name) >= 5:
-                out.append((name, price, f"паттерн:{len(items)}"))
+                out.append((name, price, f"паттерн:{len(items)}",
+                            nearest_heading(row)))
     # дедуп в рамках страницы
     ded = {}
-    for name, price, m in out:
-        ded.setdefault((name.lower(), price), (name, price, m))
+    for name, price, m, sec in out:
+        ded.setdefault((name.lower(), price), (name, price, m, sec))
     return list(ded.values())
 
 
@@ -341,9 +373,10 @@ def extract_file(path, url):
             wb = openpyxl.load_workbook(io.BytesIO(gzip.open(path, "rb").read()),
                                         read_only=True, data_only=True)
             for ws in wb.worksheets:
+                cur_sec = ""
                 for row in ws.iter_rows(values_only=True):
                     cells = [c for c in row if c is not None]
-                    if len(cells) < 2:
+                    if not cells:
                         continue
                     texts = [str(c).strip() for c in cells]
                     price = None
@@ -352,19 +385,26 @@ def extract_file(path, url):
                         if price:
                             break
                     if not price:
+                        # строка без цены — бегущий заголовок раздела
+                        t = clean_text(" ".join(texts))
+                        if 5 <= len(t) <= 100:
+                            cur_sec = t
+                        continue
+                    if len(cells) < 2:
                         continue
                     name = clean_text(max((t for t in texts if not parse_price(t)),
                                           key=len, default=""))
                     if len(name) >= 5 and not UI_STOP.match(name):
-                        out.append((name, price, "xlsx"))
+                        out.append((name, price, "xlsx", cur_sec))
         elif re.search(r"\.pdf($|\?)", url, re.I):
             import pdfplumber, io
             with pdfplumber.open(io.BytesIO(gzip.open(path, "rb").read())) as pdf:
+                cur_sec = ""
                 for pg in pdf.pages[:60]:
                     for tb in (pg.extract_tables() or []):
                         for row in tb:
                             cells = [str(c).strip() for c in row if c]
-                            if len(cells) < 2:
+                            if not cells:
                                 continue
                             price = None
                             pi = None
@@ -374,10 +414,15 @@ def extract_file(path, url):
                                     pi = i
                                     break
                             if not price:
+                                t = clean_text(" ".join(cells))
+                                if 5 <= len(t) <= 100:
+                                    cur_sec = t
+                                continue
+                            if len(cells) < 2:
                                 continue
                             name = clean_text(max(cells[:pi], key=len, default=""))
                             if len(name) >= 5 and not UI_STOP.match(name):
-                                out.append((name, price, "pdf"))
+                                out.append((name, price, "pdf", cur_sec))
     except Exception:
         return out
     return out
@@ -394,8 +439,8 @@ def run_domain(domain, con):
     for url, sha in frows:
         path = f"{CACHE}/{domain}/{sha}.gz"
         if os.path.exists(path):
-            for n, p2, m in extract_file(path, url):
-                items_all.append((url, n, p2, m))
+            for n, p2, m, sec in extract_file(path, url):
+                items_all.append((url, n, p2, m, sec))
     per_page = {}
     for url, sha in rows:
         path = f"{CACHE}/{domain}/{sha}.gz"
@@ -407,13 +452,15 @@ def run_domain(domain, con):
             continue
         got = extract_page(html)
         per_page[url] = len(got)
-        for n, p, m in got:
-            items_all.append((url, n, p, m))
+        for n, p, m, sec in got:
+            items_all.append((url, n, p, m, sec))
     ded = {}
-    for url, n, p, m in items_all:
-        ded.setdefault((n.lower(), p), (url, n, p, m))
+    for url, n, p, m, sec in items_all:
+        key = (n.lower(), p)
+        if key not in ded or (not ded[key][4] and sec):
+            ded[key] = (url, n, p, m, sec)
     items = [it for it in ded.values() if valid_name(it[1])]
-    ok, mt = gates([(n, p, m) for _, n, p, m in items])
+    ok, mt = gates([(n, p, m) for _, n, p, m, _ in items])
     return items, ok, mt
 
 
@@ -422,6 +469,9 @@ def main(shard_file):
     con.execute("pragma journal_mode=WAL")
     con.execute("""CREATE TABLE IF NOT EXISTS items_v2(
         domain TEXT, inn TEXT, url TEXT, name TEXT, price REAL, method TEXT)""")
+    cols = [r[1] for r in con.execute("pragma table_info(items_v2)")]
+    if "section" not in cols:
+        con.execute("ALTER TABLE items_v2 ADD COLUMN section TEXT")
     con.execute("""CREATE TABLE IF NOT EXISTS extract_v2(
         domain TEXT PRIMARY KEY, inn TEXT, items INTEGER, gate_ok INTEGER,
         metrics TEXT, done_at TEXT)""")
@@ -437,9 +487,9 @@ def main(shard_file):
             items, ok, mt = run_domain(domain, con)
             con.execute("delete from items_v2 where domain=?", (domain,))
             if ok:
-                con.executemany("insert into items_v2 values (?,?,?,?,?,?)",
-                                [(domain, inns[domain], u, n, p, m)
-                                 for u, n, p, m in items])
+                con.executemany("insert into items_v2 values (?,?,?,?,?,?,?)",
+                                [(domain, inns[domain], u, n, p, m, sec)
+                                 for u, n, p, m, sec in items])
             con.execute("insert or replace into extract_v2 values (?,?,?,?,?,datetime('now'))",
                         (domain, inns[domain], len(items), int(ok),
                          json.dumps(mt, ensure_ascii=False)))
