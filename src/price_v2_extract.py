@@ -118,6 +118,7 @@ def clean_name(row, price_texts):
     txt = UI_STOP.sub(" ", txt)
     txt = re.sub(r"^\s*(?:₽|руб\.?|р\.?)\s+", " ", txt)
     txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-●•*")
+    txt = re.sub(r"(?:\s+(?:руб\.?|₽|р\.)|\s+от)+$", "", txt, flags=re.I).rstrip(" .,;:–—-")
     if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
         return ""
     return txt
