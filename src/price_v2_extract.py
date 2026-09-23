@@ -41,8 +41,7 @@ BTN = re.compile(r"btn|button|order|zapis|callback|more|link-arrow", re.I)
 UI_SUB = re.compile(
     r"оставить заявку|запис[аь]ться(\s+(на\s+)?при[её]м)?|онлайн[- ]запись|"
     r"запись онлайн|заказать звонок|обратный звонок|узнать цену|подробнее|"
-    r"читать далее|смотреть все|показать все|показать скидку|показать цену|"
-    r"скрыть скидку|в корзину|заказать|выбрать|читать полностью|развернуть|свернуть",
+    r"читать далее|смотреть все|показать все|в корзину|заказать|выбрать",
     re.I)
 UI_STOP = re.compile(
     r"^(записаться|запись|заказать|подробнее|узнать|позвонить|смотреть|читать|"
@@ -76,29 +75,6 @@ def parse_price(text):
     return v
 
 
-LETTERS = re.compile(r"[а-яёa-z]", re.I)
-EMB_PRICE = re.compile(r"\d{3,}\s*(?:₽|руб\.?|р\b)", re.I)
-
-
-def valid_name(name):
-    """Отсев мусорных «названий» (сверка 2026-09-23): последовательности цифр,
-    склейки нескольких услуг в одну строку, цены внутри названия."""
-    if len(LETTERS.findall(name)) < 5:
-        return False                       # «2000 2000», «600 500»
-    if sum(c.isdigit() for c in name) / max(len(name), 1) > 0.35:
-        return False                       # преимущественно цифры
-    if "●" in name or "•" in name:
-        return False                       # склейка пунктов списка
-    if EMB_PRICE.search(name):
-        return False                       # цена другой позиции внутри названия
-    words = name.lower().split()
-    if len(words) >= 4:                    # повтор начального фрагмента —
-        head = " ".join(words[:2])         # конкатенация двух позиций
-        if len(head) >= 12 and head in " ".join(words[2:]):
-            return False
-    return True
-
-
 def sig(node):
     parts = []
     cur = node
@@ -118,12 +94,7 @@ def clean_name(row, price_texts):
     txt = UI_SUB.sub(" ", txt)
     txt = UI_STOP.sub(" ", txt)
     txt = re.sub(r"^\s*(?:₽|руб\.?|р\.?)\s+", " ", txt)
-    txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-●•*")
-    txt = re.sub(r"(?:\s+(?:руб\.?|₽|р\.)|\s+от)+$", "", txt, flags=re.I).rstrip(" .,;:–—-")
-    # хвостовое голое число ≥4 знаков — приклеенная цена (зачёркнутая/вторая колонка);
-    # дозировки препаратов («Диспорт 300») трёхзначны и не трогаются
-    txt = re.sub(r"\s+\d{4,7}$", "", txt).rstrip(" .,;:–—-")
-    txt = re.sub(r"\s+(?:Описание|Подробности)$", "", txt)
+    txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-")
     if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
         return ""
     return txt
@@ -160,7 +131,7 @@ def extract_page(html):
             if price is None:
                 continue
             name = max(cells[:pi], key=len, default="")
-            name = re.sub(r"\s+", " ", name).strip(" .,;:–—-●•*")
+            name = re.sub(r"\s+", " ", name).strip()
             if len(name) >= 5 and not UI_STOP.match(name):
                 got.append((name, price, "таблица"))
         if len(got) >= 3:
@@ -268,7 +239,7 @@ def extract_file(path, url):
                             if not price:
                                 continue
                             name = max(cells[:pi], key=len, default="")
-                            name = re.sub(r"\s+", " ", name).strip(" .,;:–—-●•*")
+                            name = re.sub(r"\s+", " ", name)
                             if len(name) >= 5 and not UI_STOP.match(name):
                                 out.append((name, price, "pdf"))
     except Exception:
@@ -305,7 +276,7 @@ def run_domain(domain, con):
     ded = {}
     for url, n, p, m in items_all:
         ded.setdefault((n.lower(), p), (url, n, p, m))
-    items = [it for it in ded.values() if valid_name(it[1])]
+    items = list(ded.values())
     ok, mt = gates([(n, p, m) for _, n, p, m in items])
     return items, ok, mt
 

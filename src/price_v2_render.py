@@ -22,7 +22,7 @@ from playwright.async_api import async_playwright
 DB = "data/price_v2.db"
 CACHE = "data/price_html_cache"
 PRICE_HINT = re.compile(r"прайс|price|цен|ceny|стоимост|тариф|uslug|услуг", re.I)
-PER_DOMAIN = 8
+PER_DOMAIN = 12
 
 CLICK_JS = """
 async () => {
@@ -45,14 +45,14 @@ async def render_domain(browser, domain, urls, con):
     done = 0
     for url in urls[:PER_DOMAIN]:
         try:
-            await page.goto(url, wait_until="domcontentloaded", timeout=18000)
+            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
             try:
-                await page.wait_for_load_state("networkidle", timeout=4000)
+                await page.wait_for_load_state("networkidle", timeout=8000)
             except Exception:
                 pass
             try:
                 await page.evaluate(CLICK_JS)
-                await page.wait_for_timeout(700)
+                await page.wait_for_timeout(1200)
             except Exception:
                 pass
             html = await page.content()
@@ -66,7 +66,7 @@ async def render_domain(browser, domain, urls, con):
             done += 1
         except Exception:
             continue
-        await asyncio.sleep(0.5)
+        await asyncio.sleep(1.0)
     await ctx.close()
     return done
 
@@ -75,8 +75,6 @@ async def main(shard_file, workers=5):
     con = sqlite3.connect(DB, timeout=60)
     con.execute("pragma journal_mode=WAL")
     fail = {r[0] for r in con.execute("select domain from extract_v2 where gate_ok=0")}
-    hasjs = {r[0] for r in con.execute("select distinct domain from pages_v2 where url like '%#js'")}
-    fail -= hasjs
     todo = [l.strip() for l in open(shard_file, encoding="utf-8")
             if l.strip() in fail]
     urls_by = {}
