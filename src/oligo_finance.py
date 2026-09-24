@@ -37,7 +37,7 @@ from openpyxl.utils import get_column_letter
 
 from src.direction_map import norm, strip_ui
 
-XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-22.xlsx"
+XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-24.xlsx"
 SHEET = "8_Олигопрофили_финансы"
 YEAR = "2025"
 
@@ -66,25 +66,18 @@ def load_segments(wb):
 
 
 def load_prices(inns):
-    """ИНН → (всего позиций, медиана цены, Counter направлений по позициям)."""
-    dmap = {}
-    dd = sqlite3.connect("file:data/directions.db?mode=ro", uri=True)
-    for k, d in dd.execute("select name_norm, direction from name_directions"):
-        dmap[k] = d
-    p = sqlite3.connect("file:data/prices.db?mode=ro", uri=True)
-    bad = {r[0] for r in p.execute("select price_item_id from price_flags")}
+    """ИНН → (всего позиций, цены, Counter направлений). База v2 (2026-09-24)."""
+    from src.v2_adapter import load_items, UNMAPPED as UM
     res = {}
-    q = "select id, inn, name_raw, price_value from price_items"
-    for pid, inn, name, price in p.execute(q):
+    for pid, inn, dom, sec, name, price, d, flags in load_items():
         i = inn_norm(inn)
         if i not in inns:
             continue
         a = res.setdefault(i, [0, [], {}])
         a[0] += 1
-        d = dmap.get(norm(strip_ui(name or "")))
-        if d:
+        if d and d != UM:
             a[2][d] = a[2].get(d, 0) + 1
-        if price and pid not in bad:
+        if price:
             a[1].append(price)
     return res
 
