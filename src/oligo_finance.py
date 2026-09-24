@@ -195,6 +195,7 @@ def build():
     cols = ["ИНН", "Компания", "Город", "Олиго/моно", "Комбинация", "Направлений",
             "Комбинация с долей в прайсе", "Доля комбинации в прайсе",
             "Остальной прайс (все направления с долями)",
+            "Вне состава (причина)",
             "Доля лаборатории в прайсе", "Признак лабораторного профиля",
             "Позиций в прайсе", "Медиана прайса ₽",
             "Выручка 2025 ₽ (выгрузка заказчика)", "Выручка 2025 ₽ (ГИР БО)",
@@ -212,6 +213,20 @@ def build():
 
     import datetime
     today = datetime.date.today()
+    from src.v2_adapter import clinic_dir_statuses
+    dir_st = clinic_dir_statuses()
+    def excl_reason(inn, dirs):
+        out = []
+        for d, st in sorted(dir_st.get(inn, {}).items()):
+            if d in dirs or st in ("подтверждено (сайт+прайс)", "по прайсу"):
+                continue
+            if st == "вне лицензии (исключено)":
+                out.append(f"{d} — вне лицензии")
+            elif st == "только сайт (не подтверждено прайсом)":
+                out.append(f"{d} — только сайт")
+            elif st == "след в прайсе (<порога)":
+                out.append(f"{d} — мало позиций")
+        return "; ".join(out) or "—"
     for inn, (comp, city, combo, dirs, seg_kind) in sorted(seg.items(), key=lambda kv: kv[1][0] or ""):
         tot, prs, cnt = prices.get(inn, (0, [], {}))
         shares = [(d, cnt.get(d, 0) / tot) for d in dirs] if tot else []
@@ -284,14 +299,15 @@ def build():
 
         ws.append([inn, comp, city, seg_kind, combo, len(dirs), combo_sh,
                    round(share_sum, 3) if share_sum is not None else None,
-                   rest_s, round(lab, 3) if lab is not None else None, lab_flag,
+                   rest_s, excl_reason(inn, set(dirs)),
+                   round(lab, 3) if lab is not None else None, lab_flag,
                    tot or None, median,
                    rev_s if rev_s not in (None, "") else None, rev_g,
                    prof, act, sales, sales_m, sales_src,
                    ebit_m, ebit_src, roa, roa_src,
                    pts, per_point, reg, age, o[1]])
 
-    for i, w in enumerate([13, 38, 17, 12, 60, 12, 70, 16, 90, 16, 24, 14, 15, 22, 20, 20, 20,
+    for i, w in enumerate([13, 38, 17, 12, 60, 12, 70, 16, 90, 55, 16, 24, 14, 15, 22, 20, 20, 20,
                            20, 18, 34, 16, 30, 12, 34, 14, 18, 18, 14, 14], 1):
         ws.column_dimensions[get_column_letter(i)].width = w
     ws.freeze_panes = "A6"
