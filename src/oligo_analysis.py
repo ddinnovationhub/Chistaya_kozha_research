@@ -31,7 +31,7 @@ from openpyxl.utils import get_column_letter
 
 from src.direction_map import norm, strip_ui
 
-XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-22.xlsx"
+XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-24.xlsx"
 # сервисные — закрытый список заказчика (2026-09-23): «УЗИ, вакцинации,
 # функциональную диагностику, справки, лаборатории, анестезиологию не выносим»
 SERVICE = {
@@ -57,19 +57,16 @@ def seg_name(k):
 
 
 def load():
-    dd = sqlite3.connect("file:data/directions.db?mode=ro", uri=True)
-    dmap = {k: v for k, v in dd.execute("select name_norm, direction from name_directions")}
-    p = sqlite3.connect("file:data/prices.db?mode=ro", uri=True)
-    bad = {r[0] for r in p.execute("select price_item_id from price_flags")}
-    comp = {}
-    for inn, name, city, region in p.execute(
-            "select distinct inn, null, null, null from price_items limit 0"):
-        pass
+    """База v2 (2026-09-24): позиции из items_v2, направления из directions_v2.
+    Направление, не вошедшее в СОСТАВ клиники (правило трёх источников,
+    src/clinic_profile.py: сайт+прайс / по прайсу, вето лицензии), считается
+    в прайсе, но в клинические направления клиники не идёт."""
+    from src.v2_adapter import load_items, clinic_composition
+    comp = clinic_composition()
     rows = collections.defaultdict(list)          # инн -> [(направление, цена, название)]
-    for pid, inn, name, price in p.execute(
-            "select id, inn, name_raw, price_value from price_items"):
-        d = dmap.get(norm(strip_ui(name or ""))) or UNMAPPED
-        rows[inn].append((d, None if (price and pid in bad) else price, name or ""))
+    for pid, inn, dom, sec, name, price, d, flags in load_items():
+        rows[inn].append((d, price, name or ""))
+    load.composition = comp
     return rows
 
 
@@ -81,10 +78,11 @@ def meta_from_sheet(wb):
     return out
 
 
-def profile(rows_of_clinic):
+def profile(rows_of_clinic, composition=None):
     tot = len(rows_of_clinic)
     cnt = collections.Counter(d for d, _, _ in rows_of_clinic)
-    dirs = [d for d, n in cnt.items() if d not in SERVICE and d != UNMAPPED]
+    dirs = [d for d, n in cnt.items() if d not in SERVICE and d != UNMAPPED
+            and (composition is None or d in composition)]
     return tot, cnt, sorted(dirs)
 
 
@@ -108,13 +106,27 @@ def fisher_p(a, b, c, d):
 
 
 def build():
-    wb = openpyxl.load_workbook(XLSX)
-    meta = meta_from_sheet(wb)
+    import os
+    if os.path.exists(XLSX):
+        wb = openpyxl.load_workbook(XLSX)
+    else:
+        wb = openpyxl.Workbook()
+        wb.create_sheet("1_Сегменты_клиник")
+        wb.create_sheet("2_Комплементарность")
+        wb.create_sheet("3_Медианы_клиника_направление")
+        wb.create_sheet("4_Дорогие_услуги")
+        for sh in list(wb.sheetnames):
+            if sh == "Sheet":
+                del wb[sh]
+    from src.v2_adapter import companies as v2_companies
+    comp_db = v2_companies()
+    meta = {i: (n, c, r) for i, (n, c, r) in comp_db.items()}
     rows = load()
+    composition = load.composition
 
     prof = {}
     for inn, rr in rows.items():
-        tot, cnt, dirs = profile(rr)
+        tot, cnt, dirs = profile(rr, composition.get(inn, set()))
         prof[inn] = (tot, cnt, dirs, seg_name(len(dirs)))
 
     # ---------------- лист 1
@@ -127,7 +139,7 @@ def build():
         c.font = H
         c.fill = FILL
     DERM = {"Дерматовенерология", "Косметология", "Трихология",
-            "Удаление новообразований (дерматохирургия)", "Онкодерматология", "Подология"}
+            "Удаление новообразований (дерматохирургия)", "Онкология (онкодерматология)", "Подология"}
     for inn, (tot, cnt, dirs, seg) in sorted(prof.items(),
                                              key=lambda kv: -kv[1][0]):
         comp, city, region = meta.get(inn, (None, None, None))
