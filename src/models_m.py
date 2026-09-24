@@ -163,7 +163,7 @@ def classify():
                         clin_total=clin_total, derm_pos=derm_pos)
     return out
 
-def export(only_inns=None):
+def export():
     import openpyxl, datetime, re as _re
     from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
@@ -174,8 +174,6 @@ def export(only_inns=None):
     for inn, d in p.execute("select distinct inn, domain from items_v2"):
         doms.setdefault(inn, []).append(d)
     res = classify()
-    if only_inns is not None:
-        res = {i: r for i, r in res.items() if i in only_inns}
     H = Font(bold=True); FILL = PatternFill("solid", fgColor="DDEBF7")
     CLEAN = _re.compile(r"[\x00-\x1f]")
     wb = openpyxl.Workbook()
@@ -254,9 +252,4 @@ def export(only_inns=None):
 
 
 if __name__ == "__main__":
-    import sys as _s
-    if len(_s.argv) > 1:
-        inns = {l.strip() for l in open(_s.argv[1]) if l.strip()}
-        export(inns)
-    else:
-        export()
+    export()
