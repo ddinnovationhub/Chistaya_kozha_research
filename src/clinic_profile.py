@@ -80,7 +80,10 @@ def build():
                 status = "вне лицензии (исключено)"
             elif on_site and k >= 1:
                 status = "подтверждено (сайт+прайс)"
-            elif not on_site and k >= 3 and (d in SERVICE or share >= 0.01):
+            elif not on_site and (k >= 3 or (k >= 2 and share is not None
+                                             and share >= 0.05)):
+                # порог заказчика (2026-09-24): ≥3 позиций ИЛИ ≥2 позиций
+                # при ≥5% клинического прайса
                 status = "по прайсу"
             elif on_site and k == 0:
                 status = "только сайт (не подтверждено прайсом)"
