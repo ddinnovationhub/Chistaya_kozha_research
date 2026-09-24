@@ -38,10 +38,10 @@ from openpyxl.utils import get_column_letter
 
 from src.oligo_analysis import load, SERVICE, UNMAPPED
 
-XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-22.xlsx"
+XLSX = "output/ЧК_олигопрофильные_анализ_2026-09-24.xlsx"
 DERM_MED = {"Дерматовенерология", "Трихология",
             "Удаление новообразований (дерматохирургия)", "Подология",
-            "Онкодерматология"}
+            "Онкология (онкодерматология)"}
 WM = {"Гинекология", "Репродуктология", "Маммология", "Урология"}
 MSK = {"Травматология/ортопедия", "Неврология", "Физиотерапия/массаж",
        "Остеопатия/мануальная/рефлексотерапия", "Реабилитация/ЛФК", "Нейрохирургия"}
@@ -95,7 +95,7 @@ def build():
     for i in range(6, ws.max_row + 1):
         inn = str(ws.cell(i, 1).value)
         if "Дерматовенерология" in str(ws.cell(i, jc).value or ""):
-            model, dom, cs, derm = classify(rows[inn])
+            model, dom, cs, derm = classify(rows.get(inn, []))
             per[inn] = (model, dom, cs, derm)
             ws.cell(i, jm, model)
             ws.cell(i, jm + 1, f"{dom[0]} {dom[1]:.0%} клин. прайса" if dom else "—")
