@@ -13,7 +13,7 @@
   · «удаление новообразований …» с анатомией другой специальности уже
     решается правилом R6 движка (локализация бьёт метод).
 
-Выход: таблица directions_v2 в data/directions_v2.db + промежуточная выгрузка
+Выход: таблица directions_v2 в data/price_v2.db + промежуточная выгрузка
 по первым 10 клиникам (ОБЯЗАТЕЛЬНАЯ ОСТАНОВКА CLAUDE.md — ждать заказчика).
 
 Команды:
@@ -33,7 +33,6 @@ from src.direction_map import classify, norm
 
 PRICE_DB = "data/price_v2.db"
 OSINT_DB = "data/osint.db"
-DIR_DB = "data/directions_v2.db"
 
 # направление движка → подстроки, ЛЮБАЯ из которых в тексте лицензии РЗН
 # покрывает направление (несколько специальностей могут легально оказывать
@@ -67,16 +66,6 @@ LIC_KEYS = {
     "Физиотерапия/массаж": ["физиотерап", "массаж", "лечебной физкультур",
                             "сестринск"],
     "Диетология": ["диетолог"],
-    "Кардиология": ["кардиолог"],
-    "Гастроэнтерология": ["гастроэнтеролог", "терапи"],
-    "Эндокринология": ["эндокринолог"],
-    "Гематология": ["гематолог", "лабораторн"],
-    "Ревматология": ["ревматолог", "терапи"],
-    "Нефрология": ["нефролог", "уролог", "терапи"],
-    "Пульмонология": ["пульмонолог", "терапи"],
-    "Инфекционные болезни": ["инфекц", "терапи"],
-    "Педиатрия": ["педиатр"],
-    "Терапия": ["терапи"],
 }
 
 # направления, для которых лицензионная проверка не применяется
@@ -109,13 +98,12 @@ def lic_covers(direction: str, text: str) -> bool:
 
 
 def run():
-    p = sqlite3.connect(f"file:{PRICE_DB}?mode=ro", uri=True)
+    p = sqlite3.connect(PRICE_DB, timeout=60)
     o = sqlite3.connect(f"file:{OSINT_DB}?mode=ro", uri=True)
-    dd = sqlite3.connect(DIR_DB, timeout=60)
-    dd.execute("""CREATE TABLE IF NOT EXISTS directions_v2(
+    p.execute("""CREATE TABLE IF NOT EXISTS directions_v2(
         domain TEXT, inn TEXT, name TEXT, section TEXT, direction TEXT,
         method TEXT, confidence TEXT, evidence TEXT, flags TEXT)""")
-    dd.execute("delete from directions_v2")
+    p.execute("delete from directions_v2")
 
     rows = p.execute(
         "select domain, inn, name, coalesce(section,''), count(*) "
@@ -155,8 +143,8 @@ def run():
                     ";".join(flags)))
         for f in flags:
             flag_cnt[f] += 1
-    dd.executemany("insert into directions_v2 values (?,?,?,?,?,?,?,?,?)", out)
-    dd.commit()
+    p.executemany("insert into directions_v2 values (?,?,?,?,?,?,?,?,?)", out)
+    p.commit()
     mapped = sum(1 for r in out if r[4] and not r[4].startswith("Брак"))
     print(f"строк (уник. имя×раздел×клиника): {len(out)}")
     print(f"смапплено: {mapped} ({mapped/len(out):.0%})")
@@ -174,13 +162,12 @@ def pilot10():
     o = sqlite3.connect(f"file:{OSINT_DB}?mode=ro", uri=True)
     comp = {i: (n, c) for i, n, c in o.execute("select inn, name, city from t40_companies")}
     # 10 клиник: разнообразие по размеру прайса и профилю
-    dd2 = sqlite3.connect(f"file:{DIR_DB}?mode=ro", uri=True)
-    cands = dd2.execute("""
+    cands = p.execute("""
         select inn, count(*) k, count(distinct domain) from directions_v2
         where inn != '' group by inn order by k desc""").fetchall()
     chosen, seen_kind = [], Counter()
     for inn, k, nd in cands:
-        top = dd2.execute("""select direction, count(*) c from directions_v2
+        top = p.execute("""select direction, count(*) c from directions_v2
             where inn=? and direction!='' and direction not like 'Брак%'
             group by direction order by c desc limit 1""", (inn,)).fetchone()
         kind = top[0] if top else "?"
@@ -200,7 +187,7 @@ def pilot10():
     for c_ in ws[1]: c_.font = H; c_.fill = FILL
     CLEAN = re.compile(r"[\x00-\x1f]")
     for inn in chosen:
-        for dom, name, sec, d, m, conf, ev, fl in dd2.execute(
+        for dom, name, sec, d, m, conf, ev, fl in p.execute(
                 """select domain, name, section, direction, method, confidence,
                    evidence, flags from directions_v2 where inn=?
                    order by section, name""", (inn,)):
@@ -219,7 +206,7 @@ def pilot10():
                "Лицензия (специальности из РЗН)"])
     for c_ in w2[1]: c_.font = H; c_.fill = FILL
     for inn in chosen:
-        rows = dd2.execute("select direction, flags from directions_v2 where inn=?",
+        rows = p.execute("select direction, flags from directions_v2 where inn=?",
                          (inn,)).fetchall()
         n = len(rows)
         mapped = sum(1 for d, f in rows if d and not d.startswith("Брак"))
@@ -234,36 +221,12 @@ def pilot10():
     for i, w in enumerate([12, 30, 14, 9, 11, 70, 12, 50], 1):
         w2.column_dimensions[get_column_letter(i)].width = w
 
-    # --- сверка трёх источников: сайт × прайс × лицензия
-    dd = sqlite3.connect(f"file:{DIR_DB}?mode=ro", uri=True) \
-        if __import__("os").path.exists(DIR_DB) else None
-    w4 = wb.create_sheet("Сайт_vs_прайс")
-    w4.append(["ИНН", "Компания", "Направления с сайта (навигация/страница)",
-               "На сайте ЕСТЬ, в прайсе НЕТ (<2%)", "В прайсе ЕСТЬ (≥2%), на сайте НЕТ"])
-    for c_ in w4[1]: c_.font = H; c_.fill = FILL
-    if dd is not None:
-        for inn in chosen:
-            site = {r[0] for r in dd.execute(
-                "select distinct direction from site_dirs where inn=?", (inn,))}
-            rows = dd2.execute("""select direction, count(*) from directions_v2
-                where inn=? and direction!='' and direction not like 'Брак%'
-                group by direction""", (inn,)).fetchall()
-            tot = sum(k for _, k in rows) or 1
-            price_big = {d for d, k in rows if k / tot >= 0.02}
-            price_all = {d for d, k in rows}
-            w4.append([inn, comp.get(inn, ("", ""))[0],
-                       ", ".join(sorted(site)) or "не найдены",
-                       ", ".join(sorted(site - price_all)) or "—",
-                       ", ".join(sorted(price_big - site)) or "—"])
-    for i, w in enumerate([12, 30, 70, 50, 50], 1):
-        w4.column_dimensions[get_column_letter(i)].width = w
-
     w3 = wb.create_sheet("Спорные")
     w3.append(["ИНН", "Компания", "Раздел", "Название", "Направление",
                "Уверенность", "Флаги", "Улика"])
     for c_ in w3[1]: c_.font = H; c_.fill = FILL
     for inn in chosen:
-        for name, sec, d, conf, ev, fl in dd2.execute(
+        for name, sec, d, conf, ev, fl in p.execute(
                 """select name, section, direction, confidence, evidence, flags
                    from directions_v2 where inn=? and (flags != '' or
                    confidence='низ' or direction='') order by flags desc""", (inn,)):
@@ -280,9 +243,8 @@ def pilot10():
 
 def stats():
     p = sqlite3.connect(f"file:{PRICE_DB}?mode=ro", uri=True)
-    dd2 = sqlite3.connect(f"file:{DIR_DB}?mode=ro", uri=True)
-    n = dd2.execute("select count(*) from directions_v2").fetchone()[0]
-    for d, k in dd2.execute("""select direction, count(*) from directions_v2
+    n = p.execute("select count(*) from directions_v2").fetchone()[0]
+    for d, k in p.execute("""select direction, count(*) from directions_v2
             group by direction order by 2 desc limit 25"""):
         print(f"{k:7} {d or '— не смапплено —'}")
     print("всего:", n)
