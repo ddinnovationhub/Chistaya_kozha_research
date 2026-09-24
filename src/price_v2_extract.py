@@ -133,6 +133,24 @@ JUNK_START = re.compile(r"^(?:на сайте|доступно|недоступ�
 FIO_INNER = re.compile(
     r"[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]+\s+[А-ЯЁ][а-яё]*(?:вна|ична|инична|евич|ович|ич|оглы|кызы)\b")
 BREADCRUMB = re.compile(r"^\s*/|\bглавная\b.*/|/\s*$|^главная\b", re.I)
+# виджеты записи и новости: «с 24 сентября», «по телефону», «сегодня» —
+# не позиции прайса (fomin-clinic, 1dmc)
+SCHEDULE = re.compile(
+    r"^(?:с\s+)?\d{1,2}\s+(?:январ|феврал|март|апрел|ма[яй]|июн|июл|август|"
+    r"сентябр|октябр|ноябр|декабр)|^(?:по телефону|по запросу|уточняйте|"
+    r"звоните|сегодня|завтра|запись|ближайшая запись)\b", re.I)
+# дисклеймер о цене — вычищается из хвоста имени, а не убивает позицию
+DISCLAIMER = re.compile(
+    r"\s*(?:базовая цена\.?\s*)?(?:точная\s+)?(?:стоимость|цена)[^.]{0,80}"
+    r"(?:может\s+(?:из)?меняться|уточн\w+|менеджер)[^.]*\.?\s*$", re.I)
+DISCLAIMER_FULL = re.compile(
+    r"^(?:базовая цена|стоимость|цена|точная стоимость)\b.*"
+    r"(?:меняться|уточн|менеджер|по телефону)", re.I | re.S)
+PROMO_PREFIX = re.compile(r"^\s*топ\s*акция!?\s*", re.I)
+UNIT_ONLY = re.compile(
+    r"^(до\s+)?\d+([.,]\d+)?\s*(шприц\w*|мл|нак\.?\w*|мин\w*|импульс\w*|"
+    r"сеанс\w*|процедур\w*|исследован\w*|единиц\w*|ед\.?|вспыш\w*|см|час\w*)"
+    r"[\s,./+]*", re.I)
 
 
 def valid_name(name):
@@ -158,6 +176,8 @@ def valid_name(name):
         return False                       # «на сайте», «Доступно», «Стаж…»
     if BREADCRUMB.search(name):
         return False                       # хлебные крошки «/ Главная … /»
+    if SCHEDULE.match(name.strip()):
+        return False                       # виджет записи/новость с датой
     words = name.lower().split()
     if len(words) >= 4:                    # повтор начального фрагмента —
         head = " ".join(words[:2])         # конкатенация двух позиций
@@ -198,7 +218,11 @@ def clean_text(txt):
     # и по 152-ФЗ ФИО врачей не собираем
     txt = re.sub(r"\s*врачи?:.*$", "", txt, flags=re.I)
     txt = re.sub(r"[А-ЯЁ][а-яё]+\s+[А-ЯЁ]\.\s*[А-ЯЁ]\.(?:\s*,)?", " ", txt)
+    txt = DISCLAIMER.sub("", txt)
+    txt = PROMO_PREFIX.sub("", txt)
     txt = re.sub(r"\s+", " ", txt).strip(" .,;:–—-")
+    if DISCLAIMER_FULL.match(txt):
+        return ""                   # имя целиком дисклеймер — пусть заменит раздел
     if txt.lower() in {"р", "руб", "₽", "от", "цена"}:
         return ""
     return txt
@@ -290,6 +314,8 @@ def extract_page(html):
             if price is None:
                 continue
             name = clean_text(max(cells[:pi], key=len, default=""))
+            if len(name) < 5 <= len(sec):
+                name = sec          # имя было дисклеймером/пустым — раздел говорит больше
             if len(name) >= 5 and not UI_STOP.match(name):
                 got.append((name, price, "таблица", sec))
         if len(got) >= 3:
@@ -330,9 +356,11 @@ def extract_page(html):
                 continue
             seen_rows.add(id(row))
             name = row_name(row) or clean_name(row, [ptxt])
+            sec = nearest_heading(row)
+            if len(name) < 5 <= len(sec):
+                name = sec
             if len(name) >= 5:
-                out.append((name, price, f"паттерн:{len(items)}",
-                            nearest_heading(row)))
+                out.append((name, price, f"паттерн:{len(items)}", sec))
     # дедуп в рамках страницы
     ded = {}
     for name, price, m, sec in out:
@@ -459,7 +487,17 @@ def run_domain(domain, con):
         key = (n.lower(), p)
         if key not in ded or (not ded[key][4] and sec):
             ded[key] = (url, n, p, m, sec)
-    items = [it for it in ded.values() if valid_name(it[1])]
+    items = []
+    for it in ded.values():
+        url, n, p, m, sec = it
+        if not valid_name(n):
+            continue
+        # имя из одних единиц измерения («1 нак., 30 мин») осмысленно только
+        # в паре с разделом; без раздела это обрывок варианта — не позиция
+        if not sec and len(n) <= 25 and UNIT_ONLY.match(n) \
+                and not MED_LEX.search(n):
+            continue
+        items.append(it)
     ok, mt = gates([(n, p, m) for _, n, p, m, _ in items])
     return items, ok, mt
 
