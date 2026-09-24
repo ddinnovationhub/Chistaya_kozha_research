@@ -226,17 +226,22 @@ def run():
     def full_classify(name, sec):
         d, m, c, e = classify(name, sec)
         conflict = ""
-        if not (d and d.startswith("Брак")):
-            sec_d = map_nav(sec) if sec else None
+        sec_d = map_nav(sec) if sec else None
+        if d and d.startswith("Брак"):
+            # раздел спасает непонятное имя (заказчик, 2026-09-24:
+            # «Первичный прием» в разделе «услуги дерматовенеролога»)
             if sec_d:
-                if d and d != sec_d:
-                    conflict = f"раздел≠имя (движок: {d})"
-                d, m, c, e = (sec_d, "раздел = направление сайта", "выс",
-                              f"раздел «{sec[:40]}»")
-            elif not d:
-                fb = fallback_direction(name, sec)
-                if fb:
-                    d, m, c, e = fb
+                d, m, c, e = (sec_d, "раздел спасает имя", "сред",
+                              f"имя «{name[:30]}», раздел «{sec[:40]}»")
+        elif sec_d:
+            if d and d != sec_d:
+                conflict = f"раздел≠имя (движок: {d})"
+            d, m, c, e = (sec_d, "раздел = направление сайта", "выс",
+                          f"раздел «{sec[:40]}»")
+        elif not d:
+            fb = fallback_direction(name, sec)
+            if fb:
+                d, m, c, e = fb
         return d, m, c, e, conflict
 
     base = []
@@ -245,6 +250,27 @@ def run():
         if key not in cache:
             cache[key] = full_classify(name, sec)
         base.append((domain, inn, name, sec, cache[key]))
+    # наследование по большинству раздела (заказчик, 2026-09-24: «зачастую
+    # понятно всё из раздела прайса»): blank в разделе, где ≥60% уже
+    # смаппленных соседей (и их ≥5) дают одно направление, наследует его
+    sec_major = defaultdict(Counter)
+    for domain, inn, name, sec, (d, m, c, e, cf) in base:
+        if d and not d.startswith("Брак") and sec:
+            sec_major[(domain, sec)][d] += 1
+    inherited = 0
+    for i, (domain, inn, name, sec, (d, m, c, e, cf)) in enumerate(base):
+        if d or not sec:
+            continue
+        cnt = sec_major.get((domain, sec))
+        if not cnt:
+            continue
+        top, k2 = cnt.most_common(1)[0]
+        if k2 >= 5 and k2 / sum(cnt.values()) >= 0.6:
+            base[i] = (domain, inn, name, sec,
+                       (top, "по большинству раздела", "сред",
+                        f"{k2}/{sum(cnt.values())} соседей раздела", cf))
+            inherited += 1
+    print(f"унаследовано по большинству раздела: {inherited}")
     # профиль клиники: доли направлений по ИНН (по уникальным позициям)
     prof = defaultdict(Counter)
     for domain, inn, name, sec, (d, m, c, e, cf) in base:
