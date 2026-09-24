@@ -45,3 +45,9 @@ output/Тест40_2026-09-0[456].xlsx
 data/price_html_cache/
 data/price_v2.db-shm
 data/price_v2.db-wal
+
+# производная БД маппинга (пересоздаётся: python -m src.map_v2 run) — 95 МиБ,
+# у лимита GitHub; в репо живёт выгрузка пилота и движок, не блоб
+data/directions_v2.db
+data/directions_v2.db-shm
+data/directions_v2.db-wal
