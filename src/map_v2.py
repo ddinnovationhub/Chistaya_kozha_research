@@ -429,5 +429,58 @@ def stats():
     print("всего:", n)
 
 
+
+
+# ---------------------------------------------------------------- стом-контекст
+
+DENTAL_GENERAL = {"Терапия", "Хирургия", "Травматология/ортопедия", "Педиатрия"}
+GENERAL_LIC = ("гинеколог", "уролог", "кардиолог", "дерматовенеролог",
+               "педиатри", "офтальмолог", "оториноларинголог", "неврологи",
+               "эндокринолог", "гастроэнтеролог", "аллерголог")
+
+
+def dental_context():
+    """Правка 1 заказчика (2026-09-24): в стоматологической клинике разделы
+    «Терапия/Хирургия/Ортопедия/Детская» — это разделы стоматологии
+    (терапевтическая/хирургическая/ортопедическая стоматология), а не
+    общемедицинские специальности. Признак стом-клиники: стоматология ≥50%
+    клинического прайса ИЛИ (в лицензии есть стоматолог и нет ни одной
+    типичной общемедицинской специальности)."""
+    from src.clinic_profile import SERVICE
+    dd = sqlite3.connect(DIR_DB, timeout=60)
+    o = sqlite3.connect(f"file:{OSINT_DB}?mode=ro", uri=True)
+    inns = [r[0] for r in dd.execute(
+        "select distinct inn from directions_v2 where direction='Стоматология'")]
+    fixed_rows = fixed_site = n_dental = 0
+    for inn in inns:
+        cnt = dict(dd.execute(
+            """select direction, count(*) from directions_v2
+               where inn=? and direction!='' group by direction""", (inn,)))
+        clin = sum(k for d, k in cnt.items() if d not in SERVICE
+                   and not d.startswith("Брак")) or 1
+        stom_share = cnt.get("Стоматология", 0) / clin
+        lt = lic_text(inn, o)
+        lic_dental = (lt is not None and "стоматолог" in lt
+                      and not any(g in lt for g in GENERAL_LIC))
+        if stom_share >= 0.5 or lic_dental:
+            n_dental += 1
+            for d in DENTAL_GENERAL:
+                c = dd.execute(
+                    """update directions_v2 set direction='Стоматология',
+                       method='стоматологический контекст',
+                       evidence='клиника стоматологическая: '||?
+                       where inn=? and direction=?""",
+                    (f"стом {stom_share:.0%} клин. прайса" if stom_share >= 0.5
+                     else "лицензия только стом/хирург", inn, d))
+                fixed_rows += c.rowcount
+                c2 = dd.execute(
+                    "update site_dirs set direction='Стоматология' "
+                    "where inn=? and direction=?", (inn, d))
+                fixed_site += c2.rowcount
+    dd.commit()
+    print(f"стом-клиник: {n_dental}; позиций переклассифицировано: {fixed_rows}; "
+          f"сайт-направлений: {fixed_site}")
+
+
 if __name__ == "__main__":
-    {"run": run, "pilot10": pilot10, "stats": stats}[sys.argv[1]]()
+    {"run": run, "pilot10": pilot10, "stats": stats, "dental": dental_context}[sys.argv[1]]()
