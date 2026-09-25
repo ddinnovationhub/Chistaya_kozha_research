@@ -1,0 +1,122 @@
+[
+ {
+  "inn": "5902048289",
+  "domain": "perm.a2med.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "А2МЕД ПЕРМЬ, ООО",
+  "rev": 51229000,
+  "doctors": 33,
+  "doctors_url": "https://perm.a2med.ru/team/",
+  "area_m2": null,
+  "rooms": null,
+  "note": ""
+ },
+ {
+  "inn": "6315023806",
+  "domain": "samara.a2med.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "А2МЕД САМАРА, ООО",
+  "rev": 853073000,
+  "doctors": 200,
+  "doctors_url": "https://samara.a2med.ru/team/",
+  "area_m2": null,
+  "rooms": null,
+  "note": ""
+ },
+ {
+  "inn": "6679119938",
+  "domain": "imedsvetliy.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "АЙМЕД, ООО",
+  "rev": 36027000,
+  "doctors": 4,
+  "doctors_url": "https://imedsvetliy.ru (главная)",
+  "area_m2": null,
+  "rooms": null,
+  "note": "по главной странице"
+ },
+ {
+  "inn": "5406843674",
+  "domain": "alleya-nsk.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "АЛЛЕЯ МЕД, ООО",
+  "rev": 22996000,
+  "doctors": 5,
+  "doctors_url": "https://alleya-nsk.ru (главная)",
+  "area_m2": null,
+  "rooms": null,
+  "note": "по главной странице"
+ },
+ {
+  "inn": "2303024974",
+  "domain": "dermaclinic23.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "ВИСЛА, ООО",
+  "rev": 20774000,
+  "doctors": 25,
+  "doctors_url": "https://dermaclinic23.ru (главная)",
+  "area_m2": null,
+  "rooms": null,
+  "note": "по главной странице"
+ },
+ {
+  "inn": "5262390413",
+  "domain": "dvmed-clinic.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "ДВ-МЕД, ООО",
+  "rev": 20998000,
+  "doctors": 11,
+  "doctors_url": "https://dvmed-clinic.ru (главная)",
+  "area_m2": null,
+  "rooms": null,
+  "note": "по главной странице"
+ },
+ {
+  "inn": "2225234650",
+  "domain": "clinic-leto.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "ЛЕТО, ООО КЭАМ",
+  "rev": 70498000,
+  "doctors": 3,
+  "doctors_url": "https://clinic-leto.ru (главная)",
+  "area_m2": null,
+  "rooms": null,
+  "note": "по главной странице"
+ },
+ {
+  "inn": "6658263352",
+  "domain": "mc-paracels.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "НАШ МЦ ПАРАЦЕЛЬС, ООО",
+  "rev": 679151000,
+  "doctors": 95,
+  "doctors_url": "https://mc-paracels.ru/specialists/",
+  "area_m2": null,
+  "rooms": null,
+  "note": ""
+ },
+ {
+  "inn": "6168122105",
+  "domain": "novomed61.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "НОВОМЕД, ООО",
+  "rev": 22957000,
+  "doctors": 24,
+  "doctors_url": "https://novomed61.ru/doctors",
+  "area_m2": null,
+  "rooms": null,
+  "note": ""
+ },
+ {
+  "inn": "7450011291",
+  "domain": "pan74.ru",
+  "groups": "М0-аналог (моно-дерм)",
+  "comp": "ПАНАЦЕЯ, ООО",
+  "rev": 24812000,
+  "doctors": 13,
+  "doctors_url": "https://pan74.ru/specialists.html",
+  "area_m2": null,
+  "rooms": null,
+  "note": ""
+ }
+]
