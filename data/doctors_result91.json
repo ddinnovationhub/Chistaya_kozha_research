@@ -173,8 +173,8 @@
   "groups": "М7 — эстетическая косметология",
   "comp": "КАМЕЛИЯ, ООО",
   "rev": 43316000,
-  "doctors": 1,
-  "doctors_url": "https://camelliann.ru (главная)",
+  "doctors": null,
+  "doctors_url": "подсчёт не удался: сайт на JavaScript",
   "area_m2": null,
   "rooms": null,
   "note": "по главной странице"
@@ -473,8 +473,8 @@
   "groups": "М7 — эстетическая косметология",
   "comp": "КРАСОТА И ЗДОРОВЬЕ, ООО ЦЭМ",
   "rev": 89071000,
-  "doctors": 4,
-  "doctors_url": "https://yourplace24.ru/doctors/",
+  "doctors": 7,
+  "doctors_url": "https://yourplace24.ru/doctors/ (карточки врачей)",
   "area_m2": null,
   "rooms": null,
   "note": ""
@@ -665,8 +665,8 @@
   "groups": "М7 — эстетическая косметология",
   "comp": "МУР, ООО",
   "rev": 32933000,
-  "doctors": 1,
-  "doctors_url": "https://ideal-krsk.ru (главная)",
+  "doctors": null,
+  "doctors_url": "подсчёт не удался: сайт на JavaScript",
   "area_m2": null,
   "rooms": null,
   "note": "по главной странице"
@@ -881,8 +881,8 @@
   "groups": "М3 — Clinical Skin Health",
   "comp": "СКИНПРОФИ, ООО",
   "rev": 26171000,
-  "doctors": 4,
-  "doctors_url": "https://matvietsclinic.ru/specialists/matviecz-elena-mihajlovna/",
+  "doctors": 7,
+  "doctors_url": "https://matvietsclinic.ru/specialists/matviecz-elena-mihajlovna/ (карточки врачей)",
   "area_m2": null,
   "rooms": null,
   "note": ""
