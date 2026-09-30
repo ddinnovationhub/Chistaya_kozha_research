@@ -1,0 +1,37 @@
+{
+ "дата": "2026-09-30",
+ "метод_цен": "items_v2 (766 прайсов, 386903 позиции): срез по вхождению нозологии в название; постакне/рубцы исключены; корзины с одним знаменателем; средние и медианы по корзинам",
+ "источники_клинрек_и_визиты": {
+  "акне": [
+   "https://www.ismos.ru/guidelines/doc/akne.pdf",
+   "https://medi.ru/klinicheskie-rekomendatsii/akne_13842/",
+   "https://umedp.ru/articles/izotretinoin_v_terapii_akne_vazhnye_aspekty_konferentsiya_akne_i_rozatsea_2024.html"
+  ],
+  "псориаз": [
+   "https://legalacts.ru/doc/klinicheskie-rekomendatsii-psoriaz-utv-minzdravom-rossii/",
+   "https://www.ismos.ru/guidelines/doc/psoriaz.pdf",
+   "https://gorkvd.ru/dispanserizaciya-pri-xronicheskix-dermatozax-chto-vxodit"
+  ],
+  "экзема": [
+   "https://base.garant.ru/409466711/",
+   "https://medi.ru/klinicheskie-rekomendatsii/ekzema_13932/"
+  ],
+  "розацеа": [
+   "https://medi.ru/klinicheskie-rekomendatsii/rozatsea_14251/",
+   "https://remedium.ru/doctor/dermatology/metody-terapii-rozatsea-dlya-dostizheniya-stoykoy-remissii-v-usloviyakh-megapolisa/"
+  ],
+  "витилиго": [
+   "https://umedp.ru/articles/algoritm_primeneniya_ufbizlucheniya_s_dlinoy_volny_311_nm_pri_vitiligo.html",
+   "https://cyberleninka.ru/article/n/algoritm-lecheniya-vitiligo"
+  ]
+ },
+ "источники_цен_интернет": [
+  "https://yandex.ru/medicine/services/lechenie-akne_moscow",
+  "https://www.krasotaimedicina.ru/treatment/psoriasis/311-nm",
+  "https://1skin.ru/lechenie-vitiligo/",
+  "https://www.presidentmed.ru/lechenie-vitiligo.html",
+  "https://mdclinica.ru/uslugi/apparatnaya-kosmetologiya/lechenie-akne/",
+  "https://napopravku.ru/moskva/uslugi/lechenie-ehkzemy/",
+  "https://skinerica-clinic.ru/uslugi/lazernaiya-kosmetologiya/lechenie-rozaczea-lazerom/"
+ ]
+}
